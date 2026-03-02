@@ -165,8 +165,17 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 break;
 
             case StreamingMessage.ContentOneofCase.FunctionLoadResponse:
-            case StreamingMessage.ContentOneofCase.InvocationResponse:
             case StreamingMessage.ContentOneofCase.FunctionMetadataResponse:
+                CompleteRequest(message);
+                break;
+
+            case StreamingMessage.ContentOneofCase.InvocationResponse:
+                if (message.InvocationResponse?.Result?.Status != StatusResult.Types.Status.Success)
+                {
+                    var errMsg = message.InvocationResponse?.Result?.Exception?.Message ?? "unknown";
+                    _logger.LogError("Invocation failed for {InvocationId}: {Error}",
+                        message.InvocationResponse?.InvocationId, errMsg);
+                }
                 CompleteRequest(message);
                 break;
 
@@ -200,8 +209,6 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             }
         };
 
-        initRequest.WorkerInitRequest.Capabilities.Add("RpcHttpBodyOnly", "true");
-        initRequest.WorkerInitRequest.Capabilities.Add("RpcHttpTriggerMetadataRemoved", "true");
         initRequest.WorkerInitRequest.Capabilities.Add("TypedDataCollection", "true");
         initRequest.WorkerInitRequest.Capabilities.Add("WorkerStatus", "true");
 

@@ -7,11 +7,11 @@ namespace Sample.FunctionApp;
 public class HealthFunctions
 {
     [Function("Health")]
-    public HttpResponseData Health(
+    public async Task<HttpResponseData> Health(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
     {
         var response = req.CreateResponse(HttpStatusCode.OK);
-        response.WriteString("Healthy");
+        await response.WriteAsJsonAsync(new { status = "Healthy" });
         return response;
     }
 
