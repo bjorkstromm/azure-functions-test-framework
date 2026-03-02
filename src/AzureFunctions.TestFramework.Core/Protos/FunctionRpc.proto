@@ -1,0 +1,395 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.microsoft.azure.functions.rpc.messages";
+option java_outer_classname = "FunctionProto";
+option csharp_namespace = "Microsoft.Azure.WebJobs.Script.Grpc.Messages";
+option go_package ="github.com/Azure/azure-functions-go-worker/internal/rpc";
+
+package AzureFunctionsRpcMessages;
+
+import "google/protobuf/duration.proto";
+
+// Interface exported by the server.
+service FunctionRpc {
+ rpc EventStream (stream StreamingMessage) returns (stream StreamingMessage) {}
+}
+
+message StreamingMessage {
+  string request_id = 1;
+
+  oneof content {
+    StartStream start_stream = 20;
+    WorkerInitRequest worker_init_request = 17;
+    WorkerInitResponse worker_init_response = 16;
+    WorkerHeartbeat worker_heartbeat = 15;
+    WorkerTerminate worker_terminate = 14;
+    WorkerStatusRequest worker_status_request = 12;
+    WorkerStatusResponse worker_status_response = 13;
+    FileChangeEventRequest file_change_event_request = 6;
+    WorkerActionResponse worker_action_response = 7;
+    FunctionLoadRequest function_load_request = 8;
+    FunctionLoadResponse function_load_response = 9;
+    InvocationRequest invocation_request = 4;
+    InvocationResponse invocation_response = 5;
+    InvocationCancel invocation_cancel = 21;
+    RpcLog rpc_log = 2;
+    FunctionEnvironmentReloadRequest function_environment_reload_request = 25;
+    FunctionEnvironmentReloadResponse function_environment_reload_response = 26;
+    CloseSharedMemoryResourcesRequest close_shared_memory_resources_request = 27;
+    CloseSharedMemoryResourcesResponse close_shared_memory_resources_response = 28;
+    FunctionsMetadataRequest functions_metadata_request = 29;
+    FunctionMetadataResponse function_metadata_response = 30;
+    FunctionLoadRequestCollection function_load_request_collection = 31;
+    FunctionLoadResponseCollection function_load_response_collection = 32;
+    WorkerWarmupRequest worker_warmup_request = 33;
+    WorkerWarmupResponse worker_warmup_response = 34;
+  }
+}
+
+message StartStream {
+  string worker_id = 2;
+}
+
+message WorkerInitRequest {
+  string host_version = 1;
+  map<string, string> capabilities = 2;
+  map<string, RpcLog.Level> log_categories = 3;
+  string worker_directory = 4;
+  string function_app_directory = 5;
+}
+
+message WorkerInitResponse {
+  string worker_version = 1;
+  map<string, string> capabilities = 2;
+  StatusResult result = 3;
+  WorkerMetadata worker_metadata = 4;
+}
+
+message WorkerMetadata {
+  string runtime_name = 1;
+  string runtime_version = 2;
+  string worker_version = 3;
+  string worker_bitness = 4;
+  map<string, string> custom_properties = 5;
+}
+
+message StatusResult {
+  enum Status {
+    Failure = 0;
+    Success = 1;
+    Cancelled = 2;
+  }
+  Status status = 4;
+  string result = 1;
+  RpcException exception = 2;
+  repeated RpcLog logs = 3;
+}
+
+message WorkerHeartbeat {}
+
+message WorkerTerminate {
+  google.protobuf.Duration grace_period = 1;
+}
+
+message FileChangeEventRequest {
+  enum Type {
+    Unknown = 0;
+    Created = 1;
+    Deleted = 2;
+    Changed = 4;
+    Renamed = 8;
+    All = 15;
+  }
+  Type type = 1;
+  string full_path = 2;
+  string name = 3;
+}
+
+message WorkerActionResponse {
+  enum Action {
+    Restart = 0;
+    Reload = 1;
+  }
+  Action action = 1;
+  string reason = 2;
+}
+
+message WorkerStatusRequest {}
+
+message WorkerStatusResponse {}
+
+message FunctionEnvironmentReloadRequest {
+  map<string, string> environment_variables = 1;
+  string function_app_directory = 2;
+}
+
+message FunctionEnvironmentReloadResponse {
+  enum CapabilitiesUpdateStrategy {
+    merge = 0;
+    replace = 1;
+  }
+  WorkerMetadata worker_metadata = 1;
+  map<string, string> capabilities = 2;
+  StatusResult result = 3;
+  CapabilitiesUpdateStrategy capabilities_update_strategy = 4;
+}
+
+message CloseSharedMemoryResourcesRequest {
+  repeated string map_names = 1;
+}
+
+message CloseSharedMemoryResourcesResponse {
+  map<string, bool> close_map_results = 1;
+}
+
+message FunctionLoadRequestCollection {
+  repeated FunctionLoadRequest function_load_requests = 1;
+}
+
+message FunctionLoadResponseCollection {
+  repeated FunctionLoadResponse function_load_responses = 1;
+}
+
+message FunctionLoadRequest {
+  string function_id = 1;
+  RpcFunctionMetadata metadata = 2;
+  bool managed_dependency_enabled = 3;
+}
+
+message FunctionLoadResponse {
+  string function_id = 1;
+  StatusResult result = 2;
+  bool is_dependency_downloaded = 3;
+}
+
+message RpcFunctionMetadata {
+  string name = 4;
+  string directory = 1;
+  string script_file = 2;
+  string entry_point = 3;
+  map<string, BindingInfo> bindings = 6;
+  bool is_proxy = 7;
+  StatusResult status = 8;
+  string language = 9;
+  repeated string raw_bindings = 10;
+  string function_id = 13;
+  bool managed_dependency_enabled = 14;
+  RpcRetryOptions retry_options = 15;
+  map<string,string> properties = 16;
+}
+
+message RpcRetryOptions {
+  int32 max_retry_count = 1;
+  string delay_interval = 2;
+  string minimum_interval = 3;
+  string maximum_interval = 4;
+}
+
+message FunctionsMetadataRequest {
+  string function_app_directory = 1;
+}
+
+message FunctionMetadataResponse {
+  repeated RpcFunctionMetadata function_metadata_results = 1;
+  StatusResult result = 2;
+  bool use_default_metadata_indexing = 3;
+}
+
+message InvocationRequest {
+  string invocation_id = 1;
+  string function_id = 2;
+  repeated ParameterBinding input_data = 3;
+  map<string, TypedData> trigger_metadata = 4;
+  RpcTraceContext trace_context = 5;
+  RetryContext retry_context = 6;
+}
+
+message RpcTraceContext {
+  string trace_parent = 1;
+  string trace_state = 2;
+  map<string, string> attributes = 3;
+  map<string, string> baggage = 4;
+}
+
+message RetryContext {
+  int32 retry_count = 1;
+  int32 max_retry_count = 2;
+  RpcException exception = 3;
+}
+
+message InvocationCancel {
+  string invocation_id = 2;
+  google.protobuf.Duration grace_period = 1;
+}
+
+message InvocationResponse {
+  string invocation_id = 1;
+  repeated ParameterBinding output_data = 2;
+  StatusResult result = 3;
+  TypedData return_value = 4;
+  map<string, string> trace_context_attributes = 5;
+}
+
+message WorkerWarmupRequest {
+  string worker_directory = 1;
+}
+
+message WorkerWarmupResponse {
+  StatusResult result = 1;
+}
+
+message TypedData {
+  oneof data {
+    string string = 1;
+    string json = 2;
+    bytes bytes = 3;
+    bytes stream = 4;
+    RpcHttp http = 5;
+    sint64 int = 6;
+    double double = 7;
+    CollectionBytes collection_bytes = 8;
+    CollectionString collection_string = 9;
+    CollectionDouble collection_double = 10;
+    CollectionSInt64 collection_sint64 = 11;
+    ModelBindingData model_binding_data = 12;
+    CollectionModelBindingData collection_model_binding_data = 13;
+  }
+}
+
+enum RpcDataType {
+  unknown = 0;
+  string = 1;
+  json = 2;
+  bytes = 3;
+  stream = 4;
+  http = 5;
+  int = 6;
+  double = 7;
+  collection_bytes = 8;
+  collection_string = 9;
+  collection_double = 10;
+  collection_sint64 = 11;
+}
+
+message RpcSharedMemory {
+  string name = 1;
+  int64 offset = 2;
+  int64 count = 3;
+  RpcDataType type = 4;
+}
+
+message CollectionString {
+  repeated string string = 1;
+}
+
+message CollectionBytes {
+  repeated bytes bytes = 1;
+}
+
+message CollectionDouble {
+  repeated double double = 1;
+}
+
+message CollectionSInt64 {
+  repeated sint64 sint64 = 1;
+}
+
+message ParameterBinding {
+  string name = 1;
+  oneof rpc_data {
+    TypedData data = 2;
+    RpcSharedMemory rpc_shared_memory = 3;
+  }
+}
+
+message BindingInfo {
+  enum Direction {
+    in = 0;
+    out = 1;
+    inout = 2;
+  }
+
+  enum DataType {
+    undefined = 0;
+    string = 1;
+    binary = 2;
+    stream = 3;
+  }
+
+  string type = 2;
+  Direction direction = 3;
+  DataType data_type = 4;
+  map<string, string> properties = 5;
+}
+
+message RpcLog {
+  enum Level {
+    Trace = 0;
+    Debug = 1;
+    Information = 2;
+    Warning = 3;
+    Error = 4;
+    Critical = 5;
+    None = 6;
+  }
+
+  enum RpcLogCategory {
+    User = 0;
+    System = 1;
+    CustomMetric = 2;
+  }
+
+  string invocation_id = 1;
+  string category = 2;
+  Level level = 3;
+  string message = 4;
+  string event_id = 5;
+  RpcException exception = 6;
+  string properties = 7;
+  RpcLogCategory log_category = 8;
+  map<string, TypedData> propertiesMap = 9;
+}
+
+message RpcException {
+  string source = 3;
+  string stack_trace = 1;
+  string message = 2;
+  bool is_user_exception = 4;
+  string type = 5;
+}
+
+message RpcHttp {
+  string method = 1;
+  string url = 2;
+  map<string,string> headers = 3;
+  TypedData body = 4;
+  map<string,string> params = 10;
+  string status_code = 12;
+  map<string,string> query = 15;
+  bool enable_content_negotiation = 16;
+  TypedData rawBody = 17;
+  repeated RpcHttpCookie cookies = 19;
+}
+
+message RpcHttpCookie {
+  enum SameSite {
+    None = 0;
+    Lax = 1;
+    Strict = 2;
+    ExplicitNone = 3;
+  }
+  string name = 1;
+  string value = 2;
+}
+
+message ModelBindingData {
+  string version = 1;
+  string source = 2;
+  string content_type = 3;
+  bytes content = 4;
+}
+
+message CollectionModelBindingData {
+  repeated ModelBindingData model_binding_data = 1;
+}

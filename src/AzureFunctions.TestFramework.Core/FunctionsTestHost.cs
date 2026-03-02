@@ -1,0 +1,200 @@
+using AzureFunctions.TestFramework.Core.Grpc;
+using AzureFunctions.TestFramework.Core.Worker;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using System.Reflection;
+
+namespace AzureFunctions.TestFramework.Core;
+
+/// <summary>
+/// Main test host for Azure Functions integration tests.
+/// Similar to WebApplicationFactory in ASP.NET Core.
+/// </summary>
+public class FunctionsTestHost : IFunctionsTestHost
+{
+    private readonly ILogger<FunctionsTestHost> _logger;
+    private readonly GrpcServerManager _grpcServerManager;
+    private readonly WorkerHostService _workerHostService;
+    private readonly GrpcHostService _grpcHostService;
+    private bool _isStarted;
+
+    internal FunctionsTestHost(
+        ILogger<FunctionsTestHost> logger,
+        GrpcServerManager grpcServerManager,
+        WorkerHostService workerHostService,
+        GrpcHostService grpcHostService)
+    {
+        _logger = logger;
+        _grpcServerManager = grpcServerManager;
+        _workerHostService = workerHostService;
+        _grpcHostService = grpcHostService;
+    }
+
+    /// <summary>
+    /// Gets the service provider (not yet implemented - will provide access to worker services).
+    /// </summary>
+    public IServiceProvider Services => throw new NotImplementedException("Service provider access coming soon");
+
+    /// <summary>
+    /// Gets the function invoker for executing functions.
+    /// </summary>
+    public IFunctionInvoker Invoker => new FunctionInvoker(_grpcHostService);
+
+    /// <summary>
+    /// Creates an HttpClient configured to invoke functions in-process.
+    /// Similar to WebApplicationFactory.CreateClient().
+    /// </summary>
+    public HttpClient CreateHttpClient()
+    {
+        if (!_isStarted)
+        {
+            throw new InvalidOperationException("Test host must be started before creating HTTP client");
+        }
+
+        // For now, use a simple hardcoded route mapping
+        // TODO: Implement proper function metadata discovery
+        var routeMap = new Dictionary<string, string>
+        {
+            ["todos"] = "GetTodos",
+            ["todos/{id}"] = "GetTodo",
+            ["health"] = "Health",
+            ["echo"] = "Echo"
+        };
+
+        var handler = new Client.FunctionsHttpMessageHandler(_grpcHostService, routeMap);
+        
+        return new HttpClient(handler)
+        {
+            BaseAddress = new Uri("http://localhost/api/") // Base address for convenience
+        };
+    }
+
+    /// <summary>
+    /// Starts the test host: gRPC server, then Functions worker.
+    /// </summary>
+    public async Task StartAsync(CancellationToken cancellationToken = default)
+    {
+        if (_isStarted)
+        {
+            _logger.LogWarning("Test host is already started");
+            return;
+        }
+
+        _logger.LogInformation("Starting Functions test host");
+
+        try
+        {
+            // 1. gRPC server is ALREADY started during Build()
+            // Just wait a moment for it to be fully ready to accept connections
+            await Task.Delay(500, cancellationToken);
+
+            // 2. Start Functions worker (connects to our gRPC server)
+            await _workerHostService.StartAsync(cancellationToken);
+
+            // 3. Wait for worker to connect to gRPC
+            var timeout = TimeSpan.FromSeconds(30); // Increased timeout
+            var start = DateTime.UtcNow;
+            while (!_grpcHostService.IsConnected && DateTime.UtcNow - start < timeout)
+            {
+                await Task.Delay(500, cancellationToken); // Increased poll interval
+            }
+
+            if (!_grpcHostService.IsConnected)
+            {
+                throw new FunctionsTestHostException("Worker did not connect to gRPC server within timeout");
+            }
+
+            _isStarted = true;
+            _logger.LogInformation("Functions test host started successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to start Functions test host");
+            await StopAsync(cancellationToken);
+            throw new FunctionsTestHostException("Failed to start test host", ex);
+        }
+    }
+
+    /// <summary>
+    /// Stops the test host: worker, then gRPC server.
+    /// </summary>
+    public async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        if (!_isStarted)
+        {
+            return;
+        }
+
+        _logger.LogInformation("Stopping Functions test host");
+
+        try
+        {
+            // Stop in reverse order
+            await _workerHostService.StopAsync(cancellationToken);
+            await _grpcServerManager.StopAsync(cancellationToken);
+
+            _isStarted = false;
+            _logger.LogInformation("Functions test host stopped");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error stopping Functions test host");
+            throw;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await StopAsync();
+        await _workerHostService.DisposeAsync();
+        await _grpcServerManager.DisposeAsync();
+    }
+
+    public void Dispose()
+    {
+        DisposeAsync().AsTask().GetAwaiter().GetResult();
+    }
+
+    /// <summary>
+    /// Creates a new FunctionsTestHost builder.
+    /// </summary>
+    public static IFunctionsTestHostBuilder CreateBuilder()
+    {
+        return new FunctionsTestHostBuilder();
+    }
+
+    /// <summary>
+    /// Creates a test host for a specific function app assembly.
+    /// </summary>
+    public static IFunctionsTestHostBuilder CreateBuilder<TFunctionsAssembly>() where TFunctionsAssembly : class
+    {
+        return new FunctionsTestHostBuilder()
+            .WithFunctionsAssembly(typeof(TFunctionsAssembly).Assembly);
+    }
+}
+
+/// <summary>
+/// Simple function invoker implementation.
+/// </summary>
+internal class FunctionInvoker : IFunctionInvoker
+{
+    private readonly GrpcHostService _grpcHostService;
+
+    public FunctionInvoker(GrpcHostService grpcHostService)
+    {
+        _grpcHostService = grpcHostService;
+    }
+
+    public Task<FunctionInvocationResult> InvokeAsync(
+        string functionName,
+        FunctionInvocationContext context,
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotImplementedException("Invoke will be implemented with HTTP client API");
+    }
+
+    public IReadOnlyDictionary<string, FunctionMetadata> GetFunctions()
+    {
+        throw new NotImplementedException("Function metadata discovery coming soon");
+    }
+}

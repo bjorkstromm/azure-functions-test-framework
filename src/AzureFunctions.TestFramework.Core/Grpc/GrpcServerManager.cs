@@ -1,0 +1,124 @@
+using Grpc.AspNetCore.Server;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+
+namespace AzureFunctions.TestFramework.Core.Grpc;
+
+/// <summary>
+/// Manages the gRPC server that the Functions worker connects to.
+/// </summary>
+public class GrpcServerManager : IAsyncDisposable
+{
+    private readonly ILogger<GrpcServerManager> _logger;
+    private readonly GrpcHostService _hostService;
+    private IHost? _grpcHost;
+    private int _port;
+
+    public GrpcServerManager(
+        ILogger<GrpcServerManager> logger,
+        GrpcHostService hostService)
+    {
+        _logger = logger;
+        _hostService = hostService;
+    }
+
+    /// <summary>
+    /// Gets the port the gRPC server is listening on.
+    /// </summary>
+    public int Port => _port;
+
+    /// <summary>
+    /// Gets the gRPC host service.
+    /// </summary>
+    public GrpcHostService HostService => _hostService;
+
+    /// <summary>
+    /// Starts the gRPC server.
+    /// </summary>
+    public async Task StartAsync(CancellationToken cancellationToken = default)
+    {
+        _port = FindAvailablePort();
+        
+        _logger.LogInformation("Starting gRPC server on port {Port}", _port);
+
+        _grpcHost = Host.CreateDefaultBuilder()
+            .ConfigureWebHostDefaults(webBuilder =>
+            {
+                webBuilder
+                    .UseKestrel(options =>
+                    {
+                        // IMPORTANT: Listen on ALL interfaces (0.0.0.0) not just localhost
+                        // The worker's gRPC client may resolve localhost differently
+                        options.ListenAnyIP(_port, listenOptions =>
+                        {
+                            listenOptions.Protocols = HttpProtocols.Http2;
+                        });
+                    })
+                    .ConfigureServices(services =>
+                    {
+                        services.AddGrpc(options =>
+                        {
+                            options.Interceptors.Add<GrpcLoggingInterceptor>();
+                        });
+                        services.AddSingleton(_hostService);
+                        services.AddSingleton<GrpcLoggingInterceptor>();
+                    })
+                    .Configure(app =>
+                    {
+                        app.UseRouting();
+                        app.UseEndpoints(endpoints =>
+                        {
+                            endpoints.MapGrpcService<GrpcHostService>();
+                        });
+                    });
+            })
+            .ConfigureLogging(logging =>
+            {
+                logging.SetMinimumLevel(LogLevel.Warning);
+                logging.AddFilter("Grpc", LogLevel.Warning);
+                logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+            })
+            .Build();
+
+        await _grpcHost.StartAsync(cancellationToken);
+        _logger.LogInformation("gRPC server started on port {Port}", _port);
+    }
+
+    /// <summary>
+    /// Stops the gRPC server.
+    /// </summary>
+    public async Task StopAsync(CancellationToken cancellationToken = default)
+    {
+        if (_grpcHost != null)
+        {
+            _logger.LogInformation("Stopping gRPC server");
+            await _grpcHost.StopAsync(cancellationToken);
+            _logger.LogInformation("gRPC server stopped");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_grpcHost != null)
+        {
+            await _grpcHost.StopAsync();
+            _grpcHost.Dispose();
+        }
+    }
+
+    private static int FindAvailablePort()
+    {
+        using var socket = new System.Net.Sockets.Socket(
+            System.Net.Sockets.AddressFamily.InterNetwork,
+            System.Net.Sockets.SocketType.Stream,
+            System.Net.Sockets.ProtocolType.Tcp);
+        
+        socket.Bind(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0));
+        var port = ((System.Net.IPEndPoint)socket.LocalEndPoint!).Port;
+        return port;
+    }
+}

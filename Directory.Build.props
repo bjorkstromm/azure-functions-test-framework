@@ -1,0 +1,16 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <Authors>Azure Functions Test Framework Contributors</Authors>
+    <Company>Azure Functions Test Framework</Company>
+    <Copyright>Copyright (c) Azure Functions Test Framework Contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/YOUR_USERNAME/azure-functions-test-framework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/YOUR_USERNAME/azure-functions-test-framework</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <Version>0.1.0</Version>
+  </PropertyGroup>
+</Project>
