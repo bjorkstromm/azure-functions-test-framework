@@ -2,6 +2,7 @@ using Grpc.Core;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
+using System.Text.Json;
 
 namespace AzureFunctions.TestFramework.Core.Grpc;
 
@@ -17,6 +18,10 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private readonly object _lock = new();
     private IServerStreamWriter<StreamingMessage>? _responseStream;
     private string _workerId = string.Empty;
+    private TaskCompletionSource<StreamingMessage>? _workerInitTcs;
+    private readonly TaskCompletionSource<bool> _functionsLoadedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    // Key format: "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}"
+    private readonly Dictionary<string, string> _functionRouteToId = new(StringComparer.OrdinalIgnoreCase);
 
     public GrpcHostService(ILogger<GrpcHostService> logger, Assembly functionsAssembly)
     {
@@ -33,6 +38,22 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// Gets the worker ID.
     /// </summary>
     public string WorkerId => _workerId;
+
+    /// <summary>
+    /// Gets a value indicating whether functions have been loaded.
+    /// </summary>
+    public bool IsFunctionsLoaded => _functionsLoadedTcs.Task.IsCompleted;
+
+    /// <summary>
+    /// Gets the route-to-functionId mapping for loaded functions.
+    /// Key format is "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}".
+    /// </summary>
+    public IReadOnlyDictionary<string, string> FunctionRouteMap => _functionRouteToId;
+
+    /// <summary>
+    /// Waits until all functions have been discovered and loaded.
+    /// </summary>
+    public Task WaitForFunctionsLoadedAsync() => _functionsLoadedTcs.Task;
 
     /// <summary>
     /// Handles the bidirectional streaming RPC between host and worker.
@@ -140,6 +161,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 break;
 
             case StreamingMessage.ContentOneofCase.WorkerInitResponse:
+                _workerInitTcs?.TrySetResult(message);
+                break;
+
             case StreamingMessage.ContentOneofCase.FunctionLoadResponse:
             case StreamingMessage.ContentOneofCase.InvocationResponse:
             case StreamingMessage.ContentOneofCase.FunctionMetadataResponse:
@@ -163,16 +187,15 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         _workerId = message.StartStream.WorkerId;
         _logger.LogInformation("Worker {WorkerId} started stream", _workerId);
 
-        // Send WorkerInitRequest - but don't wait for response here!
-        // The response will be handled in the message processing loop
+        // Create TCS to track WorkerInitResponse
+        _workerInitTcs = new TaskCompletionSource<StreamingMessage>(TaskCreationOptions.RunContinuationsAsynchronously);
+
         var initRequest = new StreamingMessage
         {
             RequestId = Guid.NewGuid().ToString(),
             WorkerInitRequest = new WorkerInitRequest
             {
                 HostVersion = "1.0.0",
-                // Use the assembly's location as the function app directory
-                // This is where the function metadata files should be
                 FunctionAppDirectory = Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory
             }
         };
@@ -184,13 +207,19 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
 
         await SendMessageOneWayAsync(initRequest, cancellationToken);
 
-        // Start async task to load functions after init completes
+        // Load functions in a background task so the EventStream loop can continue processing responses.
+        // The Task.Run ensures we're off the EventStream thread, allowing the foreach loop to
+        // receive and complete the WorkerInitResponse and subsequent responses.
         _ = Task.Run(async () =>
         {
             try
             {
-                // Wait a bit for WorkerInitResponse
-                await Task.Delay(1000);
+                // Wait for WorkerInitResponse via the TCS set in HandleWorkerMessageAsync
+                using var initCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+                initCts.CancelAfter(TimeSpan.FromSeconds(30));
+                await _workerInitTcs.Task.WaitAsync(initCts.Token);
+
+                _logger.LogInformation("Worker init complete, requesting function metadata");
 
                 // Request function metadata from the worker
                 var metadataRequest = new StreamingMessage
@@ -200,11 +229,11 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 };
 
                 var metadataResponse = await SendMessageAsync(metadataRequest, cancellationToken);
-                _logger.LogInformation("Received {Count} function(s) from worker",
-                    metadataResponse.FunctionMetadataResponse.FunctionMetadataResults.Count);
+                var functions = metadataResponse.FunctionMetadataResponse.FunctionMetadataResults;
+                _logger.LogInformation("Received {Count} function(s) from worker", functions.Count);
 
-                // Send FunctionLoadRequest for each function
-                foreach (var functionMetadata in metadataResponse.FunctionMetadataResponse.FunctionMetadataResults)
+                // Send FunctionLoadRequest for each function and build the route map
+                foreach (var functionMetadata in functions)
                 {
                     var loadRequest = new StreamingMessage
                     {
@@ -217,13 +246,80 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                     };
 
                     var loadResponse = await SendMessageAsync(loadRequest, cancellationToken);
-                    _logger.LogInformation("Loaded function: {FunctionName} (ID: {FunctionId})",
-                        functionMetadata.Name, functionMetadata.FunctionId);
+                    var loadStatus = loadResponse.FunctionLoadResponse?.Result?.Status;
+                    if (loadStatus == StatusResult.Types.Status.Success)
+                    {
+                        _logger.LogInformation("Loaded function: {FunctionName} (ID: {FunctionId})",
+                            functionMetadata.Name, functionMetadata.FunctionId);
+                    }
+                    else
+                    {
+                        var errorMessage = loadResponse.FunctionLoadResponse?.Result?.Exception?.Message ?? "Unknown error";
+                        _logger.LogError("Failed to load function {FunctionName}: {Error}", functionMetadata.Name, errorMessage);
+                        continue;
+                    }
+
+                    // Extract HTTP route from raw bindings and build the method-aware route map
+                    foreach (var rawBinding in functionMetadata.RawBindings)
+                    {
+                        try
+                        {
+                            using var doc = JsonDocument.Parse(rawBinding);
+                            var root = doc.RootElement;
+                            if (root.TryGetProperty("type", out var typeProp) &&
+                                typeProp.GetString()?.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase) == true &&
+                                root.TryGetProperty("route", out var routeProp))
+                            {
+                                var route = routeProp.GetString();
+                                if (string.IsNullOrEmpty(route))
+                                {
+                                    continue;
+                                }
+
+                                // Extract accepted HTTP methods; default to all if not specified
+                                var methods = new List<string>();
+                                if (root.TryGetProperty("methods", out var methodsProp) &&
+                                    methodsProp.ValueKind == JsonValueKind.Array)
+                                {
+                                    foreach (var m in methodsProp.EnumerateArray())
+                                    {
+                                        var methodStr = m.GetString();
+                                        if (!string.IsNullOrEmpty(methodStr))
+                                        {
+                                            methods.Add(methodStr.ToUpperInvariant());
+                                        }
+                                    }
+                                }
+
+                                if (methods.Count == 0)
+                                {
+                                    // No methods specified means all methods are accepted; use wildcard
+                                    methods.AddRange(new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS" });
+                                }
+
+                                foreach (var httpMethod in methods)
+                                {
+                                    var key = $"{httpMethod}:{route}";
+                                    _functionRouteToId[key] = functionMetadata.FunctionId;
+                                    _logger.LogDebug("Mapped '{Key}' to function ID '{FunctionId}'",
+                                        key, functionMetadata.FunctionId);
+                                }
+                            }
+                        }
+                        catch (JsonException)
+                        {
+                            // Ignore malformed bindings
+                        }
+                    }
                 }
+
+                _functionsLoadedTcs.TrySetResult(true);
+                _logger.LogInformation("All functions loaded successfully");
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error loading functions");
+                _functionsLoadedTcs.TrySetException(ex);
             }
         }, cancellationToken);
     }

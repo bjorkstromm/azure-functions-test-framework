@@ -94,8 +94,8 @@ public class HttpResponseMapper
         {
             TypedData.DataOneofCase.String => data.String,
             TypedData.DataOneofCase.Json => data.Json,
-            TypedData.DataOneofCase.Bytes => Convert.ToBase64String(data.Bytes.ToByteArray()),
-            TypedData.DataOneofCase.Stream => Convert.ToBase64String(data.Stream.ToByteArray()),
+            TypedData.DataOneofCase.Bytes => System.Text.Encoding.UTF8.GetString(data.Bytes.ToByteArray()),
+            TypedData.DataOneofCase.Stream => System.Text.Encoding.UTF8.GetString(data.Stream.ToByteArray()),
             _ => string.Empty
         };
     }

@@ -51,15 +51,8 @@ public class FunctionsTestHost : IFunctionsTestHost
             throw new InvalidOperationException("Test host must be started before creating HTTP client");
         }
 
-        // For now, use a simple hardcoded route mapping
-        // TODO: Implement proper function metadata discovery
-        var routeMap = new Dictionary<string, string>
-        {
-            ["todos"] = "GetTodos",
-            ["todos/{id}"] = "GetTodo",
-            ["health"] = "Health",
-            ["echo"] = "Echo"
-        };
+        // Use the function route map discovered from the worker's metadata
+        var routeMap = new Dictionary<string, string>(_grpcHostService.FunctionRouteMap);
 
         var handler = new Client.FunctionsHttpMessageHandler(_grpcHostService, routeMap);
         
@@ -92,17 +85,22 @@ public class FunctionsTestHost : IFunctionsTestHost
             await _workerHostService.StartAsync(cancellationToken);
 
             // 3. Wait for worker to connect to gRPC
-            var timeout = TimeSpan.FromSeconds(30); // Increased timeout
+            var timeout = TimeSpan.FromSeconds(30);
             var start = DateTime.UtcNow;
             while (!_grpcHostService.IsConnected && DateTime.UtcNow - start < timeout)
             {
-                await Task.Delay(500, cancellationToken); // Increased poll interval
+                await Task.Delay(200, cancellationToken);
             }
 
             if (!_grpcHostService.IsConnected)
             {
                 throw new FunctionsTestHostException("Worker did not connect to gRPC server within timeout");
             }
+
+            // 4. Wait for functions to be discovered and loaded
+            using var functionLoadCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            functionLoadCts.CancelAfter(TimeSpan.FromSeconds(60));
+            await _grpcHostService.WaitForFunctionsLoadedAsync().WaitAsync(functionLoadCts.Token);
 
             _isStarted = true;
             _logger.LogInformation("Functions test host started successfully");
