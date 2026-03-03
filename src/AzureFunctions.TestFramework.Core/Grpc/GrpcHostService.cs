@@ -27,6 +27,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
     private readonly Dictionary<string, (string FunctionId, string ParameterName)> _timerFunctionMap
         = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
+    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _queueFunctionMap
+        = new(StringComparer.OrdinalIgnoreCase);
 
     public GrpcHostService(ILogger<GrpcHostService> logger, Assembly functionsAssembly)
     {
@@ -314,6 +317,64 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             Error = success ? null : invResponse?.Result?.Exception?.Message
         };
     }
+    /// <summary>
+    /// Invokes a queue-triggered function by name, passing <paramref name="messageBytes"/> as the
+    /// queue message body.  Returns a <see cref="FunctionInvocationResult"/> describing success or failure.
+    /// </summary>
+    /// <param name="functionName">The name of the queue function (case-insensitive).</param>
+    /// <param name="messageBytes">The raw bytes of the queue message body.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<FunctionInvocationResult> InvokeQueueFunctionAsync(
+        string functionName,
+        ReadOnlyMemory<byte> messageBytes,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_queueFunctionMap.TryGetValue(functionName, out var entry))
+        {
+            var available = string.Join(", ", _queueFunctionMap.Keys);
+            throw new InvalidOperationException(
+                $"No queue function '{functionName}' found. Available queue functions: [{available}]");
+        }
+
+        var invocationId = Guid.NewGuid().ToString();
+        var invocationRequest = new InvocationRequest
+        {
+            InvocationId = invocationId,
+            FunctionId = entry.FunctionId,
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
+                TraceState = string.Empty
+            }
+        };
+
+        invocationRequest.InputData.Add(new ParameterBinding
+        {
+            Name = entry.ParameterName,
+            Data = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFrom(messageBytes.Span) }
+        });
+
+        var message = new StreamingMessage
+        {
+            RequestId = invocationId,
+            InvocationRequest = invocationRequest
+        };
+
+        var response = await SendMessageAsync(message, cancellationToken);
+        var invResponse = response.InvocationResponse;
+        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
+
+        _logger.LogDebug("Queue invocation {InvocationId} for '{FunctionName}' {Result}",
+            invocationId, functionName, success ? "succeeded" : "failed");
+
+        return new FunctionInvocationResult
+        {
+            InvocationId = invocationId,
+            Success = success,
+            Error = success ? null : invResponse?.Result?.Exception?.Message
+        };
+    }
+
     internal string? FindFunctionId(string httpMethod, string requestPath, string routePrefix = "api")
         => FindFunctionMatch(httpMethod, requestPath, routePrefix).FunctionId;
 
@@ -571,6 +632,16 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                                         : "myTimer";
                                     _timerFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
                                     _logger.LogDebug("Mapped timer function '{Name}' (param '{Param}') to ID '{FunctionId}'",
+                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
+                                }
+                                else if (triggerType.Equals("queueTrigger", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // The "name" field is the function parameter name for the queue binding.
+                                    var paramName = root.TryGetProperty("name", out var nameProp)
+                                        ? nameProp.GetString() ?? "myQueueItem"
+                                        : "myQueueItem";
+                                    _queueFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
+                                    _logger.LogDebug("Mapped queue function '{Name}' (param '{Param}') to ID '{FunctionId}'",
                                         functionMetadata.Name, paramName, functionMetadata.FunctionId);
                                 }
                             }
