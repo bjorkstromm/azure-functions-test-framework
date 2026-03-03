@@ -41,28 +41,42 @@
 
 ### Test Infrastructure ✅
 - Sample TodoAPI function app with 7 HTTP endpoints (including Health + Echo)
-- 8 comprehensive integration tests written
+- 8 comprehensive integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`)
+- 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests` (`FunctionsWebApplicationFactory`)
 - IAsyncLifetime pattern for test setup/cleanup
 - xUnit integration working
-- GET-only tests pass (GetTodos, GetTodo_NotFound, Health)
+- All `FunctionsTestHost` tests pass (GET, POST, PUT, DELETE, 404)
+- `FunctionsWebApplicationFactory` GET tests pass
+
+### FunctionsWebApplicationFactory ✅ (partially)
+- `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
+- `InvocationIdStartupFilter` injects `x-ms-invocation-id` header when absent
+- `GrpcHostService.FindFunctionId()` matches routes with `{param}` placeholder support
+- Host startup completes in ~0.5 s — no longer hangs
+- GET requests (`Health`, `GetTodos`) pass end-to-end
 
 ## 🔴 Current Blockers
 
-### FunctionsWebApplicationFactory — Host Startup Hang (Investigation Required)
+### FunctionsWebApplicationFactory — POST/PUT Function ID Mismatch
 
-**What it is**: `FunctionsWebApplicationFactory<TProgram>` (in `AzureFunctions.TestFramework.AspNetCore`) extends `WebApplicationFactory<TProgram>` and wires up the in-process gRPC host handshake. The goal is to run the full ASP.NET Core pipeline from `Program.cs` — including custom middleware and services — through `TestServer`.
+**What it is**: When a POST or PUT request is sent through `FunctionsWebApplicationFactory`, the worker's `FunctionsApplication.CreateContext()` throws `KeyNotFoundException` for the function's computed hash ID (e.g. `3897823149`).
 
-**Issue**: The factory currently hangs during `base.CreateHost(builder)`. The gRPC handshake itself works fine in isolation (confirmed via standalone diagnostic).
+**Root cause**: `GeneratedFunctionMetadataProvider` (source-generated) computes a stable hash for each `DefaultFunctionMetadata` (`Name` + `ScriptFile` + `EntryPoint`). Our `GrpcHostService` assigns a new `FunctionId` (GUID) per `FunctionLoadRequest`. When `FunctionsEndpointDataSource.BuildEndpoints()` calls `GetFunctionMetadataAsync()` **directly** on the `GeneratedFunctionMetadataProvider`, the metadata objects get their hash-based IDs — different from the GUID IDs our host assigned via `FunctionLoadRequest`. The `_functionMap` is therefore keyed by GUIDs, but the invocation arrives with the hash-based ID, causing the lookup to fail.
 
-**Root Cause Investigation**:
-- `ConfigureFunctionsWebApplication()` registers `FunctionsEndpointDataSource`, which during `host.Start()` tries to read `functions.metadata` or contact the gRPC host.
-- With `TestServer`, the `WebApplicationFactory` may call `host.Start()` synchronously in a context where the gRPC event loop cannot complete the handshake.
-- The `IAutoConfigureStartup` fix (registers `GeneratedFunctionMetadataProvider`) and the `InvocationIdStartupFilter` (auto-injects `x-ms-invocation-id`) are already in place and correct.
+**Impact**: `CreateAndGetTodo_WorksEndToEnd` (POST) and any PUT/DELETE tests via `FunctionsWebApplicationFactory` hang waiting for `SetFunctionContextAsync`.
 
 **Next Steps**:
-1. Investigate whether `FunctionsEndpointDataSource.BuildEndpoints()` blocks waiting for gRPC metadata — if so, the gRPC server must be connected *before* `host.Start()` is called.
-2. Try creating the host but delaying `host.Start()` until after the gRPC worker has connected.
-3. Explore whether `CreateHostBuilder` → `Build()` then manually `StartAsync()` gives more control than `base.CreateHost()`.
+1. In `GrpcHostService.SendInvocationRequestAsync`, use the function ID from `FunctionMetadataResponse` (the hash-based one returned by the worker's `GeneratedFunctionMetadataProvider`) rather than the GUID assigned in `FunctionLoadRequest`.
+2. Alternatively, update `GrpcHostService` to store the hash-based `FunctionId` from `FunctionMetadataResponse` in `_functionRouteToId` so `SendInvocationRequestAsync` sends the correct ID.
+
+### ~~FunctionsWebApplicationFactory — Host Startup Hang~~ ✅ FIXED
+
+**Root Cause (confirmed)**: The hang was **not** in `base.CreateHost()`. Diagnostics showed `CreateHost` completed in ~0.5 s with the worker already connected. The actual hang was in **HTTP request handling**: `WorkerRequestServicesMiddleware` blocked on `SetHttpContextAsync()` waiting for the worker's `FunctionsHttpProxyingMiddleware` to call `SetFunctionContextAsync()` — which is only triggered by an `InvocationRequest` from the host.
+
+**Fix applied**:
+- Added `GrpcInvocationBridgeStartupFilter` to `FunctionsWebApplicationFactory.ConfigureWebHost()`: fires `SendInvocationRequestAsync` for every incoming request before `WorkerRequestServicesMiddleware` is reached.
+- Added `GrpcHostService.FindFunctionId()` for route prefix stripping and `{param}` segment matching.
+- Added `GrpcHostService.SendInvocationRequestAsync()` to send a minimal `InvocationRequest` to the worker.
 
 ### ~~POST/PUT Request Body Parsing (Critical)~~ ✅ FIXED
 
@@ -146,14 +160,17 @@ Support for testing:
 # Build solution
 dotnet build
 
-# Run all tests
+# Run gRPC-based tests
 dotnet test tests/Sample.FunctionApp.Tests
+
+# Run WebApplicationFactory-based tests
+dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests
 
 # Run single test with detailed output
 dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
 
-# Run only currently passing tests
-dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList|GetTodo_ReturnsNotFound|Health_ReturnsOk"
+# Run WebApplicationFactory GET tests (currently passing)
+dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests --filter "GetTodos_ReturnsSuccessStatusCode|Health_ReturnsHealthyStatus"
 ```
 
 ## Useful References
@@ -180,4 +197,4 @@ dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList|G
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
 
-Last Updated: 2026-03-03
+Last Updated: 2026-03-03 (session 2)

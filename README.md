@@ -6,19 +6,19 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Core infrastructure is complete. The gRPC worker connects successfully, function discovery works, and HTTP-triggered functions can be invoked. A second approach using `WebApplicationFactory` directly is under active development. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Core infrastructure is complete. Both testing approaches are functional: the gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, and `FunctionsWebApplicationFactory` runs the full ASP.NET Core pipeline end-to-end for GET requests. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
 - Azure Functions Worker runs in-process using HostBuilder
 - Worker connects successfully to gRPC server and loads all functions
 - Bidirectional gRPC streaming functional
-- HTTP client API (`FunctionsTestHostBuilder` + `CreateHttpClient()`) functional for GET requests
-- `FunctionsWebApplicationFactory<TProgram>` scaffolded (ASP.NET Core integration, see below)
+- HTTP client API (`FunctionsTestHostBuilder` + `CreateHttpClient()`) functional for all HTTP methods (GET, POST, PUT, DELETE)
+- `FunctionsWebApplicationFactory<TProgram>` functional for GET requests via ASP.NET Core `TestServer`
+- Route matching with `{param}` placeholder support in both approaches
 
-### Current Blockers 🔴
-- POST/PUT request body parsing fails (body must be sent as bytes, not string — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md))
-- `FunctionsWebApplicationFactory` hangs during host startup (under investigation — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md))
+### Current Limitations 🟡
+- `FunctionsWebApplicationFactory` POST/PUT requests may fail when the worker's `_functionMap` lookup encounters a function ID mismatch — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
 
 ## Goals
 
@@ -78,7 +78,7 @@ public class MyFunctionTests : IAsyncLifetime
 
 Uses `WebApplicationFactory<TProgram>` directly, running the full ASP.NET Core pipeline from `Program.cs` — including custom middleware and services — through `TestServer`. Requires the function app to use `ConfigureFunctionsWebApplication()`.
 
-> ⚠️ **Status**: Scaffolded and partially working. Host startup currently hangs. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+> ✅ **Status**: Functional for GET requests and simple scenarios. POST/PUT may encounter function ID lookup issues in some configurations — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
 
 **Setup** — add to `Program.cs`:
 ```csharp
@@ -126,7 +126,8 @@ samples/
   Sample.FunctionApp/                      # Example Azure Functions app (TodoAPI)
   
 tests/
-  Sample.FunctionApp.Tests/               # Integration tests for both approaches
+  Sample.FunctionApp.Tests/                         # gRPC-based integration tests (FunctionsTestHost)
+  Sample.FunctionApp.WebApplicationFactory.Tests/   # WebApplicationFactory-based integration tests
 ```
 
 ## Building
@@ -142,6 +143,12 @@ dotnet build
 # All tests
 dotnet test
 
+# gRPC-based tests only
+dotnet test tests/Sample.FunctionApp.Tests
+
+# WebApplicationFactory-based tests only
+dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests
+
 # Single test with detailed logging
 dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
 ```
@@ -149,8 +156,7 @@ dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=det
 ## Known Issues
 
 See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for detailed information about:
-- POST/PUT request body parsing blocker
-- `FunctionsWebApplicationFactory` host startup hang
+- `FunctionsWebApplicationFactory` POST/PUT function ID mismatch
 - What works and what doesn't
 
 ## References
