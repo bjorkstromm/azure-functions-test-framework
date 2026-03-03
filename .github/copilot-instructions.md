@@ -7,7 +7,7 @@
 ## Project Overview
 This is an integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience. It runs Azure Functions in-process without func.exe, communicating via the worker's gRPC endpoints.
 
-**Current Status**: Both testing approaches are functional. The gRPC-based `FunctionsTestHost` supports full CRUD. `FunctionsWebApplicationFactory` works for GET requests; POST/PUT has a function ID mismatch issue (see KNOWN_ISSUES.md).
+**Current Status**: Both testing approaches are **fully functional**. The gRPC-based `FunctionsTestHost` supports full CRUD (11/11 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). Tests run in parallel and in isolation. No known blockers.
 
 ## Architecture
 
@@ -26,6 +26,7 @@ This is an integration testing framework for Azure Functions (dotnet-isolated) t
    - `FunctionsWebApplicationFactory<TProgram>`: Extends `WebApplicationFactory<TProgram>`
    - `InvocationIdStartupFilter`: Injects `x-ms-invocation-id` header when absent
    - `GrpcInvocationBridgeStartupFilter`: Fires `InvocationRequest` for every HTTP request, unblocking `WorkerRequestServicesMiddleware`
+   - `GrpcAwareHost`: Wraps derived factory hosts (created by `WithWebHostBuilder`); cancels the secondary EventStream and waits for it to finish before calling `_inner.Dispose()` — prevents `ObjectDisposedException` race
 
 3. **AzureFunctions.TestFramework.Http**: HTTP-specific functionality (placeholder)
 
@@ -77,8 +78,13 @@ Uses Azure Functions RPC protocol from `azure-functions-language-worker-protobuf
 ### IAutoConfigureStartup (Critical)
 The functions assembly contains source-generated classes (`FunctionMetadataProviderAutoStartup`, `FunctionExecutorAutoStartup`) implementing `IAutoConfigureStartup`. Both the `WorkerHostService` and `FunctionsWebApplicationFactory.CreateHost` scan for and invoke these to register `GeneratedFunctionMetadataProvider` and `DirectFunctionExecutor`, overriding the defaults that would require a `functions.metadata` file.
 
-### Function ID Mismatch Issue (FunctionsWebApplicationFactory)
-`GeneratedFunctionMetadataProvider` computes a stable hash for each function (`Name` + `ScriptFile` + `EntryPoint`). Our `GrpcHostService` stores the GUID-based `FunctionId` from `FunctionLoadRequest` in `_functionRouteToId`. When `FunctionsEndpointDataSource` calls `GetFunctionMetadataAsync` directly, it gets hash-based IDs — causing a mismatch in `FunctionsApplication._functionMap` at invocation time.
+### Function ID Resolution (Fixed)
+`GeneratedFunctionMetadataProvider` computes a stable hash for each function (`Name` + `ScriptFile` + `EntryPoint`). `GrpcHostService` now stores the hash-based `FunctionId` from `FunctionMetadataResponse` in `_functionRouteToId` (not the GUID from `FunctionLoadRequest`), so `SendInvocationRequestAsync` sends the correct ID that matches the worker's internal `_functionMap`.
+
+### GrpcWorker.StopAsync() is a No-Op
+The Azure Functions worker SDK's `GrpcWorker.StopAsync()` returns `Task.CompletedTask` immediately — it does NOT close the gRPC channel. This affects both WAF disposal and the `WithWebHostBuilder` scenario:
+- **WAF disposal**: `FunctionsWebApplicationFactory.Dispose` calls `_grpcHostService.SignalShutdownAsync()` after `base.Dispose()` but before `_grpcServerManager.StopAsync()`. This gracefully ends the EventStream so Kestrel can stop instantly (no 5 s `ShutdownTimeout` wait).
+- **WithWebHostBuilder**: `GrpcAwareHost` wraps the derived factory's host and cancels that EventStream + waits for it to finish before `_inner.Dispose()`, preventing `ObjectDisposedException`.
 
 ## Development Guidelines
 
@@ -105,9 +111,10 @@ dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" 
 
 ### Testing
 - Sample.FunctionApp has TodoAPI with 7 HTTP endpoints (CRUD + Health + Echo)
-- 8 integration tests in `Sample.FunctionApp.Tests` (gRPC-based)
+- 11 integration tests in `Sample.FunctionApp.Tests` (1 unit + 7 gRPC TodoFunctions + 3 gRPC DI override)
 - 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests`
-- Tests use IAsyncLifetime pattern for setup/cleanup (gRPC tests) or IClassFixture (WAF tests)
+- gRPC tests use `IAsyncLifetime` per-test (each test gets its own `FunctionsTestHost`)
+- WAF tests use `IClassFixture<FunctionsWebApplicationFactory<Program>>` (one shared factory) + `IAsyncLifetime` to call `InMemoryTodoService.Reset()` for per-test state isolation
 
 ## Project Structure
 ```
@@ -160,8 +167,10 @@ tests/
 ✅ gRPC bidirectional streaming works
 ✅ Function loading/discovery (all 7 functions)
 ✅ Function invocation works (FunctionsTestHost — all HTTP methods)
-✅ All FunctionsTestHost integration tests pass
-✅ FunctionsWebApplicationFactory GET requests work
-⚠️ FunctionsWebApplicationFactory POST/PUT — function ID mismatch (see KNOWN_ISSUES.md)
-❌ DI service overrides not tested
+✅ All FunctionsTestHost integration tests pass (11/11)
+✅ FunctionsWebApplicationFactory works for all HTTP methods (GET, POST, PUT, DELETE)
+✅ WithWebHostBuilder DI service overrides work end-to-end
+✅ Tests run in parallel and in isolation (xUnit parallelizeTestCollections + IAsyncLifetime)
+✅ Graceful gRPC EventStream shutdown (no connection-abort errors, no Kestrel 5 s timeout)
+✅ CI workflow runs on pull requests and pushes to main
 

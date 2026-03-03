@@ -41,13 +41,13 @@
 
 ### Test Infrastructure ✅
 - Sample TodoAPI function app with 7 HTTP endpoints (including Health + Echo)
-- 8 comprehensive integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`)
+- 11 integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`)
 - 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests` (`FunctionsWebApplicationFactory`)
 - `IAsyncLifetime` pattern for per-test setup/cleanup (each gRPC test gets its own isolated host; WAF tests share one factory via `IClassFixture` with per-test `InMemoryTodoService.Reset()` for state isolation)
 - Tests run in parallel between test collections (`xunit.runner.json` with `parallelizeTestCollections: true`)
 - xUnit integration working
 - All `FunctionsTestHost` tests pass (GET, POST, PUT, DELETE, 404)
-- All `FunctionsWebApplicationFactory` tests pass (GET, POST, `WithWebHostBuilder` service overrides)
+- All `FunctionsWebApplicationFactory` tests pass (GET, POST, PUT, DELETE, `WithWebHostBuilder` service overrides)
 - Graceful gRPC EventStream shutdown on test teardown (no connection-abort errors, no Kestrel 5 s timeout)
 
 ### FunctionsWebApplicationFactory ✅
@@ -108,17 +108,8 @@ ConnectionAbortedException: The connection was aborted because the server is shu
 
 **Fix applied**: `FunctionsWebApplicationFactory.Dispose` now calls `_grpcHostService.SignalShutdownAsync()` after `base.Dispose()` but before `_grpcServerManager.StopAsync()`. This ends the EventStream gracefully so Kestrel can stop instantly without waiting for the 5-second `HostOptions.ShutdownTimeout`.
 
-### 2. DI Service Overrides Not Tested
-**Status**: Infrastructure in place but not tested
-
-**Location**: 
-- `WorkerHostService.ConfigureServices()`
-- `FunctionsTestHostBuilder.ConfigureServices()`
-
-**Next Steps**: Add tests for:
-- Replacing services in DI container
-- Verifying overridden services are used
-- Scoped vs singleton behavior
+### 2. ~~DI Service Overrides (FunctionsTestHost)~~ ✅ Partially Tested
+**Status**: DI service overrides work in `FunctionsWebApplicationFactory` (tested via `WithWebHostBuilder_CanOverrideServices`). For `FunctionsTestHost`, the infrastructure is in place (`FunctionsTestHostBuilder.ConfigureServices()` / `WorkerHostService.ConfigureServices()`) but no dedicated override tests exist yet.
 
 ## 🔵 Future Enhancements
 
@@ -172,9 +163,6 @@ dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests
 
 # Run single test with detailed output
 dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
-
-# Run WebApplicationFactory GET tests (currently passing)
-dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests --filter "GetTodos_ReturnsSuccessStatusCode|Health_ReturnsHealthyStatus"
 ```
 
 ## Useful References

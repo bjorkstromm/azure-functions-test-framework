@@ -17,6 +17,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - `FunctionsWebApplicationFactory<TProgram>` functional for all HTTP methods via ASP.NET Core `TestServer`
 - Route matching with `{param}` placeholder support in both approaches
 - `WithWebHostBuilder` DI service overrides work end-to-end
+- CI workflow runs on pull requests and pushes to main
 - Tests run in parallel (xUnit `parallelizeTestCollections`) and in isolation (per-test host via `IAsyncLifetime` for gRPC tests; shared `IClassFixture` factory + per-test `InMemoryTodoService.Reset()` for WAF tests)
 - gRPC EventStream shuts down gracefully on test teardown (no connection-abort errors, no Kestrel 5 s shutdown wait)
 
@@ -93,26 +94,31 @@ public partial class Program
 await Program.CreateHostBuilder(args).Build().RunAsync();
 ```
 
-**Usage** (with per-test isolation via `IAsyncLifetime`):
+**Usage** (recommended: shared factory + per-test state reset):
 ```csharp
 // Reference: AzureFunctions.TestFramework.AspNetCore
-public class MyFunctionTests : IAsyncLifetime
+public class MyFunctionTests
+    : IClassFixture<FunctionsWebApplicationFactory<Program>>, IAsyncLifetime
 {
-    private FunctionsWebApplicationFactory<Program>? _factory;
+    private readonly FunctionsWebApplicationFactory<Program> _factory;
     private HttpClient? _client;
 
-    public async Task InitializeAsync()
+    public MyFunctionTests(FunctionsWebApplicationFactory<Program> factory)
+        => _factory = factory;
+
+    public Task InitializeAsync()
     {
-        _factory = new FunctionsWebApplicationFactory<Program>();
+        // Reset any shared singleton state before each test.
+        if (_factory.Services.GetService(typeof(IMyService)) is MyInMemoryService svc)
+            svc.Reset();
         _client = _factory.CreateClient();
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public Task DisposeAsync()
     {
         _client?.Dispose();
-        _factory?.Dispose();
-        await Task.CompletedTask;
+        return Task.CompletedTask;
     }
 
     [Fact]
@@ -162,9 +168,7 @@ dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=det
 
 ## Known Issues
 
-See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for detailed information about:
-- `FunctionsWebApplicationFactory` POST/PUT function ID mismatch
-- What works and what doesn't
+No current blockers. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for resolved issues and future enhancement ideas.
 
 ## References
 
