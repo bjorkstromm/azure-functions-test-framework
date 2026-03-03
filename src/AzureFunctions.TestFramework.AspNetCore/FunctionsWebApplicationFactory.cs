@@ -203,13 +203,16 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     protected override void Dispose(bool disposing)
     {
         // Call base FIRST to stop the TestServer and the Functions worker.
-        // The worker disconnects from gRPC cleanly while the server is still up,
-        // so no connection-abort errors occur on the EventStream.
         base.Dispose(disposing);
 
         if (disposing)
         {
-            // No active EventStreams remain, so the gRPC server shuts down fast.
+            // GrpcWorker.StopAsync() is a no-op, so the worker's gRPC channel stays open
+            // after base.Dispose(). Signal the EventStream to end gracefully before stopping
+            // the gRPC server so that Kestrel can shut down instantly instead of waiting for
+            // the HostOptions.ShutdownTimeout (default 5 s) to expire on each test disposal.
+            _grpcHostService.SignalShutdownAsync().GetAwaiter().GetResult();
+
             _grpcServerManager.StopAsync().GetAwaiter().GetResult();
             _grpcServerManager.DisposeAsync().AsTask().GetAwaiter().GetResult();
             _loggerFactory.Dispose();

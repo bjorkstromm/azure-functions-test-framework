@@ -43,11 +43,12 @@
 - Sample TodoAPI function app with 7 HTTP endpoints (including Health + Echo)
 - 8 comprehensive integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`)
 - 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests` (`FunctionsWebApplicationFactory`)
-- IAsyncLifetime pattern for test setup/cleanup
+- `IAsyncLifetime` pattern for per-test setup/cleanup (each gRPC test gets its own isolated host; WAF tests share one factory via `IClassFixture` with per-test `InMemoryTodoService.Reset()` for state isolation)
+- Tests run in parallel between test collections (`xunit.runner.json` with `parallelizeTestCollections: true`)
 - xUnit integration working
 - All `FunctionsTestHost` tests pass (GET, POST, PUT, DELETE, 404)
 - All `FunctionsWebApplicationFactory` tests pass (GET, POST, `WithWebHostBuilder` service overrides)
-- Graceful gRPC EventStream shutdown on test teardown (no connection-abort errors)
+- Graceful gRPC EventStream shutdown on test teardown (no connection-abort errors, no Kestrel 5 s timeout)
 
 ### FunctionsWebApplicationFactory ✅
 - `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
@@ -97,19 +98,15 @@ The provided data type was 'String'.
 
 ## 🟡 Known Issues (Non-Blocking)
 
-### 1. Disposal Warnings
-**Symptoms**: During test cleanup, see warnings:
+### 1. ~~Disposal Warnings~~ ✅ FIXED
+**Symptoms previously**: During test cleanup:
 ```
 Error in event stream
 System.IO.IOException: The request stream was aborted.
 ConnectionAbortedException: The connection was aborted because the server is shutting down
 ```
 
-**Impact**: Low - tests complete successfully, just noisy logs
-
-**Solution**: Implement graceful shutdown:
-- Stop the worker host before stopping the gRPC server
-- Increase `HostOptions.ShutdownTimeout`
+**Fix applied**: `FunctionsWebApplicationFactory.Dispose` now calls `_grpcHostService.SignalShutdownAsync()` after `base.Dispose()` but before `_grpcServerManager.StopAsync()`. This ends the EventStream gracefully so Kestrel can stop instantly without waiting for the 5-second `HostOptions.ShutdownTimeout`.
 
 ### 2. DI Service Overrides Not Tested
 **Status**: Infrastructure in place but not tested
@@ -150,10 +147,11 @@ Support for testing:
 - Override application settings
 - Environment variable support
 
-### 5. Parallel Test Execution
-- Ensure thread-safety
-- Port conflict handling
-- State isolation between tests
+### 5. ~~Parallel Test Execution~~ ✅ DONE
+- Tests run in parallel between test collections (xUnit `parallelizeTestCollections: true`)
+- gRPC tests: each test is isolated via `IAsyncLifetime` (per-test `FunctionsTestHost`)
+- WAF tests: shared `IClassFixture<FunctionsWebApplicationFactory<Program>>` factory + per-test `InMemoryTodoService.Reset()` for state isolation; WAF tests run in ~37 s
+- Ephemeral gRPC ports ensure no port conflicts between parallel test instances
 
 ### 6. Performance Optimizations
 - Reuse worker instances across tests
@@ -203,4 +201,4 @@ dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests --filter "GetTo
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
 
-Last Updated: 2026-03-03 (session 4)
+Last Updated: 2026-03-03 (session 6)

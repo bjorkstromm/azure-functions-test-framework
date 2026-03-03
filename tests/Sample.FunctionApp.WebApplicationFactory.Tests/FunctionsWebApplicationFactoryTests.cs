@@ -8,11 +8,18 @@ namespace Sample.FunctionApp.WebApplicationFactory.Tests;
 /// Integration tests that use <see cref="FunctionsWebApplicationFactory{TProgram}"/> — a
 /// <c>WebApplicationFactory</c>-based approach that runs the Azure Functions app through its
 /// full ASP.NET Core pipeline (including middleware and services from <c>Program.cs</c>).
+/// <para>
+/// A single factory is shared across all tests in the class (via <c>IClassFixture</c>) so
+/// the expensive worker startup only happens once.  Per-test isolation is achieved by resetting
+/// the <see cref="InMemoryTodoService"/> in <see cref="InitializeAsync"/> so every test starts
+/// with an empty todo list.
+/// </para>
 /// </summary>
-public class FunctionsWebApplicationFactoryTests : IClassFixture<FunctionsWebApplicationFactory<Program>>
+public class FunctionsWebApplicationFactoryTests
+    : IClassFixture<FunctionsWebApplicationFactory<Program>>, IAsyncLifetime
 {
     private readonly FunctionsWebApplicationFactory<Program> _factory;
-    private readonly HttpClient _client;
+    private HttpClient? _client;
     private readonly ITestOutputHelper _output;
 
     public FunctionsWebApplicationFactoryTests(
@@ -21,14 +28,31 @@ public class FunctionsWebApplicationFactoryTests : IClassFixture<FunctionsWebApp
     {
         _factory = factory;
         _output = output;
-        _client = factory.CreateClient();
+    }
+
+    public Task InitializeAsync()
+    {
+        // Reset shared singleton state so every test starts with an empty todo list.
+        if (_factory.Services.GetService(typeof(ITodoService)) is InMemoryTodoService todoService)
+        {
+            todoService.Reset();
+        }
+
+        _client = _factory.CreateClient();
+        return Task.CompletedTask;
+    }
+
+    public Task DisposeAsync()
+    {
+        _client?.Dispose();
+        return Task.CompletedTask;
     }
 
     [Fact]
     public async Task GetTodos_ReturnsSuccessStatusCode()
     {
         // Act
-        var response = await _client.GetAsync("/api/todos");
+        var response = await _client!.GetAsync("/api/todos");
 
         _output.WriteLine($"Status Code: {response.StatusCode}");
         _output.WriteLine($"Content: {await response.Content.ReadAsStringAsync()}");
@@ -41,7 +65,7 @@ public class FunctionsWebApplicationFactoryTests : IClassFixture<FunctionsWebApp
     public async Task Health_ReturnsHealthyStatus()
     {
         // Act
-        var response = await _client.GetAsync("/api/health");
+        var response = await _client!.GetAsync("/api/health");
 
         _output.WriteLine($"Status Code: {response.StatusCode}");
 
@@ -57,7 +81,7 @@ public class FunctionsWebApplicationFactoryTests : IClassFixture<FunctionsWebApp
         var newTodo = new { Title = "WebApplicationFactory Test" };
 
         // Act – create
-        var createResponse = await _client.PostAsJsonAsync("/api/todos", newTodo);
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", newTodo);
 
         _output.WriteLine($"Create Status: {createResponse.StatusCode}");
 
@@ -67,7 +91,7 @@ public class FunctionsWebApplicationFactoryTests : IClassFixture<FunctionsWebApp
         Assert.Equal("WebApplicationFactory Test", created.Title);
 
         // Act – retrieve
-        var getResponse = await _client.GetAsync($"/api/todos/{created.Id}");
+        var getResponse = await _client!.GetAsync($"/api/todos/{created.Id}");
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
         var fetched = await getResponse.Content.ReadFromJsonAsync<TodoItem>();
         Assert.NotNull(fetched);

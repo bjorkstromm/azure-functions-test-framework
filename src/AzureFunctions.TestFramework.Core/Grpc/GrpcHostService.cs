@@ -537,7 +537,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             }
             else
             {
-                _logger.LogWarning("Received response for unknown request: {RequestId}", message.RequestId);
+                _logger.LogDebug("Received response for unknown request: {RequestId}", message.RequestId);
             }
         }
     }

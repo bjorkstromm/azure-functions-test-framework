@@ -23,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="Always" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\samples\Sample.FunctionApp\Sample.FunctionApp.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.AspNetCore\AzureFunctions.TestFramework.AspNetCore.csproj" />
   </ItemGroup>

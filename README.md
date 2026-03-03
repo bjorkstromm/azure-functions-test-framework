@@ -17,7 +17,8 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - `FunctionsWebApplicationFactory<TProgram>` functional for all HTTP methods via ASP.NET Core `TestServer`
 - Route matching with `{param}` placeholder support in both approaches
 - `WithWebHostBuilder` DI service overrides work end-to-end
-- CI workflow runs on pull requests and pushes to main
+- Tests run in parallel (xUnit `parallelizeTestCollections`) and in isolation (per-test host via `IAsyncLifetime` for gRPC tests; shared `IClassFixture` factory + per-test `InMemoryTodoService.Reset()` for WAF tests)
+- gRPC EventStream shuts down gracefully on test teardown (no connection-abort errors, no Kestrel 5 s shutdown wait)
 
 ## Goals
 
@@ -77,7 +78,7 @@ public class MyFunctionTests : IAsyncLifetime
 
 Uses `WebApplicationFactory<TProgram>` directly, running the full ASP.NET Core pipeline from `Program.cs` — including custom middleware and services — through `TestServer`. Requires the function app to use `ConfigureFunctionsWebApplication()`.
 
-> ✅ **Status**: Functional for GET requests and simple scenarios. POST/PUT may encounter function ID lookup issues in some configurations — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md).
+> ✅ **Status**: Fully functional for all HTTP methods (GET, POST, PUT, DELETE) and `WithWebHostBuilder` DI overrides.
 
 **Setup** — add to `Program.cs`:
 ```csharp
@@ -92,24 +93,31 @@ public partial class Program
 await Program.CreateHostBuilder(args).Build().RunAsync();
 ```
 
-**Usage**:
+**Usage** (with per-test isolation via `IAsyncLifetime`):
 ```csharp
 // Reference: AzureFunctions.TestFramework.AspNetCore
-public class MyFunctionTests : IClassFixture<FunctionsWebApplicationFactory<Program>>
+public class MyFunctionTests : IAsyncLifetime
 {
-    private readonly HttpClient _client;
+    private FunctionsWebApplicationFactory<Program>? _factory;
+    private HttpClient? _client;
 
-    public MyFunctionTests(FunctionsWebApplicationFactory<Program> factory)
+    public async Task InitializeAsync()
     {
-        // Override services from Program.cs for testing
-        _client = factory.WithWebHostBuilder(b =>
-            b.ConfigureServices(s => s.AddSingleton<IMyService, FakeMyService>()))
-            .CreateClient();
+        _factory = new FunctionsWebApplicationFactory<Program>();
+        _client = _factory.CreateClient();
+        await Task.CompletedTask;
+    }
+
+    public async Task DisposeAsync()
+    {
+        _client?.Dispose();
+        _factory?.Dispose();
+        await Task.CompletedTask;
     }
 
     [Fact]
     public async Task Health_ReturnsOk()
-        => (await _client.GetAsync("/api/health")).EnsureSuccessStatusCode();
+        => (await _client!.GetAsync("/api/health")).EnsureSuccessStatusCode();
 }
 ```
 

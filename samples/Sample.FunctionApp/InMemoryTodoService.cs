@@ -8,6 +8,9 @@ public sealed class InMemoryTodoService : ITodoService
 {
     private readonly List<TodoItem> _todos = new();
 
+    /// <summary>Removes all todos, returning the service to a clean state for the next test.</summary>
+    public void Reset() => _todos.Clear();
+
     public Task<IEnumerable<TodoItem>> GetAllAsync()
         => Task.FromResult<IEnumerable<TodoItem>>(_todos);
 
