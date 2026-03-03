@@ -42,6 +42,7 @@
 ### Test Infrastructure ✅
 - Sample TodoAPI function app with 7 HTTP endpoints (including Health + Echo)
 - 11 integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`): 1 unit + 7 TodoFunctions + 3 DI override tests
+- 3 integration tests in `Sample.FunctionApp.Tests` using `WithHostBuilderFactory(Program.CreateWorkerHostBuilder)` — services inherited from `Program.cs` automatically
 - 3 timer integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Timer`)
 - 3 Service Bus integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.ServiceBus`)
 - 3 queue integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Queue`)
@@ -192,4 +193,4 @@ dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" 
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
 
-Last Updated: 2026-03-03 (session 8)
+Last Updated: 2026-03-03 (session 9)

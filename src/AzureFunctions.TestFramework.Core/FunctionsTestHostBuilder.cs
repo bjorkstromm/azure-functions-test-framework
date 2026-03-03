@@ -1,6 +1,7 @@
 using AzureFunctions.TestFramework.Core.Grpc;
 using AzureFunctions.TestFramework.Core.Worker;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 
@@ -14,6 +15,7 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private Assembly? _functionsAssembly;
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = new();
     private readonly Dictionary<string, string> _settings = new();
+    private Func<string[], IHostBuilder>? _hostBuilderFactory;
 
     public IFunctionsTestHostBuilder WithFunctionAppAssembly(Assembly assembly)
     {
@@ -42,6 +44,13 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     public IFunctionsTestHostBuilder ConfigureSetting(string key, string value)
     {
         _settings[key] = value;
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IFunctionsTestHostBuilder WithHostBuilderFactory(Func<string[], IHostBuilder> factory)
+    {
+        _hostBuilderFactory = factory;
         return this;
     }
 
@@ -84,7 +93,11 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
 
         // Create worker host service with the actual gRPC port
         var workerLogger = loggerFactory.CreateLogger<WorkerHostService>();
-        var workerHostService = new WorkerHostService(workerLogger, actualPort, _functionsAssembly);
+        var workerHostService = new WorkerHostService(
+            workerLogger,
+            actualPort,
+            _functionsAssembly,
+            _hostBuilderFactory);
 
         // Apply service configurators
         foreach (var configurator in _serviceConfigurators)
