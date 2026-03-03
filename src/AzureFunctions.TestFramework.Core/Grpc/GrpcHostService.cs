@@ -1,4 +1,5 @@
 using Grpc.Core;
+using Microsoft.Azure.Functions.Worker.Core.FunctionMetadata;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
@@ -27,8 +28,14 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
     private readonly Dictionary<string, (string FunctionId, string ParameterName)> _timerFunctionMap
         = new(StringComparer.OrdinalIgnoreCase);
-    // Key: function name (case-insensitive); Value: FunctionMetadata
-    private readonly Dictionary<string, FunctionMetadata> _functionMetadataMap
+    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
+    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _serviceBusFunctionMap
+        = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
+    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _queueFunctionMap
+        = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function name (case-insensitive); Value: IFunctionMetadata
+    private readonly Dictionary<string, IFunctionMetadata> _functionMetadataMap
         = new(StringComparer.OrdinalIgnoreCase);
 
     public GrpcHostService(ILogger<GrpcHostService> logger, Assembly functionsAssembly)
@@ -61,7 +68,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// <summary>
     /// Gets the metadata for all discovered functions, keyed by function name.
     /// </summary>
-    public IReadOnlyDictionary<string, FunctionMetadata> GetFunctions() => _functionMetadataMap;
+    public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions() => _functionMetadataMap;
 
     /// <summary>
     /// Waits until all functions have been discovered and loaded.
@@ -322,6 +329,137 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             Error = success ? null : invResponse?.Result?.Exception?.Message
         };
     }
+
+    /// <summary>
+    /// Invokes a Service Bus–triggered function by name, passing <paramref name="bodyBytes"/> as the
+    /// message body and optional <paramref name="triggerMetadataJson"/> as trigger metadata.
+    /// Unlike <see cref="SendInvocationRequestAsync"/> this method awaits the
+    /// <see cref="InvocationResponse"/> and returns a <see cref="FunctionInvocationResult"/>.
+    /// </summary>
+    /// <param name="functionName">The name of the Service Bus function (case-insensitive).</param>
+    /// <param name="bodyBytes">The raw message body bytes to pass as the trigger input.</param>
+    /// <param name="triggerMetadataJson">
+    /// Optional JSON string containing message metadata (MessageId, ContentType, etc.)
+    /// used by the worker to bind <c>ServiceBusReceivedMessage</c> parameters.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<FunctionInvocationResult> InvokeServiceBusFunctionAsync(
+        string functionName,
+        byte[] bodyBytes,
+        string? triggerMetadataJson = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_serviceBusFunctionMap.TryGetValue(functionName, out var entry))
+        {
+            var available = string.Join(", ", _serviceBusFunctionMap.Keys);
+            throw new InvalidOperationException(
+                $"No Service Bus function '{functionName}' found. Available Service Bus functions: [{available}]");
+        }
+
+        var invocationId = Guid.NewGuid().ToString();
+        var invocationRequest = new InvocationRequest
+        {
+            InvocationId = invocationId,
+            FunctionId = entry.FunctionId,
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
+                TraceState = string.Empty
+            }
+        };
+
+        invocationRequest.InputData.Add(new ParameterBinding
+        {
+            Name = entry.ParameterName,
+            Data = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFrom(bodyBytes) }
+        });
+
+        if (!string.IsNullOrEmpty(triggerMetadataJson))
+        {
+            invocationRequest.TriggerMetadata.Add(
+                entry.ParameterName,
+                new TypedData { Json = triggerMetadataJson });
+        }
+
+        var message = new StreamingMessage
+        {
+            RequestId = invocationId,
+            InvocationRequest = invocationRequest
+        };
+
+        var response = await SendMessageAsync(message, cancellationToken);
+        var invResponse = response.InvocationResponse;
+        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
+
+        _logger.LogDebug("Service Bus invocation {InvocationId} for '{FunctionName}' {Result}",
+            invocationId, functionName, success ? "succeeded" : "failed");
+
+        return new FunctionInvocationResult
+        {
+            InvocationId = invocationId,
+            Success = success,
+            Error = success ? null : invResponse?.Result?.Exception?.Message
+        };
+    }
+
+    /// <summary>
+    /// Invokes a queue-triggered function by name, passing <paramref name="messageBytes"/> as the
+    /// queue message body.  Returns a <see cref="FunctionInvocationResult"/> describing success or failure.
+    /// </summary>
+    /// <param name="functionName">The name of the queue function (case-insensitive).</param>
+    /// <param name="messageBytes">The raw bytes of the queue message body.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<FunctionInvocationResult> InvokeQueueFunctionAsync(
+        string functionName,
+        ReadOnlyMemory<byte> messageBytes,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_queueFunctionMap.TryGetValue(functionName, out var entry))
+        {
+            var available = string.Join(", ", _queueFunctionMap.Keys);
+            throw new InvalidOperationException(
+                $"No queue function '{functionName}' found. Available queue functions: [{available}]");
+        }
+
+        var invocationId = Guid.NewGuid().ToString();
+        var invocationRequest = new InvocationRequest
+        {
+            InvocationId = invocationId,
+            FunctionId = entry.FunctionId,
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
+                TraceState = string.Empty
+            }
+        };
+
+        invocationRequest.InputData.Add(new ParameterBinding
+        {
+            Name = entry.ParameterName,
+            Data = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFrom(messageBytes.Span) }
+        });
+
+        var message = new StreamingMessage
+        {
+            RequestId = invocationId,
+            InvocationRequest = invocationRequest
+        };
+
+        var response = await SendMessageAsync(message, cancellationToken);
+        var invResponse = response.InvocationResponse;
+        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
+
+        _logger.LogDebug("Queue invocation {InvocationId} for '{FunctionName}' {Result}",
+            invocationId, functionName, success ? "succeeded" : "failed");
+
+        return new FunctionInvocationResult
+        {
+            InvocationId = invocationId,
+            Success = success,
+            Error = success ? null : invResponse?.Result?.Exception?.Message
+        };
+    }
+
     internal string? FindFunctionId(string httpMethod, string requestPath, string routePrefix = "api")
         => FindFunctionMatch(httpMethod, requestPath, routePrefix).FunctionId;
 
@@ -581,6 +719,26 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                                     _logger.LogDebug("Mapped timer function '{Name}' (param '{Param}') to ID '{FunctionId}'",
                                         functionMetadata.Name, paramName, functionMetadata.FunctionId);
                                 }
+                                else if (triggerType.Equals("serviceBusTrigger", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // The "name" field is the function parameter name for the service bus binding.
+                                    var paramName = root.TryGetProperty("name", out var nameProp)
+                                        ? nameProp.GetString() ?? "message"
+                                        : "message";
+                                    _serviceBusFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
+                                    _logger.LogDebug("Mapped Service Bus function '{Name}' (param '{Param}') to ID '{FunctionId}'",
+                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
+                                }
+                                else if (triggerType.Equals("queueTrigger", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // The "name" field is the function parameter name for the queue binding.
+                                    var paramName = root.TryGetProperty("name", out var nameProp)
+                                        ? nameProp.GetString() ?? "myQueueItem"
+                                        : "myQueueItem";
+                                    _queueFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
+                                    _logger.LogDebug("Mapped queue function '{Name}' (param '{Param}') to ID '{FunctionId}'",
+                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
+                                }
                             }
                         }
                         catch (JsonException)
@@ -589,14 +747,13 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                         }
                     }
 
-                    // Store FunctionMetadata for this function
-                    _functionMetadataMap[functionMetadata.Name] = new FunctionMetadata
+                    // Store IFunctionMetadata for this function using DefaultFunctionMetadata
+                    _functionMetadataMap[functionMetadata.Name] = new DefaultFunctionMetadata
                     {
                         Name = functionMetadata.Name,
-                        FunctionId = functionMetadata.FunctionId,
                         EntryPoint = functionMetadata.EntryPoint,
                         ScriptFile = functionMetadata.ScriptFile,
-                        Bindings = ParseBindings(functionMetadata.RawBindings)
+                        RawBindings = functionMetadata.RawBindings.ToList()
                     };
                 }
 
@@ -651,40 +808,5 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private static string GetMessageType(StreamingMessage message)
     {
         return message.ContentCase.ToString();
-    }
-
-    private static string GetStringProperty(JsonElement element, string propertyName)
-        => element.TryGetProperty(propertyName, out var prop) ? prop.GetString() ?? string.Empty : string.Empty;
-
-    private static List<BindingMetadata> ParseBindings(IEnumerable<string> rawBindings)
-    {
-        var result = new List<BindingMetadata>();
-        foreach (var rawBinding in rawBindings)
-        {
-            try
-            {
-                using var doc = JsonDocument.Parse(rawBinding);
-                var root = doc.RootElement;
-                var binding = new BindingMetadata
-                {
-                    Name = GetStringProperty(root, "name"),
-                    Type = GetStringProperty(root, "type"),
-                    Direction = GetStringProperty(root, "direction")
-                };
-                foreach (var prop in root.EnumerateObject())
-                {
-                    if (prop.Name is not ("name" or "type" or "direction"))
-                    {
-                        binding.Properties[prop.Name] = prop.Value.GetRawText();
-                    }
-                }
-                result.Add(binding);
-            }
-            catch (JsonException)
-            {
-                // Ignore malformed bindings
-            }
-        }
-        return result;
     }
 }

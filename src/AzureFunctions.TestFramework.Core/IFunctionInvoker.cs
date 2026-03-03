@@ -1,3 +1,5 @@
+using Microsoft.Azure.Functions.Worker.Core.FunctionMetadata;
+
 namespace AzureFunctions.TestFramework.Core;
 
 /// <summary>
@@ -16,5 +18,5 @@ public interface IFunctionInvoker
     /// <summary>
     /// Gets metadata for all discovered functions.
     /// </summary>
-    IReadOnlyDictionary<string, FunctionMetadata> GetFunctions();
+    IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions();
 }
