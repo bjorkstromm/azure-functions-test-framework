@@ -197,4 +197,4 @@ dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests --filter "GetTo
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
 
-Last Updated: 2026-03-03 (session 2)
+Last Updated: 2026-03-03 (session 3)

@@ -19,7 +19,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private IServerStreamWriter<StreamingMessage>? _responseStream;
     private string _workerId = string.Empty;
     private TaskCompletionSource<StreamingMessage>? _workerInitTcs;
-    private readonly TaskCompletionSource<bool> _functionsLoadedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource<bool> _functionsLoadedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     // Key format: "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}"
     private readonly Dictionary<string, string> _functionRouteToId = new(StringComparer.OrdinalIgnoreCase);
 
@@ -63,6 +63,8 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         IServerStreamWriter<StreamingMessage> responseStream,
         ServerCallContext context)
     {
+        // Reset the loaded TCS so callers waiting on a new connection don't see stale state.
+        _functionsLoadedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
         _responseStream = responseStream;
         _logger.LogInformation("Worker connected to event stream");
 
@@ -162,7 +164,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         string requestPath,
         string routePrefix = "api")
     {
-        var functionId = FindFunctionId(httpMethod, requestPath, routePrefix);
+        var (functionId, routeParams) = FindFunctionMatch(httpMethod, requestPath, routePrefix);
         if (functionId == null)
         {
             _logger.LogWarning(
@@ -170,20 +172,33 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             return;
         }
 
+        var invocationRequest = new InvocationRequest
+        {
+            InvocationId = invocationId,
+            FunctionId = functionId,
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = invocationId,
+                TraceState = string.Empty
+            }
+        };
+
+        // Add route parameter values to InputData so the worker can bind them to function
+        // parameters (e.g. "string id" in GetTodo([HttpTrigger] HttpRequestData req, string id)).
+        foreach (var (name, value) in routeParams)
+        {
+            invocationRequest.InputData.Add(new ParameterBinding
+            {
+                Name = name,
+                Data = new TypedData { String = value }
+            });
+        }
+
         var message = new StreamingMessage
         {
             // Use invocationId as RequestId so the InvocationResponse can be matched.
             RequestId = invocationId,
-            InvocationRequest = new InvocationRequest
-            {
-                InvocationId = invocationId,
-                FunctionId = functionId,
-                TraceContext = new RpcTraceContext
-                {
-                    TraceParent = invocationId,
-                    TraceState = string.Empty
-                }
-            }
+            InvocationRequest = invocationRequest
         };
 
         await SendMessageOneWayAsync(message);
@@ -196,7 +211,19 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// returns the function ID if a match is found, or <c>null</c> otherwise.
     /// </summary>
     internal string? FindFunctionId(string httpMethod, string requestPath, string routePrefix = "api")
+        => FindFunctionMatch(httpMethod, requestPath, routePrefix).FunctionId;
+
+    /// <summary>
+    /// Matches an incoming HTTP method + request path against the loaded function route map.
+    /// Returns the function ID and a dictionary of extracted route parameter values (e.g.
+    /// <c>{"id": "abc123"}</c> for a route pattern <c>todos/{id}</c>).
+    /// </summary>
+    internal (string? FunctionId, IReadOnlyDictionary<string, string> RouteParams) FindFunctionMatch(
+        string httpMethod, string requestPath, string routePrefix = "api")
     {
+        static IReadOnlyDictionary<string, string> Empty() =>
+            System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
+
         // Strip leading slash and the route prefix (e.g. "/api/" or "api/").
         var path = requestPath.TrimStart('/');
         if (!string.IsNullOrEmpty(routePrefix))
@@ -213,7 +240,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         // 1. Exact match (no route parameters).
         if (_functionRouteToId.TryGetValue($"{method}:{path}", out var exactId))
         {
-            return exactId;
+            return (exactId, Empty());
         }
 
         // 2. Pattern match: route segments with {param} placeholders.
@@ -244,10 +271,24 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 }
             }
 
-            if (match) return functionId;
+            if (match)
+            {
+                // Extract route parameter values (e.g. "{id}" → pathSegments[i]).
+                var routeParams = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+                for (var i = 0; i < routeSegments.Length; i++)
+                {
+                    var seg = routeSegments[i];
+                    if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}')
+                    {
+                        var paramName = seg.Substring(1, seg.Length - 2);
+                        routeParams[paramName] = pathSegments[i];
+                    }
+                }
+                return (functionId, routeParams);
+            }
         }
 
-        return null;
+        return (null, Empty());
     }
 
     private async Task HandleWorkerMessageAsync(
