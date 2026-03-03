@@ -27,6 +27,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
     private readonly Dictionary<string, (string FunctionId, string ParameterName)> _timerFunctionMap
         = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function name (case-insensitive); Value: FunctionMetadata
+    private readonly Dictionary<string, FunctionMetadata> _functionMetadataMap
+        = new(StringComparer.OrdinalIgnoreCase);
 
     public GrpcHostService(ILogger<GrpcHostService> logger, Assembly functionsAssembly)
     {
@@ -54,6 +57,11 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// Key format is "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}".
     /// </summary>
     public IReadOnlyDictionary<string, string> FunctionRouteMap => _functionRouteToId;
+
+    /// <summary>
+    /// Gets the metadata for all discovered functions, keyed by function name.
+    /// </summary>
+    public IReadOnlyDictionary<string, FunctionMetadata> GetFunctions() => _functionMetadataMap;
 
     /// <summary>
     /// Waits until all functions have been discovered and loaded.
@@ -580,6 +588,16 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                             // Ignore malformed bindings
                         }
                     }
+
+                    // Store FunctionMetadata for this function
+                    _functionMetadataMap[functionMetadata.Name] = new FunctionMetadata
+                    {
+                        Name = functionMetadata.Name,
+                        FunctionId = functionMetadata.FunctionId,
+                        EntryPoint = functionMetadata.EntryPoint,
+                        ScriptFile = functionMetadata.ScriptFile,
+                        Bindings = ParseBindings(functionMetadata.RawBindings)
+                    };
                 }
 
                 _functionsLoadedTcs.TrySetResult(true);
@@ -633,5 +651,40 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private static string GetMessageType(StreamingMessage message)
     {
         return message.ContentCase.ToString();
+    }
+
+    private static string GetStringProperty(JsonElement element, string propertyName)
+        => element.TryGetProperty(propertyName, out var prop) ? prop.GetString() ?? string.Empty : string.Empty;
+
+    private static List<BindingMetadata> ParseBindings(IEnumerable<string> rawBindings)
+    {
+        var result = new List<BindingMetadata>();
+        foreach (var rawBinding in rawBindings)
+        {
+            try
+            {
+                using var doc = JsonDocument.Parse(rawBinding);
+                var root = doc.RootElement;
+                var binding = new BindingMetadata
+                {
+                    Name = GetStringProperty(root, "name"),
+                    Type = GetStringProperty(root, "type"),
+                    Direction = GetStringProperty(root, "direction")
+                };
+                foreach (var prop in root.EnumerateObject())
+                {
+                    if (prop.Name is not ("name" or "type" or "direction"))
+                    {
+                        binding.Properties[prop.Name] = prop.Value.GetRawText();
+                    }
+                }
+                result.Add(binding);
+            }
+            catch (JsonException)
+            {
+                // Ignore malformed bindings
+            }
+        }
+        return result;
     }
 }

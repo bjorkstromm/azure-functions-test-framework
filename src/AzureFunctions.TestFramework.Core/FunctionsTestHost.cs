@@ -214,6 +214,6 @@ internal class FunctionInvoker : IFunctionInvoker
 
     public IReadOnlyDictionary<string, FunctionMetadata> GetFunctions()
     {
-        throw new NotImplementedException("Function metadata discovery coming soon");
+        return _grpcHostService.GetFunctions();
     }
 }

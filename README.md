@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations and timer-trigger invocations (14/14 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer-trigger invocations, and function metadata discovery (18/18 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -21,6 +21,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - Tests run in parallel (xUnit `parallelizeTestCollections`) and in isolation (per-test host via `IAsyncLifetime` for gRPC tests; shared `IClassFixture` factory + per-test `InMemoryTodoService.Reset()` for WAF tests)
 - gRPC EventStream shuts down gracefully on test teardown (no connection-abort errors, no Kestrel 5 s shutdown wait)
 - **TimerTrigger invocations** via `AzureFunctions.TestFramework.Timer` package (`InvokeTimerAsync` extension method)
+- **Function metadata discovery** via `IFunctionInvoker.GetFunctions()` — returns `IReadOnlyDictionary<string, FunctionMetadata>` with name, function ID, entry point, script file, and parsed bindings
 
 ## Goals
 

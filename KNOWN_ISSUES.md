@@ -41,13 +41,14 @@
 
 ### Test Infrastructure ✅
 - Sample TodoAPI function app with 7 HTTP endpoints (including Health + Echo)
-- 11 integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`): 1 unit + 7 TodoFunctions + 3 DI override tests
+- 14 integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`): 1 unit + 7 TodoFunctions + 3 DI override tests
 - 3 timer integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Timer`)
+- 4 function metadata discovery tests in `Sample.FunctionApp.Tests` (via `IFunctionInvoker.GetFunctions()`)
 - 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests` (`FunctionsWebApplicationFactory`)
 - `IAsyncLifetime` pattern for per-test setup/cleanup (each gRPC test gets its own isolated host; WAF tests share one factory via `IClassFixture` with per-test `InMemoryTodoService.Reset()` for state isolation)
 - Tests run in parallel between test collections (`xunit.runner.json` with `parallelizeTestCollections: true`)
 - xUnit integration working
-- All `FunctionsTestHost` tests pass (GET, POST, PUT, DELETE, 404)
+- All `FunctionsTestHost` tests pass (GET, POST, PUT, DELETE, 404, function metadata discovery)
 - All `FunctionsWebApplicationFactory` tests pass (GET, POST, PUT, DELETE, `WithWebHostBuilder` service overrides)
 - Graceful gRPC EventStream shutdown on test teardown (no connection-abort errors, no Kestrel 5 s timeout)
 
@@ -190,4 +191,4 @@ dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" 
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
 
-Last Updated: 2026-03-03 (session 7)
+Last Updated: 2026-03-03 (session 8)
