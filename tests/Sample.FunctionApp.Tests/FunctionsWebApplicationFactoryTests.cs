@@ -1,4 +1,4 @@
-using AzureFunctions.TestFramework.Core;
+using AzureFunctions.TestFramework.AspNetCore;
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;

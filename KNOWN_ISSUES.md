@@ -48,6 +48,22 @@
 
 ## 🔴 Current Blockers
 
+### FunctionsWebApplicationFactory — Host Startup Hang (Investigation Required)
+
+**What it is**: `FunctionsWebApplicationFactory<TProgram>` (in `AzureFunctions.TestFramework.AspNetCore`) extends `WebApplicationFactory<TProgram>` and wires up the in-process gRPC host handshake. The goal is to run the full ASP.NET Core pipeline from `Program.cs` — including custom middleware and services — through `TestServer`.
+
+**Issue**: The factory currently hangs during `base.CreateHost(builder)`. The gRPC handshake itself works fine in isolation (confirmed via standalone diagnostic).
+
+**Root Cause Investigation**:
+- `ConfigureFunctionsWebApplication()` registers `FunctionsEndpointDataSource`, which during `host.Start()` tries to read `functions.metadata` or contact the gRPC host.
+- With `TestServer`, the `WebApplicationFactory` may call `host.Start()` synchronously in a context where the gRPC event loop cannot complete the handshake.
+- The `IAutoConfigureStartup` fix (registers `GeneratedFunctionMetadataProvider`) and the `InvocationIdStartupFilter` (auto-injects `x-ms-invocation-id`) are already in place and correct.
+
+**Next Steps**:
+1. Investigate whether `FunctionsEndpointDataSource.BuildEndpoints()` blocks waiting for gRPC metadata — if so, the gRPC server must be connected *before* `host.Start()` is called.
+2. Try creating the host but delaying `host.Start()` until after the gRPC worker has connected.
+3. Explore whether `CreateHostBuilder` → `Build()` then manually `StartAsync()` gives more control than `base.CreateHost()`.
+
 ### POST/PUT Request Body Parsing (Critical)
 
 **Issue**: Functions that read the HTTP request body (POST/PUT) fail with:

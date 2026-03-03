@@ -1,3 +1,4 @@
+using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Core.Grpc;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
@@ -8,7 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace AzureFunctions.TestFramework.Core;
+namespace AzureFunctions.TestFramework.AspNetCore;
 
 /// <summary>
 /// A <see cref="WebApplicationFactory{TEntryPoint}"/> for Azure Functions (dotnet-isolated) apps
