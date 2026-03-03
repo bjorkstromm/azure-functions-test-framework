@@ -192,7 +192,24 @@ internal class FunctionInvoker : IFunctionInvoker
         FunctionInvocationContext context,
         CancellationToken cancellationToken = default)
     {
-        throw new NotImplementedException("Invoke will be implemented with HTTP client API");
+        return context.TriggerType switch
+        {
+            "timerTrigger" => InvokeTimerAsync(functionName, context, cancellationToken),
+            _ => throw new NotSupportedException(
+                $"Trigger type '{context.TriggerType}' is not supported by this invoker. " +
+                $"Use a trigger-specific extension package (e.g. AzureFunctions.TestFramework.Timer).")
+        };
+    }
+
+    private Task<FunctionInvocationResult> InvokeTimerAsync(
+        string functionName,
+        FunctionInvocationContext context,
+        CancellationToken cancellationToken)
+    {
+        var timerJson = context.InputData.TryGetValue("$timerJson", out var j)
+            ? j?.ToString() ?? "{}"
+            : "{}";
+        return _grpcHostService.InvokeTimerFunctionAsync(functionName, timerJson, cancellationToken);
     }
 
     public IReadOnlyDictionary<string, FunctionMetadata> GetFunctions()

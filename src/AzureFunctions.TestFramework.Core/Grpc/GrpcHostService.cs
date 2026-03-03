@@ -24,6 +24,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private TaskCompletionSource _eventStreamFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
     // Key format: "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}"
     private readonly Dictionary<string, string> _functionRouteToId = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
+    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _timerFunctionMap
+        = new(StringComparer.OrdinalIgnoreCase);
 
     public GrpcHostService(ILogger<GrpcHostService> logger, Assembly functionsAssembly)
     {
@@ -253,9 +256,64 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     }
 
     /// <summary>
-    /// Matches an incoming HTTP method + request path against the loaded function route map and
-    /// returns the function ID if a match is found, or <c>null</c> otherwise.
+    /// Invokes a timer-triggered function by name, passing <paramref name="timerInfoJson"/> as the
+    /// timer input binding data.  Unlike <see cref="SendInvocationRequestAsync"/> (which is
+    /// fire-and-forget), this method awaits the <see cref="InvocationResponse"/> and returns a
+    /// <see cref="FunctionInvocationResult"/> describing success or failure.
     /// </summary>
+    /// <param name="functionName">The name of the timer function (case-insensitive).</param>
+    /// <param name="timerInfoJson">JSON-serialized timer info to pass as the trigger input.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<FunctionInvocationResult> InvokeTimerFunctionAsync(
+        string functionName,
+        string timerInfoJson,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_timerFunctionMap.TryGetValue(functionName, out var entry))
+        {
+            var available = string.Join(", ", _timerFunctionMap.Keys);
+            throw new InvalidOperationException(
+                $"No timer function '{functionName}' found. Available timer functions: [{available}]");
+        }
+
+        var invocationId = Guid.NewGuid().ToString();
+        var invocationRequest = new InvocationRequest
+        {
+            InvocationId = invocationId,
+            FunctionId = entry.FunctionId,
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
+                TraceState = string.Empty
+            }
+        };
+
+        invocationRequest.InputData.Add(new ParameterBinding
+        {
+            Name = entry.ParameterName,
+            Data = new TypedData { Json = timerInfoJson }
+        });
+
+        var message = new StreamingMessage
+        {
+            RequestId = invocationId,
+            InvocationRequest = invocationRequest
+        };
+
+        var response = await SendMessageAsync(message, cancellationToken);
+        var invResponse = response.InvocationResponse;
+        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
+
+        _logger.LogDebug("Timer invocation {InvocationId} for '{FunctionName}' {Result}",
+            invocationId, functionName, success ? "succeeded" : "failed");
+
+        return new FunctionInvocationResult
+        {
+            InvocationId = invocationId,
+            Success = success,
+            Error = success ? null : invResponse?.Result?.Exception?.Message
+        };
+    }
     internal string? FindFunctionId(string httpMethod, string requestPath, string routePrefix = "api")
         => FindFunctionMatch(httpMethod, requestPath, routePrefix).FunctionId;
 
@@ -463,43 +521,57 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                         {
                             using var doc = JsonDocument.Parse(rawBinding);
                             var root = doc.RootElement;
-                            if (root.TryGetProperty("type", out var typeProp) &&
-                                typeProp.GetString()?.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase) == true &&
-                                root.TryGetProperty("route", out var routeProp))
+                            if (root.TryGetProperty("type", out var typeProp))
                             {
-                                var route = routeProp.GetString();
-                                if (string.IsNullOrEmpty(route))
-                                {
-                                    continue;
-                                }
+                                var triggerType = typeProp.GetString() ?? string.Empty;
 
-                                // Extract accepted HTTP methods; default to all if not specified
-                                var methods = new List<string>();
-                                if (root.TryGetProperty("methods", out var methodsProp) &&
-                                    methodsProp.ValueKind == JsonValueKind.Array)
+                                if (triggerType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase) &&
+                                    root.TryGetProperty("route", out var routeProp))
                                 {
-                                    foreach (var m in methodsProp.EnumerateArray())
+                                    var route = routeProp.GetString();
+                                    if (string.IsNullOrEmpty(route))
                                     {
-                                        var methodStr = m.GetString();
-                                        if (!string.IsNullOrEmpty(methodStr))
+                                        continue;
+                                    }
+
+                                    // Extract accepted HTTP methods; default to all if not specified
+                                    var methods = new List<string>();
+                                    if (root.TryGetProperty("methods", out var methodsProp) &&
+                                        methodsProp.ValueKind == JsonValueKind.Array)
+                                    {
+                                        foreach (var m in methodsProp.EnumerateArray())
                                         {
-                                            methods.Add(methodStr.ToUpperInvariant());
+                                            var methodStr = m.GetString();
+                                            if (!string.IsNullOrEmpty(methodStr))
+                                            {
+                                                methods.Add(methodStr.ToUpperInvariant());
+                                            }
                                         }
                                     }
-                                }
 
-                                if (methods.Count == 0)
-                                {
-                                    // No methods specified means all methods are accepted; use wildcard
-                                    methods.AddRange(new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS" });
-                                }
+                                    if (methods.Count == 0)
+                                    {
+                                        // No methods specified means all methods are accepted; use wildcard
+                                        methods.AddRange(new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS" });
+                                    }
 
-                                foreach (var httpMethod in methods)
+                                    foreach (var httpMethod in methods)
+                                    {
+                                        var key = $"{httpMethod}:{route}";
+                                        _functionRouteToId[key] = functionMetadata.FunctionId;
+                                        _logger.LogDebug("Mapped '{Key}' to function ID '{FunctionId}'",
+                                            key, functionMetadata.FunctionId);
+                                    }
+                                }
+                                else if (triggerType.Equals("timerTrigger", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    var key = $"{httpMethod}:{route}";
-                                    _functionRouteToId[key] = functionMetadata.FunctionId;
-                                    _logger.LogDebug("Mapped '{Key}' to function ID '{FunctionId}'",
-                                        key, functionMetadata.FunctionId);
+                                    // The "name" field is the function parameter name for the timer binding.
+                                    var paramName = root.TryGetProperty("name", out var nameProp)
+                                        ? nameProp.GetString() ?? "myTimer"
+                                        : "myTimer";
+                                    _timerFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
+                                    _logger.LogDebug("Mapped timer function '{Name}' (param '{Param}') to ID '{FunctionId}'",
+                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
                                 }
                             }
                         }

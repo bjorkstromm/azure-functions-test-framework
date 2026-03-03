@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations (11/11 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations and timer-trigger invocations (14/14 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -20,6 +20,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - CI workflow runs on pull requests and pushes to main
 - Tests run in parallel (xUnit `parallelizeTestCollections`) and in isolation (per-test host via `IAsyncLifetime` for gRPC tests; shared `IClassFixture` factory + per-test `InMemoryTodoService.Reset()` for WAF tests)
 - gRPC EventStream shuts down gracefully on test teardown (no connection-abort errors, no Kestrel 5 s shutdown wait)
+- **TimerTrigger invocations** via `AzureFunctions.TestFramework.Timer` package (`InvokeTimerAsync` extension method)
 
 ## Goals
 
@@ -127,7 +128,51 @@ public class MyFunctionTests
 }
 ```
 
-## Architecture
+### 3. Timer Trigger Invocation
+
+Use the `AzureFunctions.TestFramework.Timer` package to invoke timer-triggered functions directly from tests.
+
+```csharp
+// Reference: AzureFunctions.TestFramework.Timer
+using AzureFunctions.TestFramework.Timer;
+using Microsoft.Azure.Functions.Worker;
+
+public class TimerFunctionTests : IAsyncLifetime
+{
+    private IFunctionsTestHost _testHost;
+
+    public async Task InitializeAsync()
+    {
+        _testHost = await new FunctionsTestHostBuilder()
+            .WithFunctionsAssembly(typeof(MyTimerFunction).Assembly)
+            .BuildAndStartAsync();
+    }
+
+    [Fact]
+    public async Task HeartbeatTimer_RunsSuccessfully()
+    {
+        // Invoke with default TimerInfo (IsPastDue = false)
+        var result = await _testHost.InvokeTimerAsync("HeartbeatTimer");
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task HeartbeatTimer_WhenPastDue_RunsSuccessfully()
+    {
+        var timerInfo = new TimerInfo { IsPastDue = true };
+        var result = await _testHost.InvokeTimerAsync("HeartbeatTimer", timerInfo);
+        Assert.True(result.Success);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _testHost.StopAsync();
+        _testHost.Dispose();
+    }
+}
+```
+
+
 
 ```
 src/

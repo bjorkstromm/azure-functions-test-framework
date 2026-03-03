@@ -7,7 +7,7 @@
 ## Project Overview
 This is an integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience. It runs Azure Functions in-process without func.exe, communicating via the worker's gRPC endpoints.
 
-**Current Status**: Both testing approaches are **fully functional**. The gRPC-based `FunctionsTestHost` supports full CRUD (11/11 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). Tests run in parallel and in isolation. No known blockers.
+**Current Status**: Both testing approaches are **fully functional**. The gRPC-based `FunctionsTestHost` supports full CRUD and TimerTrigger invocations (14/14 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). Tests run in parallel and in isolation. No known blockers.
 
 ## Architecture
 
@@ -30,11 +30,13 @@ This is an integration testing framework for Azure Functions (dotnet-isolated) t
 
 3. **AzureFunctions.TestFramework.Http**: HTTP-specific functionality (placeholder)
 
-4. **Sample.FunctionApp**: Example functions for testing (TodoAPI with CRUD operations)
+4. **AzureFunctions.TestFramework.Timer**: TimerTrigger invocation support — depends on Core + `Microsoft.Azure.Functions.Worker.Extensions.Timer`. Exposes `InvokeTimerAsync(this IFunctionsTestHost, string functionName, TimerInfo? timerInfo = null)` extension method.
 
-5. **Sample.FunctionApp.Tests**: gRPC-based integration tests (`FunctionsTestHost`)
+5. **Sample.FunctionApp**: Example functions for testing (TodoAPI with CRUD operations + HeartbeatTimerFunction)
 
-6. **Sample.FunctionApp.WebApplicationFactory.Tests**: WebApplicationFactory-based integration tests
+6. **Sample.FunctionApp.Tests**: gRPC-based integration tests (`FunctionsTestHost`)
+
+7. **Sample.FunctionApp.WebApplicationFactory.Tests**: WebApplicationFactory-based integration tests
 
 ### How It Works
 
@@ -61,7 +63,12 @@ This is an integration testing framework for Azure Functions (dotnet-isolated) t
    - `GrpcInvocationBridgeStartupFilter`: second middleware — fires `SendInvocationRequestAsync` so `WorkerRequestServicesMiddleware` unblocks
 4. **Testing Phase**: `factory.CreateClient()` returns an `HttpClient` pointed at the `TestServer`
 
-## Critical Technical Details
+#### Timer Trigger Invocation
+1. **Function discovery**: `GrpcHostService` parses `timerTrigger` bindings during `HandleFunctionsMetadataResponse`, populating `_timerFunctionMap[functionName] = (FunctionId, ParameterName)`
+2. **API**: `host.InvokeTimerAsync("HeartbeatTimer", timerInfo?)` (from `AzureFunctions.TestFramework.Timer`)
+3. **Flow**: Extension method serializes `TimerInfo` → camelCase JSON, puts it at `context.InputData["$timerJson"]`, calls `host.Invoker.InvokeAsync` with `TriggerType = "timerTrigger"`; Core reads it back and calls `GrpcHostService.InvokeTimerFunctionAsync` which builds an `InvocationRequest` with the timer JSON as `ParameterBinding`
+
+
 
 ### Worker Configuration
 The worker needs these configuration keys (set in WorkerHostService / FunctionsWebApplicationFactory):
@@ -111,7 +118,7 @@ dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" 
 
 ### Testing
 - Sample.FunctionApp has TodoAPI with 7 HTTP endpoints (CRUD + Health + Echo)
-- 11 integration tests in `Sample.FunctionApp.Tests` (1 unit + 7 gRPC TodoFunctions + 3 gRPC DI override)
+- 14 integration tests in `Sample.FunctionApp.Tests` (1 unit + 7 gRPC TodoFunctions + 3 gRPC DI override + 3 Timer)
 - 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests`
 - gRPC tests use `IAsyncLifetime` per-test (each test gets its own `FunctionsTestHost`)
 - WAF tests use `IClassFixture<FunctionsWebApplicationFactory<Program>>` (one shared factory) + `IAsyncLifetime` to call `InMemoryTodoService.Reset()` for per-test state isolation
@@ -166,8 +173,8 @@ tests/
 ✅ Worker connects to gRPC server
 ✅ gRPC bidirectional streaming works
 ✅ Function loading/discovery (all 7 functions)
-✅ Function invocation works (FunctionsTestHost — all HTTP methods)
-✅ All FunctionsTestHost integration tests pass (11/11)
+✅ Function invocation works (FunctionsTestHost — all HTTP methods + TimerTrigger)
+✅ All FunctionsTestHost integration tests pass (14/14)
 ✅ FunctionsWebApplicationFactory works for all HTTP methods (GET, POST, PUT, DELETE)
 ✅ WithWebHostBuilder DI service overrides work end-to-end
 ✅ Tests run in parallel and in isolation (xUnit parallelizeTestCollections + IAsyncLifetime)
