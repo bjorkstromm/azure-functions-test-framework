@@ -148,13 +148,17 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
             }
         }
 
+        System.IO.File.AppendAllText("/tmp/factory_diag.txt", $"[{DateTime.UtcNow:HH:mm:ss.fff}] Before base.CreateHost, IsConnected={_grpcHostService.IsConnected}\n");
         var host = base.CreateHost(builder);
+        System.IO.File.AppendAllText("/tmp/factory_diag.txt", $"[{DateTime.UtcNow:HH:mm:ss.fff}] After base.CreateHost, IsConnected={_grpcHostService.IsConnected}\n");
 
         // Block until the worker has connected and all functions are loaded so that
         // routes are registered in the ASP.NET Core router before any test request arrives.
         // Use Task.Run to ensure we execute on a thread-pool thread and avoid potential
         // synchronization-context deadlocks when GetAwaiter().GetResult() is called.
+        System.IO.File.AppendAllText("/tmp/factory_diag.txt", $"[{DateTime.UtcNow:HH:mm:ss.fff}] Starting WaitForFunctionsReadyAsync\n");
         Task.Run(WaitForFunctionsReadyAsync).GetAwaiter().GetResult();
+        System.IO.File.AppendAllText("/tmp/factory_diag.txt", $"[{DateTime.UtcNow:HH:mm:ss.fff}] WaitForFunctionsReadyAsync completed\n");
 
         return host;
     }
