@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer-trigger invocations, and queue-trigger invocations (17/17 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer-trigger invocations, Service Bus trigger invocations, and queue trigger invocations (20/20 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -21,6 +21,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - Tests run in parallel (xUnit `parallelizeTestCollections`) and in isolation (per-test host via `IAsyncLifetime` for gRPC tests; shared `IClassFixture` factory + per-test `InMemoryTodoService.Reset()` for WAF tests)
 - gRPC EventStream shuts down gracefully on test teardown (no connection-abort errors, no Kestrel 5 s shutdown wait)
 - **TimerTrigger invocations** via `AzureFunctions.TestFramework.Timer` package (`InvokeTimerAsync` extension method)
+- **ServiceBusTrigger invocations** via `AzureFunctions.TestFramework.ServiceBus` package (`InvokeServiceBusAsync` extension method)
 - **QueueTrigger invocations** via `AzureFunctions.TestFramework.Queue` package (`InvokeQueueAsync` extension method)
 
 ## Goals
@@ -173,17 +174,65 @@ public class TimerFunctionTests : IAsyncLifetime
 }
 ```
 
+### 4. Service Bus Trigger Invocation
 
+Use the `AzureFunctions.TestFramework.ServiceBus` package to invoke Service Bus–triggered functions directly from tests.
+
+```csharp
+// Reference: AzureFunctions.TestFramework.ServiceBus
+using AzureFunctions.TestFramework.ServiceBus;
+using Azure.Messaging.ServiceBus;
+
+public class ServiceBusFunctionTests : IAsyncLifetime
+{
+    private IFunctionsTestHost _testHost;
+
+    public async Task InitializeAsync()
+    {
+        _testHost = await new FunctionsTestHostBuilder()
+            .WithFunctionsAssembly(typeof(MyServiceBusFunction).Assembly)
+            .BuildAndStartAsync();
+    }
+
+    [Fact]
+    public async Task ProcessMessage_WithStringBody_Succeeds()
+    {
+        var message = new ServiceBusMessage("Hello from test!");
+        var result = await _testHost.InvokeServiceBusAsync("ProcessOrderMessage", message);
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task ProcessMessage_WithJsonBody_Succeeds()
+    {
+        var message = new ServiceBusMessage("{\"orderId\": \"abc123\"}")
+        {
+            ContentType = "application/json",
+            MessageId = Guid.NewGuid().ToString()
+        };
+        var result = await _testHost.InvokeServiceBusAsync("ProcessOrderMessage", message);
+        Assert.True(result.Success);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _testHost.StopAsync();
+        _testHost.Dispose();
+    }
+}
+```
 
 ```
 src/
   AzureFunctions.TestFramework.Core/       # gRPC host, worker hosting, HTTP invocation
   AzureFunctions.TestFramework.AspNetCore/ # WebApplicationFactory-based testing
   AzureFunctions.TestFramework.Http/       # HTTP-specific functionality (placeholder)
-  
+  AzureFunctions.TestFramework.Timer/      # TimerTrigger invocation support
+  AzureFunctions.TestFramework.ServiceBus/ # ServiceBusTrigger invocation support
+
 samples/
-  Sample.FunctionApp/                      # Example Azure Functions app (TodoAPI)
-  
+  Sample.FunctionApp/                      # Example Azure Functions app (TodoAPI + timers + service bus)
+
 tests/
   Sample.FunctionApp.Tests/                         # gRPC-based integration tests (FunctionsTestHost)
   Sample.FunctionApp.WebApplicationFactory.Tests/   # WebApplicationFactory-based integration tests

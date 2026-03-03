@@ -3,7 +3,7 @@
 ## 🟢 What Works
 
 ### Core Infrastructure ✅
-- Solution structure with 4 projects builds successfully
+- Solution structure with 5 projects builds successfully
 - All NuGet dependencies resolve correctly
 - gRPC protocol definitions integrated from azure-functions-language-worker-protobuf
 
@@ -43,6 +43,7 @@
 - Sample TodoAPI function app with 7 HTTP endpoints (including Health + Echo)
 - 11 integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`): 1 unit + 7 TodoFunctions + 3 DI override tests
 - 3 timer integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Timer`)
+- 3 Service Bus integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.ServiceBus`)
 - 3 queue integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Queue`)
 - 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests` (`FunctionsWebApplicationFactory`)
 - `IAsyncLifetime` pattern for per-test setup/cleanup (each gRPC test gets its own isolated host; WAF tests share one factory via `IClassFixture` with per-test `InMemoryTodoService.Reset()` for state isolation)
@@ -117,10 +118,10 @@ ConnectionAbortedException: The connection was aborted because the server is shu
 
 ### 1. Additional Trigger Types
 - ✅ Timer triggers (`AzureFunctions.TestFramework.Timer` package — `InvokeTimerAsync`)
+- ✅ Service Bus triggers (`AzureFunctions.TestFramework.ServiceBus` package — `InvokeServiceBusAsync`)
 - ✅ Queue triggers (`AzureFunctions.TestFramework.Queue` package — `InvokeQueueAsync`)
 - Blob triggers  
 - Event Grid triggers
-- Service Bus triggers
 
 ### 2. Output Bindings
 Currently focused on HttpTrigger input. Need to support:
