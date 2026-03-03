@@ -9,16 +9,16 @@ public class TodoFunctions
     private static readonly List<TodoItem> Todos = new();
 
     [Function("GetTodos")]
-    public HttpResponseData GetTodos(
+    public async Task<HttpResponseData> GetTodos(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos")] HttpRequestData req)
     {
         var response = req.CreateResponse(HttpStatusCode.OK);
-        response.WriteAsJsonAsync(Todos);
+        await response.WriteAsJsonAsync(Todos, HttpStatusCode.OK);
         return response;
     }
 
     [Function("GetTodo")]
-    public HttpResponseData GetTodo(
+    public async Task<HttpResponseData> GetTodo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos/{id}")] HttpRequestData req,
         string id)
     {
@@ -31,7 +31,7 @@ public class TodoFunctions
         }
 
         var response = req.CreateResponse(HttpStatusCode.OK);
-        response.WriteAsJsonAsync(todo);
+        await response.WriteAsJsonAsync(todo, HttpStatusCode.OK);
         return response;
     }
 
@@ -54,7 +54,7 @@ public class TodoFunctions
 
         var response = req.CreateResponse(HttpStatusCode.Created);
         response.Headers.Add("Location", $"/api/todos/{todo.Id}");
-        await response.WriteAsJsonAsync(todo);
+        await response.WriteAsJsonAsync(todo, HttpStatusCode.Created);
         return response;
     }
 
@@ -85,7 +85,7 @@ public class TodoFunctions
         existingTodo.UpdatedAt = DateTime.UtcNow;
 
         var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteAsJsonAsync(existingTodo);
+        await response.WriteAsJsonAsync(existingTodo, HttpStatusCode.OK);
         return response;
     }
 

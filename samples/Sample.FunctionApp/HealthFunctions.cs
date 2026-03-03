@@ -11,7 +11,7 @@ public class HealthFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
     {
         var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteAsJsonAsync(new { status = "Healthy" });
+        await response.WriteAsJsonAsync(new { status = "Healthy" }, HttpStatusCode.OK);
         return response;
     }
 

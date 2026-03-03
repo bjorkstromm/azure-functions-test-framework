@@ -258,13 +258,18 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
                         var invocationId = invocationIdValues.ToString();
                         if (!string.IsNullOrEmpty(invocationId))
                         {
+                            // Capture method and path before the fire-and-forget to avoid reading
+                            // from a potentially recycled HttpContext after the request completes.
+                            var method = context.Request.Method;
+                            var path = context.Request.Path.Value ?? string.Empty;
+
                             // Fire-and-forget: send InvocationRequest so the worker's
                             // FunctionsHttpProxyingMiddleware calls SetFunctionContextAsync,
                             // which in turn unblocks WorkerRequestServicesMiddleware.
                             _ = Task.Run(() => grpc.SendInvocationRequestAsync(
                                 invocationId,
-                                context.Request.Method,
-                                context.Request.Path.Value ?? string.Empty));
+                                method,
+                                path));
                         }
                     }
 
