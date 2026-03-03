@@ -1,3 +1,7 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Sample.FunctionApp;
+
 namespace Sample.FunctionApp.WebApplicationFactory.Tests;
 
 /// <summary>
@@ -73,19 +77,85 @@ public class FunctionsWebApplicationFactoryTests : IClassFixture<FunctionsWebApp
     [Fact]
     public async Task WithWebHostBuilder_CanOverrideServices()
     {
-        // Demonstrates the WebApplicationFactory pattern: swap services for test doubles
-        // by creating a customised client via WithWebHostBuilder.
+        // Demonstrates the WebApplicationFactory pattern: swap ITodoService for a pre-seeded stub.
+        // The stub is registered last (after Program.cs), so the DI container resolves it
+        // instead of the default InMemoryTodoService — proving that service overrides work.
+        var seededTodo = new TodoItem
+        {
+            Id = "waf-seeded-id",
+            Title = "WAF Seeded Todo",
+            IsCompleted = false,
+            CreatedAt = new DateTime(2024, 6, 1, 0, 0, 0, DateTimeKind.Utc)
+        };
+
         using var customFactory = _factory.WithWebHostBuilder(builder =>
         {
-            builder.ConfigureServices(_ =>
+            builder.ConfigureServices(services =>
             {
-                // Services can be overridden here (e.g. replace a real DB with an in-memory one).
-                // Nothing to override in this sample, but the pattern is demonstrated.
+                // Remove the default InMemoryTodoService and replace with a pre-seeded stub.
+                services.RemoveAll<ITodoService>();
+                services.AddSingleton<ITodoService>(new SeededTodoService(seededTodo));
             });
         });
 
         using var customClient = customFactory.CreateClient();
-        var response = await customClient.GetAsync("/api/health");
+
+        // Act
+        var response = await customClient.GetAsync("/api/todos");
+
+        _output.WriteLine($"Status Code: {response.StatusCode}");
+        _output.WriteLine($"Content: {await response.Content.ReadAsStringAsync()}");
+
+        // Assert — the response must contain the seeded item, not an empty list.
         response.EnsureSuccessStatusCode();
+        var todos = await response.Content.ReadFromJsonAsync<List<TodoItem>>();
+        Assert.NotNull(todos);
+        Assert.Single(todos);
+        Assert.Equal("waf-seeded-id", todos[0].Id);
+        Assert.Equal("WAF Seeded Todo", todos[0].Title);
+    }
+
+    /// <summary>
+    /// A minimal <see cref="ITodoService"/> stub pre-seeded with known items, used to verify that
+    /// the DI container in the test host resolves the overridden implementation.
+    /// </summary>
+    private sealed class SeededTodoService : ITodoService
+    {
+        private readonly List<TodoItem> _todos;
+
+        public SeededTodoService(params TodoItem[] seed)
+        {
+            _todos = new List<TodoItem>(seed);
+        }
+
+        public Task<IEnumerable<TodoItem>> GetAllAsync()
+            => Task.FromResult<IEnumerable<TodoItem>>(_todos);
+
+        public Task<TodoItem?> GetByIdAsync(string id)
+            => Task.FromResult(_todos.FirstOrDefault(t => t.Id == id));
+
+        public Task<TodoItem> CreateAsync(TodoItem item)
+        {
+            item.Id = Guid.NewGuid().ToString();
+            _todos.Add(item);
+            return Task.FromResult(item);
+        }
+
+        public Task<TodoItem?> UpdateAsync(string id, TodoItem updates)
+        {
+            var existing = _todos.FirstOrDefault(t => t.Id == id);
+            if (existing == null) return Task.FromResult<TodoItem?>(null);
+            existing.Title = updates.Title;
+            existing.IsCompleted = updates.IsCompleted;
+            return Task.FromResult<TodoItem?>(existing);
+        }
+
+        public Task<bool> DeleteAsync(string id)
+        {
+            var todo = _todos.FirstOrDefault(t => t.Id == id);
+            if (todo == null) return Task.FromResult(false);
+            _todos.Remove(todo);
+            return Task.FromResult(true);
+        }
     }
 }

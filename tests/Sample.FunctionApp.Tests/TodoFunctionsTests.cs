@@ -1,4 +1,6 @@
 using AzureFunctions.TestFramework.Core;
+using Microsoft.Extensions.DependencyInjection;
+using Sample.FunctionApp;
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;
@@ -21,7 +23,8 @@ public class TodoFunctionsTests : IAsyncLifetime
     {
         // Create test host for the sample function app
         var builder = new FunctionsTestHostBuilder()
-            .WithFunctionsAssembly(typeof(TodoFunctions).Assembly);
+            .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .ConfigureServices(services => services.AddSingleton<ITodoService, InMemoryTodoService>());
 
         _testHost = await builder.BuildAndStartAsync();
         _client = _testHost.CreateHttpClient();

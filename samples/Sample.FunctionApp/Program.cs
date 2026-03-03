@@ -1,6 +1,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Sample.FunctionApp;
 
 await Program.CreateHostBuilder(args).Build().RunAsync();
 
@@ -16,5 +17,6 @@ public partial class Program
             {
                 services.AddApplicationInsightsTelemetryWorkerService();
                 services.ConfigureFunctionsApplicationInsights();
+                services.AddSingleton<ITodoService, InMemoryTodoService>();
             });
 }
