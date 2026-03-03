@@ -147,6 +147,109 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         _logger.LogDebug("Sent one-way message: {MessageType}", GetMessageType(message));
     }
 
+    /// <summary>
+    /// Sends an <see cref="InvocationRequest"/> to the worker for a given invocation ID and HTTP
+    /// route.  The invocation ID must match the <c>x-ms-invocation-id</c> header already placed
+    /// on the in-flight request so that the worker's <c>IHttpCoordinator</c> can correlate it.
+    /// </summary>
+    /// <param name="invocationId">The correlation ID; must match the request header value.</param>
+    /// <param name="httpMethod">The HTTP method (e.g. "GET", "POST").</param>
+    /// <param name="requestPath">The raw request path (e.g. "/api/todos/123").</param>
+    /// <param name="routePrefix">The functions route prefix (default "api").</param>
+    public async Task SendInvocationRequestAsync(
+        string invocationId,
+        string httpMethod,
+        string requestPath,
+        string routePrefix = "api")
+    {
+        var functionId = FindFunctionId(httpMethod, requestPath, routePrefix);
+        if (functionId == null)
+        {
+            _logger.LogWarning(
+                "No function found for {Method} {Path}; InvocationRequest not sent", httpMethod, requestPath);
+            return;
+        }
+
+        var message = new StreamingMessage
+        {
+            // Use invocationId as RequestId so the InvocationResponse can be matched.
+            RequestId = invocationId,
+            InvocationRequest = new InvocationRequest
+            {
+                InvocationId = invocationId,
+                FunctionId = functionId,
+                TraceContext = new RpcTraceContext
+                {
+                    TraceParent = invocationId,
+                    TraceState = string.Empty
+                }
+            }
+        };
+
+        await SendMessageOneWayAsync(message);
+        _logger.LogDebug("Sent InvocationRequest for {InvocationId} -> function {FunctionId}",
+            invocationId, functionId);
+    }
+
+    /// <summary>
+    /// Matches an incoming HTTP method + request path against the loaded function route map and
+    /// returns the function ID if a match is found, or <c>null</c> otherwise.
+    /// </summary>
+    internal string? FindFunctionId(string httpMethod, string requestPath, string routePrefix = "api")
+    {
+        // Strip leading slash and the route prefix (e.g. "/api/" or "api/").
+        var path = requestPath.TrimStart('/');
+        if (!string.IsNullOrEmpty(routePrefix))
+        {
+            var prefix = routePrefix.Trim('/') + "/";
+            if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                path = path.Substring(prefix.Length);
+            }
+        }
+
+        var method = httpMethod.ToUpperInvariant();
+
+        // 1. Exact match (no route parameters).
+        if (_functionRouteToId.TryGetValue($"{method}:{path}", out var exactId))
+        {
+            return exactId;
+        }
+
+        // 2. Pattern match: route segments with {param} placeholders.
+        var pathSegments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        foreach (var (routeKey, functionId) in _functionRouteToId)
+        {
+            var colon = routeKey.IndexOf(':');
+            if (colon < 0) continue;
+
+            if (!routeKey.AsSpan(0, colon).Equals(method, StringComparison.OrdinalIgnoreCase)) continue;
+
+            var routePattern = routeKey.AsSpan(colon + 1);
+            var routeSegments = routePattern.ToString()
+                .Split('/', StringSplitOptions.RemoveEmptyEntries);
+
+            if (routeSegments.Length != pathSegments.Length) continue;
+
+            var match = true;
+            for (var i = 0; i < routeSegments.Length; i++)
+            {
+                var seg = routeSegments[i];
+                // A segment enclosed in braces is a parameter placeholder – matches anything.
+                if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}') continue;
+                if (!seg.Equals(pathSegments[i], StringComparison.OrdinalIgnoreCase))
+                {
+                    match = false;
+                    break;
+                }
+            }
+
+            if (match) return functionId;
+        }
+
+        return null;
+    }
+
     private async Task HandleWorkerMessageAsync(
         StreamingMessage message,
         CancellationToken cancellationToken)

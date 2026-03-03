@@ -1,9 +1,13 @@
 # Azure Functions Test Framework - Copilot Instructions
 
+## Session Rules
+
+> **Always update `README.md` and `KNOWN_ISSUES.md` at the end of every session** to reflect the current state of the project: what now works, what is still blocked, and what changed. These are the primary documentation files used to track progress between sessions.
+
 ## Project Overview
 This is an integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience. It runs Azure Functions in-process without func.exe, communicating via the worker's gRPC endpoints.
 
-**Current Status**: Core infrastructure complete, worker connects successfully to gRPC server. Function loading/invocation needs work.
+**Current Status**: Both testing approaches are functional. The gRPC-based `FunctionsTestHost` supports full CRUD. `FunctionsWebApplicationFactory` works for GET requests; POST/PUT has a function ID mismatch issue (see KNOWN_ISSUES.md).
 
 ## Architecture
 
@@ -11,18 +15,29 @@ This is an integration testing framework for Azure Functions (dotnet-isolated) t
 1. **AzureFunctions.TestFramework.Core**: Main framework
    - `FunctionsTestHost`: Orchestrates worker startup and gRPC communication
    - `GrpcHostService`: Implements Azure Functions host gRPC protocol (bidirectional streaming)
+     - `FindFunctionId(method, path, routePrefix)`: Route matching with `{param}` support
+     - `SendInvocationRequestAsync(invocationId, method, path)`: Fires InvocationRequest to worker
    - `GrpcServerManager`: Manages Kestrel-based gRPC server lifecycle
    - `WorkerHostService`: Starts Azure Functions Worker using HostBuilder (in-process)
    - `FunctionsHttpMessageHandler`: Custom HttpMessageHandler for intercepting HTTP requests
    - `HttpRequestMapper`/`HttpResponseMapper`: Convert between HTTP and gRPC messages
 
-2. **AzureFunctions.TestFramework.Http**: HTTP-specific functionality (placeholder)
+2. **AzureFunctions.TestFramework.AspNetCore**: WebApplicationFactory-based testing
+   - `FunctionsWebApplicationFactory<TProgram>`: Extends `WebApplicationFactory<TProgram>`
+   - `InvocationIdStartupFilter`: Injects `x-ms-invocation-id` header when absent
+   - `GrpcInvocationBridgeStartupFilter`: Fires `InvocationRequest` for every HTTP request, unblocking `WorkerRequestServicesMiddleware`
 
-3. **Sample.FunctionApp**: Example functions for testing (TodoAPI with CRUD operations)
+3. **AzureFunctions.TestFramework.Http**: HTTP-specific functionality (placeholder)
 
-4. **Sample.FunctionApp.Tests**: Integration tests demonstrating framework usage
+4. **Sample.FunctionApp**: Example functions for testing (TodoAPI with CRUD operations)
+
+5. **Sample.FunctionApp.Tests**: gRPC-based integration tests (`FunctionsTestHost`)
+
+6. **Sample.FunctionApp.WebApplicationFactory.Tests**: WebApplicationFactory-based integration tests
 
 ### How It Works
+
+#### FunctionsTestHost (gRPC path)
 1. **Build Phase**: `FunctionsTestHostBuilder.Build()` creates GrpcServerManager and starts it to get an ephemeral port
 2. **Startup Phase**: 
    - gRPC server is already listening (started in Build)
@@ -37,10 +52,18 @@ This is an integration testing framework for Azure Functions (dotnet-isolated) t
    - Worker executes function, returns response
    - Handler converts gRPC InvocationResponse → HTTP response
 
+#### FunctionsWebApplicationFactory (ASP.NET Core path)
+1. **Constructor**: Starts gRPC server eagerly (before host is built) so port is known
+2. **CreateHost**: Injects gRPC config into host builder; registers `IAutoConfigureStartup` types from the functions assembly; calls `base.CreateHost(builder)` which starts `TestServer`
+3. **ConfigureWebHost**:
+   - `InvocationIdStartupFilter`: first middleware — injects synthetic `x-ms-invocation-id`
+   - `GrpcInvocationBridgeStartupFilter`: second middleware — fires `SendInvocationRequestAsync` so `WorkerRequestServicesMiddleware` unblocks
+4. **Testing Phase**: `factory.CreateClient()` returns an `HttpClient` pointed at the `TestServer`
+
 ## Critical Technical Details
 
 ### Worker Configuration
-The worker needs these configuration keys (set in WorkerHostService):
+The worker needs these configuration keys (set in WorkerHostService / FunctionsWebApplicationFactory):
 - `Functions:Worker:HostEndpoint` - gRPC server URI (e.g., "http://127.0.0.1:PORT")
 - `Functions:Worker:WorkerId` - Unique GUID
 - `Functions:Worker:RequestId` - Unique GUID  
@@ -51,63 +74,28 @@ Uses Azure Functions RPC protocol from `azure-functions-language-worker-protobuf
 - **FunctionRpc.EventStream**: Bidirectional streaming RPC
 - **Key messages**: StartStream, WorkerInitRequest/Response, FunctionsMetadataRequest/Response, FunctionLoadRequest/Response, InvocationRequest/Response
 
-### Port Discovery Issue (SOLVED)
-The gRPC server finds an ephemeral port, but WorkerHostService needs to know this port. **Solution**: Start GrpcServerManager during `Build()` (not `StartAsync()`), then pass the actual port to WorkerHostService.
+### IAutoConfigureStartup (Critical)
+The functions assembly contains source-generated classes (`FunctionMetadataProviderAutoStartup`, `FunctionExecutorAutoStartup`) implementing `IAutoConfigureStartup`. Both the `WorkerHostService` and `FunctionsWebApplicationFactory.CreateHost` scan for and invoke these to register `GeneratedFunctionMetadataProvider` and `DirectFunctionExecutor`, overriding the defaults that would require a `functions.metadata` file.
 
-## Known Issues & Current Blockers
-
-### 🔴 BLOCKER: Function Loading/Discovery
-**Status**: Worker connects successfully but functions aren't being loaded/invoked properly.
-
-**Symptoms**:
-- Worker connects to gRPC server ✅
-- WorkerInitRequest sent ✅
-- FunctionsMetadataRequest returns 0 functions ❌
-- HTTP requests return 500 Internal Server Error
-- Error message: "Error invoking function: A task was canceled"
-
-**Root Cause**: 
-The .NET isolated worker needs function metadata to discover functions. This metadata is typically:
-1. Generated at build time by the Azure Functions Worker SDK
-2. Stored in `.functions.json` files or embedded resources
-3. Read by the worker during initialization
-
-**Current Problem**:
-- `FunctionAppDirectory` is set to the assembly's location
-- Worker can't find function metadata files
-- No `.functions.json` files in Sample.FunctionApp output
-- Metadata generation might require special build configuration
-
-**Next Steps**:
-1. Research how dotnet-isolated worker discovers functions (metadata files? reflection? code generation?)
-2. Check if Sample.FunctionApp needs special build properties for metadata generation
-3. Examine Azure Functions Worker SDK source to understand function loading
-4. Consider alternative: Use FunctionMetadataProvider directly instead of gRPC metadata request
-5. Look at `Microsoft.Azure.Functions.Worker.Sdk` targets for metadata generation
+### Function ID Mismatch Issue (FunctionsWebApplicationFactory)
+`GeneratedFunctionMetadataProvider` computes a stable hash for each function (`Name` + `ScriptFile` + `EntryPoint`). Our `GrpcHostService` stores the GUID-based `FunctionId` from `FunctionLoadRequest` in `_functionRouteToId`. When `FunctionsEndpointDataSource` calls `GetFunctionMetadataAsync` directly, it gets hash-based IDs — causing a mismatch in `FunctionsApplication._functionMap` at invocation time.
 
 ## Development Guidelines
 
-### When Working on Function Loading
-- **Critical files**:
-  - `src/AzureFunctions.TestFramework.Core/Grpc/GrpcHostService.cs` (HandleStartStreamAsync - function loading logic)
-  - `src/AzureFunctions.TestFramework.Core/Worker/WorkerHostService.cs` (worker configuration)
-  - `samples/Sample.FunctionApp/Sample.FunctionApp.csproj` (build configuration)
-  
-- **Key areas to investigate**:
-  - Azure Functions Worker SDK source code (github.com/Azure/azure-functions-dotnet-worker)
-  - Metadata generation targets in Worker.Sdk
-  - FunctionMetadataProvider and IFunctionMetadataProvider
-  - DefaultFunctionMetadataProvider implementation
-  
-- **Testing approach**:
-  ```bash
-  # Build and run single test
-  dotnet build
-  dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList"
-  
-  # Check for function metadata files
-  Get-ChildItem -Path samples/Sample.FunctionApp/bin/Debug/net8.0 -Recurse -Filter "*.json"
-  ```
+### Testing Approach
+```bash
+# Build solution
+dotnet build
+
+# Run gRPC-based tests
+dotnet test tests/Sample.FunctionApp.Tests
+
+# Run WebApplicationFactory tests
+dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests
+
+# Run single test
+dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
+```
 
 ### Code Style
 - Use nullable reference types
@@ -116,9 +104,10 @@ The .NET isolated worker needs function metadata to discover functions. This met
 - Don't block the gRPC event stream (use Task.Run for long-running operations)
 
 ### Testing
-- Sample.FunctionApp has TodoAPI with 6 endpoints (CRUD + Health + Echo)
-- 8 integration tests in TodoFunctionsTests.cs
-- Tests use IAsyncLifetime pattern for setup/cleanup
+- Sample.FunctionApp has TodoAPI with 7 HTTP endpoints (CRUD + Health + Echo)
+- 8 integration tests in `Sample.FunctionApp.Tests` (gRPC-based)
+- 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests`
+- Tests use IAsyncLifetime pattern for setup/cleanup (gRPC tests) or IClassFixture (WAF tests)
 
 ## Project Structure
 ```
@@ -126,7 +115,7 @@ src/
   AzureFunctions.TestFramework.Core/
     Core abstractions, gRPC server, worker hosting
     ├── Grpc/
-    │   ├── GrpcHostService.cs         # Bidirectional streaming handler
+    │   ├── GrpcHostService.cs         # Bidirectional streaming handler + route matching
     │   ├── GrpcServerManager.cs       # Kestrel server lifecycle
     │   └── GrpcLoggingInterceptor.cs  # Logging middleware
     ├── Worker/
@@ -141,6 +130,10 @@ src/
     ├── FunctionsTestHost.cs           # Main orchestrator
     └── FunctionsTestHostBuilder.cs    # Fluent builder API
     
+  AzureFunctions.TestFramework.AspNetCore/
+    WebApplicationFactory-based testing
+    └── FunctionsWebApplicationFactory.cs
+    
   AzureFunctions.TestFramework.Http/
     HTTP-specific functionality (placeholder)
     
@@ -150,7 +143,9 @@ samples/
     
 tests/
   Sample.FunctionApp.Tests/
-    Integration tests demonstrating framework
+    gRPC-based integration tests (FunctionsTestHost)
+  Sample.FunctionApp.WebApplicationFactory.Tests/
+    WebApplicationFactory-based integration tests
 ```
 
 ## References
@@ -163,7 +158,10 @@ tests/
 ✅ Worker starts in-process using HostBuilder
 ✅ Worker connects to gRPC server
 ✅ gRPC bidirectional streaming works
-⚠️ Function loading/discovery (BLOCKED)
-❌ Function invocation works
-❌ HTTP integration tests pass
-❌ DI service overrides work
+✅ Function loading/discovery (all 7 functions)
+✅ Function invocation works (FunctionsTestHost — all HTTP methods)
+✅ All FunctionsTestHost integration tests pass
+✅ FunctionsWebApplicationFactory GET requests work
+⚠️ FunctionsWebApplicationFactory POST/PUT — function ID mismatch (see KNOWN_ISSUES.md)
+❌ DI service overrides not tested
+

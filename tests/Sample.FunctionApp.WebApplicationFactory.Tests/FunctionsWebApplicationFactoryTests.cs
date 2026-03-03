@@ -1,10 +1,4 @@
-using AzureFunctions.TestFramework.AspNetCore;
-using System.Net;
-using System.Net.Http.Json;
-using Xunit;
-using Xunit.Abstractions;
-
-namespace Sample.FunctionApp.Tests;
+namespace Sample.FunctionApp.WebApplicationFactory.Tests;
 
 /// <summary>
 /// Integration tests that use <see cref="FunctionsWebApplicationFactory{TProgram}"/> — a
