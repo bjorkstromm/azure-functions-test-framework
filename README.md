@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, and function metadata discovery (24/24 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, and `WithHostBuilderFactory` for Program.cs service reuse (27/27 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -24,6 +24,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - **ServiceBus trigger invocations** via `AzureFunctions.TestFramework.ServiceBus` package (`InvokeServiceBusAsync` extension method)
 - **Queue trigger invocations** via `AzureFunctions.TestFramework.Queue` package (`InvokeQueueAsync` extension method)
 - **Function metadata discovery** via `IFunctionInvoker.GetFunctions()` — returns `IReadOnlyDictionary<string, IFunctionMetadata>` with name, function ID, entry point, script file, and raw binding JSON
+- **`WithHostBuilderFactory`** — non-WAF gRPC tests can reuse the app's own `Program.CreateWorkerHostBuilder`, automatically inheriting all registered services without re-registering them in each test
 
 ## Goals
 
@@ -40,44 +41,47 @@ This framework aims to provide:
 
 Uses a custom gRPC host that mimics the Azure Functions host, starting the worker in-process and sending invocations directly via gRPC.
 
+**Option A — Inline service registration** (override individual services for test doubles):
+
 ```csharp
-public class MyFunctionTests : IAsyncLifetime
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyFunctions).Assembly)
+    .ConfigureServices(services =>
+    {
+        // Register or override dependencies for testing
+        services.AddSingleton<IMyService, MockMyService>();
+    })
+    .BuildAndStartAsync();
+```
+
+**Option B — Use `Program.CreateWorkerHostBuilder`** (inherit all app services automatically):
+
+```csharp
+// Program.cs — expose a worker-specific builder for gRPC non-WAF testing
+public partial class Program
 {
-    private IFunctionsTestHost _testHost;
-    private HttpClient _client;
+    public static IHostBuilder CreateWorkerHostBuilder(string[] args) =>
+        new HostBuilder()
+            .ConfigureFunctionsWorkerDefaults()
+            .ConfigureServices(ConfigureServices);
 
-    public async Task InitializeAsync()
+    private static void ConfigureServices(IServiceCollection services)
     {
-        _testHost = await new FunctionsTestHostBuilder()
-            .WithFunctionsAssembly(typeof(MyFunctions).Assembly)
-            .ConfigureServices(services =>
-            {
-                // Override dependencies for testing
-                services.AddSingleton<IMyService, MockMyService>();
-            })
-            .BuildAndStartAsync();
-            
-        _client = _testHost.CreateHttpClient();
-    }
-
-    [Fact]
-    public async Task MyFunction_ReturnsExpectedResult()
-    {
-        var response = await _client.GetAsync("/api/my-function");
-        response.EnsureSuccessStatusCode();
-    }
-
-    public async Task DisposeAsync()
-    {
-        _client?.Dispose();
-        if (_testHost != null)
-        {
-            await _testHost.StopAsync();
-            _testHost.Dispose();
-        }
+        services.AddSingleton<IMyService, MyService>();
+        // ... other registrations
     }
 }
+
+// Test — no need to re-register app services
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyFunctions).Assembly)
+    .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
+    .BuildAndStartAsync();
 ```
+
+> ⚠️ The factory passed to `WithHostBuilderFactory` must use `ConfigureFunctionsWorkerDefaults()`, **not** `ConfigureFunctionsWebApplication()`.
+> `ConfigureFunctionsWebApplication()` sets up an internal ASP.NET Core pipeline inside the worker that requires a live HTTP server — which is not available in gRPC non-WAF mode.
+> Use `ConfigureFunctionsWebApplication()` only with `FunctionsWebApplicationFactory` (WAF mode).
 
 ### 2. FunctionsWebApplicationFactory (ASP.NET Core pipeline)
 

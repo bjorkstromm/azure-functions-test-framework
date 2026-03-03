@@ -17,6 +17,7 @@ public class WorkerHostService : IWorkerHost
     private readonly ILogger<WorkerHostService> _logger;
     private readonly int _grpcPort;
     private readonly Assembly _functionsAssembly;
+    private readonly Func<string[], IHostBuilder>? _hostBuilderFactory;
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = new();
     private IHost? _workerHost;
     private bool _isInitialized;
@@ -24,11 +25,13 @@ public class WorkerHostService : IWorkerHost
     public WorkerHostService(
         ILogger<WorkerHostService> logger,
         int grpcPort,
-        Assembly functionsAssembly)
+        Assembly functionsAssembly,
+        Func<string[], IHostBuilder>? hostBuilderFactory = null)
     {
         _logger = logger;
         _grpcPort = grpcPort;
         _functionsAssembly = functionsAssembly;
+        _hostBuilderFactory = hostBuilderFactory;
     }
 
     /// <summary>
@@ -127,8 +130,16 @@ public class WorkerHostService : IWorkerHost
         Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "8.0");
         Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("FUNCTIONS_APPLICATION_DIRECTORY", functionAppDirectory);
-        
-        var hostBuilder = new HostBuilder();
+
+        // Get the base HostBuilder: use the factory if provided, otherwise create a fresh one.
+        // When a factory (e.g. Program.CreateWorkerHostBuilder) is supplied, all services,
+        // middleware and configuration registered in Program.cs are included automatically.
+        // The factory must use ConfigureFunctionsWorkerDefaults() (not ConfigureFunctionsWebApplication())
+        // because the non-WAF gRPC path dispatches invocations directly and does not use an
+        // ASP.NET Core HTTP pipeline inside the worker.
+        var hostBuilder = _hostBuilderFactory != null
+            ? _hostBuilderFactory([])
+            : new HostBuilder();
 
         // The worker's ConfigureFunctionsWorkerDefaults will:
         // 1. Add AZURE_FUNCTIONS_* environment variables via ConfigureHostConfiguration
@@ -166,15 +177,35 @@ public class WorkerHostService : IWorkerHost
             config.AddInMemoryCollection(configValues);
         });
 
-        // Configure the Functions Worker
-        hostBuilder.ConfigureFunctionsWorkerDefaults((context, builder) =>
+        if (_hostBuilderFactory == null)
         {
-            // Apply user service configurations (for mocking/overriding services)
-            foreach (var configurator in _serviceConfigurators)
+            // No factory provided: configure the Functions worker defaults here.
+            // User service configurators are applied inside ConfigureFunctionsWorkerDefaults
+            // so they are available to the worker's DI container.
+            hostBuilder.ConfigureFunctionsWorkerDefaults((context, builder) =>
             {
-                configurator(builder.Services);
+                foreach (var configurator in _serviceConfigurators)
+                {
+                    configurator(builder.Services);
+                }
+            });
+        }
+        else
+        {
+            // Factory was provided: ConfigureFunctionsWorkerDefaults (or ConfigureFunctionsWebApplication)
+            // was already called by the factory.  Apply user service configurators on top so that
+            // test doubles can override services registered by the factory.
+            if (_serviceConfigurators.Count > 0)
+            {
+                hostBuilder.ConfigureServices(services =>
+                {
+                    foreach (var configurator in _serviceConfigurators)
+                    {
+                        configurator(services);
+                    }
+                });
             }
-        });
+        }
         
         // IMPORTANT: Add our configuration AFTER ConfigureFunctionsWorkerDefaults
         // so our values override any defaults from environment variables
