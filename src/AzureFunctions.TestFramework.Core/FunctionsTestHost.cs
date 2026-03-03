@@ -196,6 +196,7 @@ internal class FunctionInvoker : IFunctionInvoker
         return context.TriggerType switch
         {
             "timerTrigger" => InvokeTimerAsync(functionName, context, cancellationToken),
+            "queueTrigger" => InvokeQueueAsync(functionName, context, cancellationToken),
             _ => throw new NotSupportedException(
                 $"Trigger type '{context.TriggerType}' is not supported by this invoker. " +
                 $"Use a trigger-specific extension package (e.g. AzureFunctions.TestFramework.Timer).")
@@ -211,6 +212,17 @@ internal class FunctionInvoker : IFunctionInvoker
             ? j?.ToString() ?? "{}"
             : "{}";
         return _grpcHostService.InvokeTimerFunctionAsync(functionName, timerJson, cancellationToken);
+    }
+
+    private Task<FunctionInvocationResult> InvokeQueueAsync(
+        string functionName,
+        FunctionInvocationContext context,
+        CancellationToken cancellationToken)
+    {
+        var messageBytes = context.InputData.TryGetValue("$queueMessageBytes", out var b) && b is byte[] bytes
+            ? new ReadOnlyMemory<byte>(bytes)
+            : ReadOnlyMemory<byte>.Empty;
+        return _grpcHostService.InvokeQueueFunctionAsync(functionName, messageBytes, cancellationToken);
     }
 
     public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions()
