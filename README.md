@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Core infrastructure is complete. Both testing approaches are functional: the gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, and `FunctionsWebApplicationFactory` runs the full ASP.NET Core pipeline end-to-end for GET requests. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations (11/11 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -14,11 +14,10 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - Worker connects successfully to gRPC server and loads all functions
 - Bidirectional gRPC streaming functional
 - HTTP client API (`FunctionsTestHostBuilder` + `CreateHttpClient()`) functional for all HTTP methods (GET, POST, PUT, DELETE)
-- `FunctionsWebApplicationFactory<TProgram>` functional for GET requests via ASP.NET Core `TestServer`
+- `FunctionsWebApplicationFactory<TProgram>` functional for all HTTP methods via ASP.NET Core `TestServer`
 - Route matching with `{param}` placeholder support in both approaches
-
-### Current Limitations 🟡
-- `FunctionsWebApplicationFactory` POST/PUT requests may fail when the worker's `_functionMap` lookup encounters a function ID mismatch — see [KNOWN_ISSUES.md](KNOWN_ISSUES.md)
+- `WithWebHostBuilder` DI service overrides work end-to-end
+- CI workflow runs on pull requests and pushes to main
 
 ## Goals
 

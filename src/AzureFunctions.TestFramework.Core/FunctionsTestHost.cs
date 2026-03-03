@@ -114,7 +114,7 @@ public class FunctionsTestHost : IFunctionsTestHost
     }
 
     /// <summary>
-    /// Stops the test host: worker, then gRPC server.
+    /// Stops the test host: signals gRPC stream shutdown, then worker, then gRPC server.
     /// </summary>
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
@@ -127,7 +127,11 @@ public class FunctionsTestHost : IFunctionsTestHost
 
         try
         {
-            // Stop in reverse order
+            // 1. Signal the EventStream to end gracefully before stopping the server.
+            //    This prevents connection-abort exceptions from the gRPC framework.
+            await _grpcHostService.SignalShutdownAsync();
+
+            // 2. Stop in reverse order
             await _workerHostService.StopAsync(cancellationToken);
             await _grpcServerManager.StopAsync(cancellationToken);
 

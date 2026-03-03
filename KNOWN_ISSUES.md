@@ -46,28 +46,34 @@
 - IAsyncLifetime pattern for test setup/cleanup
 - xUnit integration working
 - All `FunctionsTestHost` tests pass (GET, POST, PUT, DELETE, 404)
-- `FunctionsWebApplicationFactory` GET tests pass
+- All `FunctionsWebApplicationFactory` tests pass (GET, POST, `WithWebHostBuilder` service overrides)
+- Graceful gRPC EventStream shutdown on test teardown (no connection-abort errors)
 
-### FunctionsWebApplicationFactory ✅ (partially)
+### FunctionsWebApplicationFactory ✅
 - `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
 - `InvocationIdStartupFilter` injects `x-ms-invocation-id` header when absent
 - `GrpcHostService.FindFunctionId()` matches routes with `{param}` placeholder support
 - Host startup completes in ~0.5 s — no longer hangs
-- GET requests (`Health`, `GetTodos`) pass end-to-end
+- All HTTP methods (GET, POST, PUT, DELETE) pass end-to-end
+- `WithWebHostBuilder` service overrides work — secondary worker EventStream ends cleanly before host DI is disposed
 
 ## 🔴 Current Blockers
 
-### FunctionsWebApplicationFactory — POST/PUT Function ID Mismatch
+_None. All known blockers have been resolved._
 
-**What it is**: When a POST or PUT request is sent through `FunctionsWebApplicationFactory`, the worker's `FunctionsApplication.CreateContext()` throws `KeyNotFoundException` for the function's computed hash ID (e.g. `3897823149`).
+### ~~FunctionsWebApplicationFactory — POST/PUT Function ID Mismatch~~ ✅ FIXED
 
-**Root cause**: `GeneratedFunctionMetadataProvider` (source-generated) computes a stable hash for each `DefaultFunctionMetadata` (`Name` + `ScriptFile` + `EntryPoint`). Our `GrpcHostService` assigns a new `FunctionId` (GUID) per `FunctionLoadRequest`. When `FunctionsEndpointDataSource.BuildEndpoints()` calls `GetFunctionMetadataAsync()` **directly** on the `GeneratedFunctionMetadataProvider`, the metadata objects get their hash-based IDs — different from the GUID IDs our host assigned via `FunctionLoadRequest`. The `_functionMap` is therefore keyed by GUIDs, but the invocation arrives with the hash-based ID, causing the lookup to fail.
+**What it was**: POST/PUT requests through `FunctionsWebApplicationFactory` failed because `GrpcHostService` used GUID-based function IDs while the worker's `_functionMap` used hash-based IDs from `GeneratedFunctionMetadataProvider`.
 
-**Impact**: `CreateAndGetTodo_WorksEndToEnd` (POST) and any PUT/DELETE tests via `FunctionsWebApplicationFactory` hang waiting for `SetFunctionContextAsync`.
+**Fix applied**: `GrpcHostService` now stores the hash-based `FunctionId` from `FunctionMetadataResponse` (the value computed by the worker's `GeneratedFunctionMetadataProvider`) directly in `_functionRouteToId`, so `SendInvocationRequestAsync` sends the correct ID that matches the worker's internal `_functionMap`.
 
-**Next Steps**:
-1. In `GrpcHostService.SendInvocationRequestAsync`, use the function ID from `FunctionMetadataResponse` (the hash-based one returned by the worker's `GeneratedFunctionMetadataProvider`) rather than the GUID assigned in `FunctionLoadRequest`.
-2. Alternatively, update `GrpcHostService` to store the hash-based `FunctionId` from `FunctionMetadataResponse` in `_functionRouteToId` so `SendInvocationRequestAsync` sends the correct ID.
+### ~~FunctionsWebApplicationFactory — ObjectDisposedException after WithWebHostBuilder~~ ✅ FIXED
+
+**What it was**: `CreateAndGetTodo_WorksEndToEnd` threw `ObjectDisposedException: IServiceProvider` and hung when run after `WithWebHostBuilder_CanOverrideServices` in the same test run.
+
+**Root cause**: `GrpcWorker.StopAsync()` in the Azure Functions worker returns `Task.CompletedTask` immediately without closing the gRPC channel. As a result, when `customFactory.Dispose()` disposed the secondary host's DI container, the secondary worker was still connected to EventStream-2. The next test's `GrpcInvocationBridgeStartupFilter` wrote an `InvocationRequest` to `responseStream-2` (since EventStream-2 hadn't ended yet), which worker-2 received with its already-disposed `IServiceProvider`.
+
+**Fix applied**: Added a `GrpcAwareHost` wrapper (in `FunctionsWebApplicationFactory.CreateHost`) that wraps derived factory hosts. On `Dispose()`, it cancels the EventStream's `CancellationTokenSource` and waits for `_eventStreamFinished` before calling `_inner.Dispose()`. This ensures `_responseStream` is restored to the primary worker's stream before the secondary host's DI is torn down.
 
 ### ~~FunctionsWebApplicationFactory — Host Startup Hang~~ ✅ FIXED
 
@@ -197,4 +203,4 @@ dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests --filter "GetTo
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
 
-Last Updated: 2026-03-03 (session 3)
+Last Updated: 2026-03-03 (session 4)

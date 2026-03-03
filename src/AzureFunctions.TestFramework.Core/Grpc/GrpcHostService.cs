@@ -20,6 +20,8 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private string _workerId = string.Empty;
     private TaskCompletionSource<StreamingMessage>? _workerInitTcs;
     private TaskCompletionSource<bool> _functionsLoadedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private CancellationTokenSource _shutdownCts = new();
+    private TaskCompletionSource _eventStreamFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
     // Key format: "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}"
     private readonly Dictionary<string, string> _functionRouteToId = new(StringComparer.OrdinalIgnoreCase);
 
@@ -56,6 +58,25 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     public Task WaitForFunctionsLoadedAsync() => _functionsLoadedTcs.Task;
 
     /// <summary>
+    /// Signals the EventStream to shut down gracefully and waits for it to complete.
+    /// Call this before stopping the gRPC server to avoid connection-abort errors.
+    /// </summary>
+    public async Task SignalShutdownAsync()
+    {
+        _shutdownCts.Cancel();
+        await _eventStreamFinished.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Returns the <see cref="CancellationTokenSource"/> and <see cref="TaskCompletionSource"/>
+    /// for the currently active EventStream.  Callers should capture these immediately after the
+    /// worker has finished loading functions and store them for later use (e.g. to signal a derived
+    /// factory's EventStream to end before that factory's host is disposed).
+    /// </summary>
+    public (CancellationTokenSource ShutdownCts, TaskCompletionSource EventStreamFinished)
+        GetCurrentEventStreamState() => (_shutdownCts, _eventStreamFinished);
+
+    /// <summary>
     /// Handles the bidirectional streaming RPC between host and worker.
     /// </summary>
     public override async Task EventStream(
@@ -63,17 +84,36 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         IServerStreamWriter<StreamingMessage> responseStream,
         ServerCallContext context)
     {
-        // Reset the loaded TCS so callers waiting on a new connection don't see stale state.
+        // Save the existing stream so it can be restored when a secondary worker (e.g. from
+        // WithWebHostBuilder) disconnects while the primary worker is still active.
+        var previousResponseStream = _responseStream;
+
+        // Reset per-connection state so a reconnecting worker starts fresh.
         _functionsLoadedTcs = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+        _shutdownCts = new CancellationTokenSource();
+        _eventStreamFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _responseStream = responseStream;
         _logger.LogInformation("Worker connected to event stream");
 
+        // Link our shutdown token with the server's request cancellation token so either
+        // side can end the stream — whichever fires first.
+        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(
+            _shutdownCts.Token, context.CancellationToken);
+
         try
         {
-            await foreach (var message in requestStream.ReadAllAsync(context.CancellationToken))
+            await foreach (var message in requestStream.ReadAllAsync(linkedCts.Token))
             {
-                await HandleWorkerMessageAsync(message, context.CancellationToken);
+                await HandleWorkerMessageAsync(message, linkedCts.Token);
             }
+        }
+        catch (OperationCanceledException) when (linkedCts.IsCancellationRequested)
+        {
+            _logger.LogDebug("Event stream cancelled (graceful shutdown)");
+        }
+        catch (IOException) when (linkedCts.IsCancellationRequested)
+        {
+            _logger.LogDebug("Event stream connection aborted (graceful shutdown)");
         }
         catch (Exception ex)
         {
@@ -82,7 +122,13 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         }
         finally
         {
-            _responseStream = null;
+            // Restore the previous stream so a concurrent primary EventStream is not broken
+            // when a secondary EventStream (e.g. from WithWebHostBuilder) ends first.
+            if (ReferenceEquals(_responseStream, responseStream))
+            {
+                _responseStream = previousResponseStream;
+            }
+            _eventStreamFinished.TrySetResult();
             _logger.LogInformation("Worker disconnected from event stream");
         }
     }

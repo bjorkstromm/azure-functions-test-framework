@@ -43,6 +43,7 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     private readonly GrpcServerManager _grpcServerManager;
     private readonly GrpcHostService _grpcHostService;
     private readonly ILoggerFactory _loggerFactory;
+    private bool _primaryHostCreated;
 
     /// <summary>
     /// Initializes a new instance of <see cref="FunctionsWebApplicationFactory{TProgram}"/>
@@ -165,6 +166,18 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
         // synchronization-context deadlocks when GetAwaiter().GetResult() is called.
         Task.Run(WaitForFunctionsReadyAsync).GetAwaiter().GetResult();
 
+        if (_primaryHostCreated)
+        {
+            // This is a derived factory host (e.g., from WithWebHostBuilder).
+            // GrpcWorker.StopAsync() is a no-op, so the worker's gRPC channel stays open
+            // after the host's DI container is disposed.  Wrap the host so that we signal
+            // the EventStream to end BEFORE the host is disposed, ensuring _responseStream
+            // is restored to the primary worker's stream before the DI is torn down.
+            var (shutdownCts, eventStreamFinished) = _grpcHostService.GetCurrentEventStreamState();
+            return new GrpcAwareHost(host, shutdownCts, eventStreamFinished);
+        }
+
+        _primaryHostCreated = true;
         return host;
     }
 
@@ -189,14 +202,18 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
+        // Call base FIRST to stop the TestServer and the Functions worker.
+        // The worker disconnects from gRPC cleanly while the server is still up,
+        // so no connection-abort errors occur on the EventStream.
+        base.Dispose(disposing);
+
         if (disposing)
         {
+            // No active EventStreams remain, so the gRPC server shuts down fast.
             _grpcServerManager.StopAsync().GetAwaiter().GetResult();
             _grpcServerManager.DisposeAsync().AsTask().GetAwaiter().GetResult();
             _loggerFactory.Dispose();
         }
-
-        base.Dispose(disposing);
     }
 
     /// <summary>
@@ -278,5 +295,60 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
 
                 next(app);
             };
+    }
+
+    /// <summary>
+    /// Wraps a derived factory's <see cref="IHost"/> to ensure the gRPC EventStream is
+    /// signalled to end gracefully <em>before</em> the host's DI container is disposed.
+    /// <para>
+    /// <c>GrpcWorker.StopAsync</c> returns <c>Task.CompletedTask</c> immediately — it does not
+    /// close the gRPC channel.  As a result, the secondary worker remains connected to our
+    /// <see cref="GrpcHostService"/> EventStream after the host's DI container has been disposed.
+    /// Any <c>InvocationRequest</c> that arrives during this window is processed by a worker whose
+    /// <c>IServiceProvider</c> is already disposed, causing <see cref="ObjectDisposedException"/>.
+    /// </para>
+    /// <para>
+    /// By cancelling the EventStream's <see cref="CancellationTokenSource"/> first, we force
+    /// <see cref="GrpcHostService.EventStream"/> to exit its read loop, restore
+    /// <c>_responseStream</c> to the primary worker's stream, and signal
+    /// <c>_eventStreamFinished</c> — all before the host's DI is torn down.
+    /// </para>
+    /// </summary>
+    private sealed class GrpcAwareHost : IHost
+    {
+        private readonly IHost _inner;
+        private readonly CancellationTokenSource _shutdownCts;
+        private readonly TaskCompletionSource _eventStreamFinished;
+
+        internal GrpcAwareHost(
+            IHost inner,
+            CancellationTokenSource shutdownCts,
+            TaskCompletionSource eventStreamFinished)
+        {
+            _inner = inner;
+            _shutdownCts = shutdownCts;
+            _eventStreamFinished = eventStreamFinished;
+        }
+
+        public IServiceProvider Services => _inner.Services;
+
+        public Task StartAsync(CancellationToken cancellationToken = default)
+            => _inner.StartAsync(cancellationToken);
+
+        public Task StopAsync(CancellationToken cancellationToken = default)
+            => _inner.StopAsync(cancellationToken);
+
+        public void Dispose()
+        {
+            // Signal the EventStream to end and wait for _responseStream to be restored
+            // before the inner host disposes its DI container.
+            _shutdownCts.Cancel();
+            _eventStreamFinished.Task
+                .WaitAsync(TimeSpan.FromSeconds(5))
+                .GetAwaiter()
+                .GetResult();
+
+            _inner.Dispose();
+        }
     }
 }
