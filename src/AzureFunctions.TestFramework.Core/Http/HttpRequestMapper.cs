@@ -49,10 +49,9 @@ public class HttpRequestMapper
         // Add body
         if (!string.IsNullOrEmpty(body))
         {
-            httpRequest.Body = new TypedData
-            {
-                String = body
-            };
+            var bodyBytes = Google.Protobuf.ByteString.CopyFromUtf8(body);
+            httpRequest.Body = new TypedData { Bytes = bodyBytes };
+            httpRequest.RawBody = new TypedData { Bytes = bodyBytes };
         }
 
         var request = new StreamingMessage

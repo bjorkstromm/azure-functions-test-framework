@@ -64,30 +64,16 @@
 2. Try creating the host but delaying `host.Start()` until after the gRPC worker has connected.
 3. Explore whether `CreateHostBuilder` → `Build()` then manually `StartAsync()` gives more control than `base.CreateHost()`.
 
-### POST/PUT Request Body Parsing (Critical)
+### ~~POST/PUT Request Body Parsing (Critical)~~ ✅ FIXED
 
-**Issue**: Functions that read the HTTP request body (POST/PUT) fail with:
+**Issue**: Functions that read the HTTP request body (POST/PUT) were failing with:
 ```
 System.NotSupportedException: GrpcHttpRequestData expects binary data only.
 The provided data type was 'String'.
 ```
 
-**Affected tests**: `CreateTodo`, `GetTodo_WhenExists`, `UpdateTodo`, `DeleteTodo`, `DeleteTodo` (all involve a POST/PUT first)
-
-**Root Cause**: `HttpRequestMapper` sets the request body as `TypedData.String`, but `GrpcHttpRequestData` in the .NET isolated worker only accepts `TypedData.Bytes`.
-
-**Fix required** in `src/AzureFunctions.TestFramework.Core/Http/HttpRequestMapper.cs`:
-```csharp
-// Change:
-httpRequest.Body = new TypedData { String = body };
-// To:
-httpRequest.Body = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFromUtf8(body) };
-```
-
-**Also set `rawBody`** for completeness:
-```csharp
-httpRequest.RawBody = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFromUtf8(body) };
-```
+**Fix applied** in `src/AzureFunctions.TestFramework.Core/Http/HttpRequestMapper.cs`:
+- Changed `TypedData.String` to `TypedData.Bytes` (via `ByteString.CopyFromUtf8`) for both `Body` and `RawBody`.
 
 ## 🟡 Known Issues (Non-Blocking)
 
