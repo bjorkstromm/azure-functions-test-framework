@@ -61,7 +61,12 @@ public class HttpRequestMapper
             InvocationRequest = new InvocationRequest
             {
                 InvocationId = invocationId,
-                FunctionId = functionId
+                FunctionId = functionId,
+                TraceContext = new RpcTraceContext
+                {
+                    TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
+                    TraceState = string.Empty
+                }
             }
         };
 

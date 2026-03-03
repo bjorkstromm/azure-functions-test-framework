@@ -39,11 +39,11 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
             var body = await ReadBodyAsync(request, cancellationToken);
             var queryParams = ExtractQueryParameters(request);
 
-            // 2. Find the function ID from the route
-            var functionId = FindFunctionIdFromRoute(path);
+            // 2. Find the function ID from the route (method + path)
+            var functionId = FindFunctionIdFromRoute(method, path);
             if (string.IsNullOrEmpty(functionId))
             {
-                return CreateNotFoundResponse($"No function found for route: {path}");
+                return CreateNotFoundResponse($"No function found for route: {method} {path}");
             }
 
             // 3. Create gRPC InvocationRequest
@@ -129,31 +129,46 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
         return queryParams;
     }
 
-    private string? FindFunctionIdFromRoute(string path)
+    private string? FindFunctionIdFromRoute(string httpMethod, string path)
     {
-        // Simple route matching
+        // Normalize the path (strip leading slash and "api/" prefix)
         var normalizedPath = path.TrimStart('/');
         if (normalizedPath.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
         {
             normalizedPath = normalizedPath.Substring(4);
         }
+        // Strip query string
+        var queryIndex = normalizedPath.IndexOf('?');
+        if (queryIndex >= 0)
+        {
+            normalizedPath = normalizedPath.Substring(0, queryIndex);
+        }
 
-        // Try exact match first
+        var upperMethod = httpMethod.ToUpperInvariant();
+
+        // Try exact match first, then pattern match
         foreach (var kvp in _routeToFunctionMap)
         {
-            var route = kvp.Key.TrimStart('/');
+            // Keys are in format "METHOD:route"
+            var colonIdx = kvp.Key.IndexOf(':');
+            if (colonIdx < 0) continue;
+
+            var keyMethod = kvp.Key.Substring(0, colonIdx);
+            var keyRoute = kvp.Key.Substring(colonIdx + 1);
+
+            if (!string.Equals(keyMethod, upperMethod, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            var route = keyRoute.TrimStart('/');
             if (route.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
             {
                 route = route.Substring(4);
             }
 
-            if (string.Equals(normalizedPath, route, StringComparison.OrdinalIgnoreCase))
-            {
-                return kvp.Value;
-            }
-
-            // Simple pattern matching for routes with parameters like "todos/{id}"
-            if (MatchesRoutePattern(normalizedPath, route))
+            if (string.Equals(normalizedPath, route, StringComparison.OrdinalIgnoreCase) ||
+                MatchesRoutePattern(normalizedPath, route))
             {
                 return kvp.Value;
             }
@@ -193,9 +208,10 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
 
     private HttpResponseMessage CreateHttpResponseMessage(HttpTestResponse testResponse)
     {
+        var body = testResponse.Success ? testResponse.Body : (testResponse.Error ?? testResponse.Body);
         var response = new HttpResponseMessage(testResponse.StatusCode)
         {
-            Content = new StringContent(testResponse.Body)
+            Content = new StringContent(body)
         };
 
         foreach (var header in testResponse.Headers)

@@ -119,11 +119,14 @@ public class WorkerHostService : IWorkerHost
         
         _logger.LogInformation("Configuring worker to connect to {GrpcUri}", grpcUri);
         
+        var functionAppDirectory = Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory;
+
         // IMPORTANT: Set environment variables BEFORE creating HostBuilder!
         // ConfigureFunctionsWorkerDefaults calls AddEnvironmentVariables() which will read these
         Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated");
         Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "8.0");
         Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", "Development");
+        Environment.SetEnvironmentVariable("FUNCTIONS_APPLICATION_DIRECTORY", functionAppDirectory);
         
         var hostBuilder = new HostBuilder();
 
@@ -188,6 +191,24 @@ public class WorkerHostService : IWorkerHost
             // Add with high priority so they override environment variables
             config.AddInMemoryCollection(configValues);
         });
+
+        // Discover and invoke IAutoConfigureStartup implementations from the functions assembly.
+        // This registers the source-generated GeneratedFunctionMetadataProvider (IFunctionMetadataProvider)
+        // and DirectFunctionExecutor (IFunctionExecutor) so the worker can discover and execute functions.
+        foreach (var type in _functionsAssembly.GetTypes()
+            .Where(t => typeof(IAutoConfigureStartup).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface))
+        {
+            try
+            {
+                var startup = (IAutoConfigureStartup)Activator.CreateInstance(type)!;
+                startup.Configure(hostBuilder);
+                _logger.LogInformation("Registered auto-startup: {Type}", type.FullName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to register auto-startup: {Type}", type.FullName);
+            }
+        }
 
         // Suppress unnecessary logging during tests
         hostBuilder.ConfigureLogging(logging =>
