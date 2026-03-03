@@ -52,7 +52,7 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     {
         _loggerFactory = LoggerFactory.Create(builder =>
         {
-            builder.SetMinimumLevel(LogLevel.Warning);
+            builder.SetMinimumLevel(LogLevel.Debug);
             builder.AddConsole();
         });
 
