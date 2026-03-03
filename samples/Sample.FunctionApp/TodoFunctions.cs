@@ -6,14 +6,20 @@ namespace Sample.FunctionApp;
 
 public class TodoFunctions
 {
-    private static readonly List<TodoItem> Todos = new();
+    private readonly ITodoService _todoService;
+
+    public TodoFunctions(ITodoService todoService)
+    {
+        _todoService = todoService;
+    }
 
     [Function("GetTodos")]
     public async Task<HttpResponseData> GetTodos(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos")] HttpRequestData req)
     {
+        var todos = await _todoService.GetAllAsync();
         var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteAsJsonAsync(Todos, HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(todos, HttpStatusCode.OK);
         return response;
     }
 
@@ -22,8 +28,8 @@ public class TodoFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos/{id}")] HttpRequestData req,
         string id)
     {
-        var todo = Todos.FirstOrDefault(t => t.Id == id);
-        
+        var todo = await _todoService.GetByIdAsync(id);
+
         if (todo == null)
         {
             var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
@@ -40,7 +46,7 @@ public class TodoFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "todos")] HttpRequestData req)
     {
         var todo = await req.ReadFromJsonAsync<TodoItem>();
-        
+
         if (todo == null || string.IsNullOrWhiteSpace(todo.Title))
         {
             var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
@@ -48,13 +54,11 @@ public class TodoFunctions
             return badRequestResponse;
         }
 
-        todo.Id = Guid.NewGuid().ToString();
-        todo.CreatedAt = DateTime.UtcNow;
-        Todos.Add(todo);
+        var created = await _todoService.CreateAsync(todo);
 
         var response = req.CreateResponse(HttpStatusCode.Created);
-        response.Headers.Add("Location", $"/api/todos/{todo.Id}");
-        await response.WriteAsJsonAsync(todo, HttpStatusCode.Created);
+        response.Headers.Add("Location", $"/api/todos/{created.Id}");
+        await response.WriteAsJsonAsync(created, HttpStatusCode.Created);
         return response;
     }
 
@@ -63,16 +67,8 @@ public class TodoFunctions
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "todos/{id}")] HttpRequestData req,
         string id)
     {
-        var existingTodo = Todos.FirstOrDefault(t => t.Id == id);
-        
-        if (existingTodo == null)
-        {
-            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
-            return notFoundResponse;
-        }
-
         var updatedTodo = await req.ReadFromJsonAsync<TodoItem>();
-        
+
         if (updatedTodo == null || string.IsNullOrWhiteSpace(updatedTodo.Title))
         {
             var badRequestResponse = req.CreateResponse(HttpStatusCode.BadRequest);
@@ -80,29 +76,31 @@ public class TodoFunctions
             return badRequestResponse;
         }
 
-        existingTodo.Title = updatedTodo.Title;
-        existingTodo.IsCompleted = updatedTodo.IsCompleted;
-        existingTodo.UpdatedAt = DateTime.UtcNow;
+        var existing = await _todoService.UpdateAsync(id, updatedTodo);
 
-        var response = req.CreateResponse(HttpStatusCode.OK);
-        await response.WriteAsJsonAsync(existingTodo, HttpStatusCode.OK);
-        return response;
-    }
-
-    [Function("DeleteTodo")]
-    public HttpResponseData DeleteTodo(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "todos/{id}")] HttpRequestData req,
-        string id)
-    {
-        var todo = Todos.FirstOrDefault(t => t.Id == id);
-        
-        if (todo == null)
+        if (existing == null)
         {
             var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
             return notFoundResponse;
         }
 
-        Todos.Remove(todo);
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(existing, HttpStatusCode.OK);
+        return response;
+    }
+
+    [Function("DeleteTodo")]
+    public async Task<HttpResponseData> DeleteTodo(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "todos/{id}")] HttpRequestData req,
+        string id)
+    {
+        var deleted = await _todoService.DeleteAsync(id);
+
+        if (!deleted)
+        {
+            var notFoundResponse = req.CreateResponse(HttpStatusCode.NotFound);
+            return notFoundResponse;
+        }
 
         var response = req.CreateResponse(HttpStatusCode.NoContent);
         return response;
