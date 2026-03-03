@@ -1,5 +1,6 @@
 using AzureFunctions.TestFramework.Core.Grpc;
 using AzureFunctions.TestFramework.Core.Worker;
+using Microsoft.Azure.Functions.Worker.Core.FunctionMetadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
@@ -195,6 +196,7 @@ internal class FunctionInvoker : IFunctionInvoker
         return context.TriggerType switch
         {
             "timerTrigger" => InvokeTimerAsync(functionName, context, cancellationToken),
+            "serviceBusTrigger" => InvokeServiceBusAsync(functionName, context, cancellationToken),
             "queueTrigger" => InvokeQueueAsync(functionName, context, cancellationToken),
             _ => throw new NotSupportedException(
                 $"Trigger type '{context.TriggerType}' is not supported by this invoker. " +
@@ -213,6 +215,20 @@ internal class FunctionInvoker : IFunctionInvoker
         return _grpcHostService.InvokeTimerFunctionAsync(functionName, timerJson, cancellationToken);
     }
 
+    private Task<FunctionInvocationResult> InvokeServiceBusAsync(
+        string functionName,
+        FunctionInvocationContext context,
+        CancellationToken cancellationToken)
+    {
+        var bodyBytes = context.InputData.TryGetValue("$messageBodyBytes", out var b) && b is byte[] bytes
+            ? bytes
+            : Array.Empty<byte>();
+        var triggerMetadata = context.InputData.TryGetValue("$triggerMetadata", out var m)
+            ? m?.ToString()
+            : null;
+        return _grpcHostService.InvokeServiceBusFunctionAsync(functionName, bodyBytes, triggerMetadata, cancellationToken);
+    }
+
     private Task<FunctionInvocationResult> InvokeQueueAsync(
         string functionName,
         FunctionInvocationContext context,
@@ -224,7 +240,7 @@ internal class FunctionInvoker : IFunctionInvoker
         return _grpcHostService.InvokeQueueFunctionAsync(functionName, messageBytes, cancellationToken);
     }
 
-    public IReadOnlyDictionary<string, FunctionMetadata> GetFunctions()
+    public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions()
     {
         throw new NotImplementedException("Function metadata discovery coming soon");
     }
