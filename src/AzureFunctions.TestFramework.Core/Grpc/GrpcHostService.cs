@@ -27,6 +27,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
     private readonly Dictionary<string, (string FunctionId, string ParameterName)> _timerFunctionMap
         = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
+    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _serviceBusFunctionMap
+        = new(StringComparer.OrdinalIgnoreCase);
 
     public GrpcHostService(ILogger<GrpcHostService> logger, Assembly functionsAssembly)
     {
@@ -314,6 +317,78 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             Error = success ? null : invResponse?.Result?.Exception?.Message
         };
     }
+    /// <summary>
+    /// Invokes a Service Bus–triggered function by name, passing <paramref name="bodyBytes"/> as the
+    /// message body and optional <paramref name="triggerMetadataJson"/> as trigger metadata.
+    /// Unlike <see cref="SendInvocationRequestAsync"/> this method awaits the
+    /// <see cref="InvocationResponse"/> and returns a <see cref="FunctionInvocationResult"/>.
+    /// </summary>
+    /// <param name="functionName">The name of the Service Bus function (case-insensitive).</param>
+    /// <param name="bodyBytes">The raw message body bytes to pass as the trigger input.</param>
+    /// <param name="triggerMetadataJson">
+    /// Optional JSON string containing message metadata (MessageId, ContentType, etc.)
+    /// used by the worker to bind <c>ServiceBusReceivedMessage</c> parameters.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<FunctionInvocationResult> InvokeServiceBusFunctionAsync(
+        string functionName,
+        byte[] bodyBytes,
+        string? triggerMetadataJson = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_serviceBusFunctionMap.TryGetValue(functionName, out var entry))
+        {
+            var available = string.Join(", ", _serviceBusFunctionMap.Keys);
+            throw new InvalidOperationException(
+                $"No Service Bus function '{functionName}' found. Available Service Bus functions: [{available}]");
+        }
+
+        var invocationId = Guid.NewGuid().ToString();
+        var invocationRequest = new InvocationRequest
+        {
+            InvocationId = invocationId,
+            FunctionId = entry.FunctionId,
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
+                TraceState = string.Empty
+            }
+        };
+
+        invocationRequest.InputData.Add(new ParameterBinding
+        {
+            Name = entry.ParameterName,
+            Data = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFrom(bodyBytes) }
+        });
+
+        if (!string.IsNullOrEmpty(triggerMetadataJson))
+        {
+            invocationRequest.TriggerMetadata.Add(
+                entry.ParameterName,
+                new TypedData { Json = triggerMetadataJson });
+        }
+
+        var message = new StreamingMessage
+        {
+            RequestId = invocationId,
+            InvocationRequest = invocationRequest
+        };
+
+        var response = await SendMessageAsync(message, cancellationToken);
+        var invResponse = response.InvocationResponse;
+        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
+
+        _logger.LogDebug("Service Bus invocation {InvocationId} for '{FunctionName}' {Result}",
+            invocationId, functionName, success ? "succeeded" : "failed");
+
+        return new FunctionInvocationResult
+        {
+            InvocationId = invocationId,
+            Success = success,
+            Error = success ? null : invResponse?.Result?.Exception?.Message
+        };
+    }
+
     internal string? FindFunctionId(string httpMethod, string requestPath, string routePrefix = "api")
         => FindFunctionMatch(httpMethod, requestPath, routePrefix).FunctionId;
 
@@ -571,6 +646,16 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                                         : "myTimer";
                                     _timerFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
                                     _logger.LogDebug("Mapped timer function '{Name}' (param '{Param}') to ID '{FunctionId}'",
+                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
+                                }
+                                else if (triggerType.Equals("serviceBusTrigger", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // The "name" field is the function parameter name for the service bus binding.
+                                    var paramName = root.TryGetProperty("name", out var nameProp)
+                                        ? nameProp.GetString() ?? "message"
+                                        : "message";
+                                    _serviceBusFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
+                                    _logger.LogDebug("Mapped Service Bus function '{Name}' (param '{Param}') to ID '{FunctionId}'",
                                         functionMetadata.Name, paramName, functionMetadata.FunctionId);
                                 }
                             }
