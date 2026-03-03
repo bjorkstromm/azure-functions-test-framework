@@ -7,125 +7,75 @@
 - All NuGet dependencies resolve correctly
 - gRPC protocol definitions integrated from azure-functions-language-worker-protobuf
 
-### Worker Hosting ✅  
+### Worker Hosting ✅
 - Azure Functions Worker starts in-process using HostBuilder
 - No external processes required (no func.exe, no dotnet exec)
 - Worker connects successfully to our gRPC server via localhost
 - Bidirectional gRPC streaming (EventStream) functional
 - Proper port coordination between server and worker
+- Source-generated `IAutoConfigureStartup` implementations (`GeneratedFunctionMetadataProvider`, `DirectFunctionExecutor`) are automatically registered from the functions assembly
 
 ### gRPC Communication ✅
 - GrpcServerManager starts Kestrel with HTTP/2 on ephemeral port
 - GrpcHostService implements FunctionRpc bidirectional streaming
 - Worker connects and sends StartStream message
-- WorkerInitRequest/Response exchange successful
+- WorkerInitRequest/Response exchange successful (using TaskCompletionSource, not Task.Delay)
+- FunctionsMetadataRequest/Response returns all 7 functions
+- FunctionLoadRequest/Response succeeds for all functions
 - Logging and interceptor infrastructure working
+
+### Function Loading/Discovery ✅
+- `FUNCTIONS_APPLICATION_DIRECTORY` env var set to function assembly directory
+- `FunctionAppDirectory` in WorkerInitRequest set correctly
+- Worker discovers all functions via its source-generated `GeneratedFunctionMetadataProvider`
+- All functions loaded successfully before `StartAsync` returns
+- `FunctionsTestHost.StartAsync` awaits `WaitForFunctionsLoadedAsync()` to ensure full readiness
 
 ### HTTP Client API ✅
 - FunctionsTestHostBuilder with fluent API
-- CreateHttpClient() returns HttpClient with custom handler
+- `CreateHttpClient()` returns HttpClient with custom handler
 - FunctionsHttpMessageHandler intercepts HTTP requests
-- HttpRequestMapper converts HTTP → gRPC InvocationRequest
-- HttpResponseMapper converts gRPC InvocationResponse → HTTP response
+- Dynamic route map (keyed as `"METHOD:route"`) built from function metadata — no more hardcoded routes
+- HttpRequestMapper converts HTTP → gRPC InvocationRequest (includes required TraceContext)
+- HttpResponseMapper converts gRPC InvocationResponse → HTTP response (bytes decoded as UTF-8)
 
 ### Test Infrastructure ✅
-- Sample TodoAPI function app with 6 HTTP endpoints
+- Sample TodoAPI function app with 7 HTTP endpoints (including Health + Echo)
 - 8 comprehensive integration tests written
 - IAsyncLifetime pattern for test setup/cleanup
 - xUnit integration working
+- GET-only tests pass (GetTodos, GetTodo_NotFound, Health)
 
 ## 🔴 Current Blockers
 
-### Function Loading/Discovery (Critical)
+### POST/PUT Request Body Parsing (Critical)
 
-**Issue**: Functions are not being discovered/loaded by the worker, preventing invocation.
-
-**Symptoms**:
+**Issue**: Functions that read the HTTP request body (POST/PUT) fail with:
 ```
-Received 0 function(s) from worker
-Status Code: InternalServerError
-Content: Error invoking function: A task was canceled
+System.NotSupportedException: GrpcHttpRequestData expects binary data only.
+The provided data type was 'String'.
 ```
 
-**Technical Details**:
-1. FunctionsMetadataRequest returns empty list
-2. Worker needs function metadata to discover functions
-3. Metadata typically comes from:
-   - `.functions.json` files (generated at build time)
-   - Embedded resources
-   - Code generation by Azure Functions Worker SDK
+**Affected tests**: `CreateTodo`, `GetTodo_WhenExists`, `UpdateTodo`, `DeleteTodo`, `DeleteTodo` (all involve a POST/PUT first)
 
-4. Current state:
-   - No `.functions.json` files in Sample.FunctionApp/bin output
-   - Worker can't discover functions without metadata
-   - Invocations fail with timeout/cancellation
+**Root Cause**: `HttpRequestMapper` sets the request body as `TypedData.String`, but `GrpcHttpRequestData` in the .NET isolated worker only accepts `TypedData.Bytes`.
 
-**Suspected Root Causes**:
-1. **Missing Build Configuration**: Sample.FunctionApp might need special MSBuild properties to trigger metadata generation
-2. **SDK Target Not Running**: Azure Functions Worker SDK has build targets that generate metadata, might not be executing
-3. **Wrong Directory**: FunctionAppDirectory might not point to where metadata is expected
-4. **Metadata Format**: Dotnet-isolated might use different metadata format than in-process
-
-**Evidence**:
-```powershell
-# Checking Sample.FunctionApp output
-Get-ChildItem samples/Sample.FunctionApp/bin/Debug/net8.0 -Recurse -Filter "*.json"
-# Returns: extensions.json, host.json, local.settings.json, worker.config.json
-# Missing: function.json files or .azurefunctions/*.functions.json
-
-# .azurefunctions folder exists but only contains DLLs:
-samples/Sample.FunctionApp/bin/Debug/net8.0/.azurefunctions/
-  - function.deps.json
-  - Microsoft.Azure.Functions.Worker.Extensions.dll
-  - (no function metadata JSON files)
+**Fix required** in `src/AzureFunctions.TestFramework.Core/Http/HttpRequestMapper.cs`:
+```csharp
+// Change:
+httpRequest.Body = new TypedData { String = body };
+// To:
+httpRequest.Body = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFromUtf8(body) };
 ```
 
-**Next Steps** (In Priority Order):
-1. ✅ **Research Worker SDK**: Examine `Microsoft.Azure.Functions.Worker.Sdk` source
-   - Look at MSBuild targets for metadata generation
-   - Check if there's a property to enable/disable metadata generation
-   - See how official Azure Functions projects are configured
-
-2. ✅ **Check Sample.FunctionApp .csproj**: Compare with working Azure Functions project
-   - Ensure AzureFunctionsVersion is set
-   - Check for any missing SDK references
-   - Look for _FunctionsSkipCleanOutput or similar properties
-
-3. ✅ **Alternative Discovery**: Consider using reflection-based discovery
-   - Worker SDK has DefaultFunctionMetadataProvider
-   - Might be able to use IFunctionMetadataProvider directly
-   - Could bypass gRPC metadata request entirely
-
-4. ✅ **Debug Worker Startup**: Add detailed logging to see what the worker is doing
-   - Log what FunctionAppDirectory is set to
-   - Log what metadata provider is being used
-   - Capture any errors during function discovery
-
-5. ✅ **Test with Real func.exe**: Run Sample.FunctionApp with func.exe to see what gets generated
-   ```bash
-   cd samples/Sample.FunctionApp
-   func start
-   # Check if metadata files appear
-   ```
+**Also set `rawBody`** for completeness:
+```csharp
+httpRequest.RawBody = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFromUtf8(body) };
+```
 
 ## 🟡 Known Issues (Non-Blocking)
 
-### 1. Function Route Matching (Needs Work)
-**Location**: `src/AzureFunctions.TestFramework.Core/Client/FunctionsHttpMessageHandler.cs`
-
-**Issue**: Routes are hardcoded in FindFunctionIdFromRoute():
-```csharp
-var routeMap = new Dictionary<string, string>
-{
-    { "/api/todos", "GetTodos" },
-    { "/api/todos/{id}", "GetTodo" },
-    // ... hardcoded routes
-};
-```
-
-**Solution**: Needs dynamic route discovery from function metadata once function loading works.
-
-### 2. Disposal Warnings
+### 1. Disposal Warnings
 **Symptoms**: During test cleanup, see warnings:
 ```
 Error in event stream
@@ -136,37 +86,20 @@ ConnectionAbortedException: The connection was aborted because the server is shu
 **Impact**: Low - tests complete successfully, just noisy logs
 
 **Solution**: Implement graceful shutdown:
-- Stop accepting new requests before closing server
-- Increase HostOptions.ShutdownTimeout
-- Close worker connection cleanly before stopping server
+- Stop the worker host before stopping the gRPC server
+- Increase `HostOptions.ShutdownTimeout`
 
-### 3. Request ID Tracking
-**Location**: `src/AzureFunctions.TestFramework.Core/Grpc/GrpcHostService.cs`
-
-**Warning**: "Received response for unknown request: {guid}"
-
-**Cause**: Timing issue where worker sends response for WorkerInitRequest before we're tracking it
-
-**Solution**: Already mitigated by using Task.Run for async initialization. May need better request/response correlation.
-
-### 4. DI Service Overrides Not Tested
+### 2. DI Service Overrides Not Tested
 **Status**: Infrastructure in place but not tested
 
 **Location**: 
 - `WorkerHostService.ConfigureServices()`
 - `FunctionsTestHostBuilder.ConfigureServices()`
 
-**Next Steps**: Once function invocation works, add tests for:
+**Next Steps**: Add tests for:
 - Replacing services in DI container
 - Verifying overridden services are used
 - Scoped vs singleton behavior
-
-### 5. Function Metadata Discovery
-**Status**: Placeholder, needs implementation
-
-**Issue**: FunctionsHttpMessageHandler needs function metadata to map routes to function IDs
-
-**Depends On**: Function loading working first
 
 ## 🔵 Future Enhancements
 
@@ -212,16 +145,13 @@ Support for testing:
 dotnet build
 
 # Run all tests
-dotnet test
+dotnet test tests/Sample.FunctionApp.Tests
 
 # Run single test with detailed output
-dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
+dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
 
-# Check function metadata files
-Get-ChildItem samples/Sample.FunctionApp/bin/Debug/net8.0 -Recurse -Filter "*.json"
-
-# Check for function discovery logs
-dotnet test --filter "GetTodos_ReturnsEmptyList" 2>&1 | Select-String -Pattern "function"
+# Run only currently passing tests
+dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList|GetTodo_ReturnsNotFound|Health_ReturnsOk"
 ```
 
 ## Useful References
@@ -244,8 +174,8 @@ dotnet test --filter "GetTodos_ReturnsEmptyList" 2>&1 | Select-String -Pattern "
 
 ## Version Information
 - .NET: 8.0
-- Azure Functions Worker: 1.23.0
-- Grpc.AspNetCore: 2.68.0
-- xUnit: 2.9.2
+- Azure Functions Worker: 1.21.0
+- Grpc.AspNetCore: 2.62.0
+- xUnit: 2.4.2
 
-Last Updated: 2026-03-02
+Last Updated: 2026-03-03
