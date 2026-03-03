@@ -1,5 +1,6 @@
 using AzureFunctions.TestFramework.Core.Grpc;
 using AzureFunctions.TestFramework.Core.Worker;
+using Microsoft.Azure.Functions.Worker.Core.FunctionMetadata;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
@@ -212,7 +213,7 @@ internal class FunctionInvoker : IFunctionInvoker
         return _grpcHostService.InvokeTimerFunctionAsync(functionName, timerJson, cancellationToken);
     }
 
-    public IReadOnlyDictionary<string, FunctionMetadata> GetFunctions()
+    public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions()
     {
         throw new NotImplementedException("Function metadata discovery coming soon");
     }
