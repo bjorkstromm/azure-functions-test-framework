@@ -77,13 +77,22 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     /// <inheritdoc/>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        // Register a startup filter that automatically injects the x-ms-invocation-id header
-        // when it is absent. In production the Azure Functions host always adds this header;
-        // in tests we generate one so the FunctionsHttpProxyingMiddleware doesn't reject the
-        // request with "Expected correlation id header not present".
+        var grpcHostService = _grpcHostService;
+
         builder.ConfigureServices(services =>
         {
+            // Make the GrpcHostService available for injection into the bridge startup filter.
+            services.AddSingleton(grpcHostService);
+
+            // InvocationIdStartupFilter must be registered first so its middleware runs first in
+            // the pipeline, ensuring the x-ms-invocation-id header is present before the bridge
+            // middleware reads it.
             services.AddTransient<IStartupFilter, InvocationIdStartupFilter>();
+
+            // GrpcInvocationBridgeStartupFilter sends an InvocationRequest to the worker for
+            // every incoming HTTP request.  The worker's IHttpCoordinator then unblocks the
+            // WorkerRequestServicesMiddleware that is waiting for a matching FunctionContext.
+            services.AddTransient<IStartupFilter, GrpcInvocationBridgeStartupFilter>();
         });
     }
 
@@ -148,17 +157,13 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
             }
         }
 
-        System.IO.File.AppendAllText("/tmp/factory_diag.txt", $"[{DateTime.UtcNow:HH:mm:ss.fff}] Before base.CreateHost, IsConnected={_grpcHostService.IsConnected}\n");
         var host = base.CreateHost(builder);
-        System.IO.File.AppendAllText("/tmp/factory_diag.txt", $"[{DateTime.UtcNow:HH:mm:ss.fff}] After base.CreateHost, IsConnected={_grpcHostService.IsConnected}\n");
 
         // Block until the worker has connected and all functions are loaded so that
         // routes are registered in the ASP.NET Core router before any test request arrives.
         // Use Task.Run to ensure we execute on a thread-pool thread and avoid potential
         // synchronization-context deadlocks when GetAwaiter().GetResult() is called.
-        System.IO.File.AppendAllText("/tmp/factory_diag.txt", $"[{DateTime.UtcNow:HH:mm:ss.fff}] Starting WaitForFunctionsReadyAsync\n");
         Task.Run(WaitForFunctionsReadyAsync).GetAwaiter().GetResult();
-        System.IO.File.AppendAllText("/tmp/factory_diag.txt", $"[{DateTime.UtcNow:HH:mm:ss.fff}] WaitForFunctionsReadyAsync completed\n");
 
         return host;
     }
@@ -210,6 +215,57 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
                     if (!context.Request.Headers.ContainsKey(InvocationIdHeader))
                     {
                         context.Request.Headers[InvocationIdHeader] = Guid.NewGuid().ToString();
+                    }
+
+                    await nextMiddleware(context);
+                });
+
+                next(app);
+            };
+    }
+
+    /// <summary>
+    /// Startup filter that fires an <see cref="InvocationRequest"/> over the in-process gRPC
+    /// channel for every incoming HTTP request.
+    /// <para>
+    /// In production the Azure Functions host creates an <c>InvocationRequest</c> and sends it
+    /// to the isolated worker before forwarding the HTTP request to the worker's ASP.NET Core
+    /// pipeline.  The worker's <c>WorkerRequestServicesMiddleware</c> blocks waiting for a
+    /// matching <c>FunctionContext</c> supplied by the worker middleware (specifically
+    /// <c>FunctionsHttpProxyingMiddleware</c>), which in turn is triggered by the
+    /// <c>InvocationRequest</c>.  Without this bridge the request would hang indefinitely.
+    /// </para>
+    /// </summary>
+    private sealed class GrpcInvocationBridgeStartupFilter : IStartupFilter
+    {
+        private readonly GrpcHostService _grpcHostService;
+
+        public GrpcInvocationBridgeStartupFilter(GrpcHostService grpcHostService)
+        {
+            _grpcHostService = grpcHostService;
+        }
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
+            app =>
+            {
+                var grpc = _grpcHostService;
+
+                app.Use(async (context, nextMiddleware) =>
+                {
+                    if (context.Request.Headers.TryGetValue(
+                            InvocationIdHeader, out var invocationIdValues))
+                    {
+                        var invocationId = invocationIdValues.ToString();
+                        if (!string.IsNullOrEmpty(invocationId))
+                        {
+                            // Fire-and-forget: send InvocationRequest so the worker's
+                            // FunctionsHttpProxyingMiddleware calls SetFunctionContextAsync,
+                            // which in turn unblocks WorkerRequestServicesMiddleware.
+                            _ = Task.Run(() => grpc.SendInvocationRequestAsync(
+                                invocationId,
+                                context.Request.Method,
+                                context.Request.Path.Value ?? string.Empty));
+                        }
                     }
 
                     await nextMiddleware(context);
