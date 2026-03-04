@@ -3,9 +3,11 @@
 ## 🟢 What Works
 
 ### Core Infrastructure ✅
-- Solution structure with 5 projects builds successfully
+- Solution structure with 10 projects builds successfully (6 framework libs + 2 sample apps + 2 test suites per Worker SDK variant)
 - All NuGet dependencies resolve correctly
 - gRPC protocol definitions integrated from azure-functions-language-worker-protobuf
+- All framework libraries target `net8.0;net9.0;net10.0`
+- Worker SDK 1.x (1.21.0) and 2.x (2.51.0) supported from a single codebase via `WorkerSdkMajorVersion` MSBuild property
 
 ### Worker Hosting ✅
 - Azure Functions Worker starts in-process using HostBuilder
@@ -40,21 +42,11 @@
 - HttpResponseMapper converts gRPC InvocationResponse → HTTP response (bytes decoded as UTF-8)
 
 ### Test Infrastructure ✅
-- Sample function app with 7 HTTP endpoints (including Health + Echo), 1 HeartbeatTimer, 1 ServiceBus trigger, 1 Queue trigger
-- 14 integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`): 1 unit + 7 TodoFunctions + 3 DI override tests
-- 3 integration tests in `Sample.FunctionApp.Tests` using `WithHostBuilderFactory(Program.CreateWorkerHostBuilder)` — services inherited from `Program.cs` automatically (`ConfigureFunctionsWorkerDefaults()` mode)
-- 3 integration tests in `Sample.FunctionApp.Tests` using `WithHostBuilderFactory(Program.CreateHostBuilder)` — services inherited from `Program.cs` automatically (`ConfigureFunctionsWebApplication()` ASP.NET Core integration mode)
-- 3 timer integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Timer`)
-- 3 Service Bus integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.ServiceBus`)
-- 3 Queue integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Queue`)
-- 4 function metadata discovery tests in `Sample.FunctionApp.Tests` (via `IFunctionInvoker.GetFunctions()` returning `IReadOnlyDictionary<string, IFunctionMetadata>`)
-- 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests` (`FunctionsWebApplicationFactory`)
-- `IAsyncLifetime` pattern for per-test setup/cleanup (each gRPC test gets its own isolated host; WAF tests share one factory via `IClassFixture` with per-test `InMemoryTodoService.Reset()` for state isolation)
-- Tests run in parallel between test collections (`xunit.runner.json` with `parallelizeTestCollections: true`)
-- xUnit integration working
-- All `FunctionsTestHost` tests pass (GET, POST, PUT, DELETE, 404, function metadata discovery)
-- All `FunctionsWebApplicationFactory` tests pass (GET, POST, PUT, DELETE, `WithWebHostBuilder` service overrides)
-- Graceful gRPC EventStream shutdown on test teardown (no connection-abort errors, no Kestrel 5 s timeout)
+- Sample function app with 7 HTTP endpoints (including Health + Echo), 1 HeartbeatTimer, 1 ServiceBus trigger, 1 Queue trigger — available for both Worker SDK 1.x (`Sample.FunctionApp`, net8.0) and 2.x (`Sample.FunctionApp.Worker2`, net9.0)
+- **Worker SDK 1.x (net8.0)**: 30 integration tests in `Sample.FunctionApp.Tests` pass (gRPC-based)
+- **Worker SDK 1.x (net8.0)**: 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests` pass (WAF-based)
+- **Worker SDK 2.x (net9.0)**: 8 integration tests in `Sample.FunctionApp.Worker2.Tests` pass (gRPC-based)
+- **Worker SDK 2.x (net9.0)**: 4 integration tests in `Sample.FunctionApp.Worker2.WAF.Tests` pass (WAF-based)
 
 ### FunctionsWebApplicationFactory ✅
 - `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
@@ -165,13 +157,19 @@ Support for testing:
 
 ```bash
 # Build solution
-dotnet build
+dotnet build --configuration Release
 
-# Run gRPC-based tests
-dotnet test tests/Sample.FunctionApp.Tests
+# Worker SDK 1.x gRPC tests (.NET 8)
+dotnet test tests/Sample.FunctionApp.Tests --no-build --configuration Release
 
-# Run WebApplicationFactory-based tests
-dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests
+# Worker SDK 1.x WAF tests (.NET 8)
+dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests --no-build --configuration Release
+
+# Worker SDK 2.x gRPC tests (.NET 9)
+dotnet test tests/Sample.FunctionApp.Worker2.Tests --no-build --configuration Release
+
+# Worker SDK 2.x WAF tests (.NET 9)
+dotnet test tests/Sample.FunctionApp.Worker2.WAF.Tests --no-build --configuration Release
 
 # Run single test with detailed output
 dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
@@ -196,9 +194,10 @@ dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" 
 - Our goal: Provide similar experience for Azure Functions
 
 ## Version Information
-- .NET: 8.0
-- Azure Functions Worker: 1.21.0
+- .NET: 8.0 / 9.0 / 10.0 (multitargeted)
+- Azure Functions Worker SDK 1.x: 1.21.0 (net8.0 sample)
+- Azure Functions Worker SDK 2.x: 2.51.0 (net9.0 sample)
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
 
-Last Updated: 2026-03-04 (session 11)
+Last Updated: 2026-03-05 (session 12)

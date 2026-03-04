@@ -157,7 +157,7 @@ public class WorkerHostService : IWorkerHost
         // IMPORTANT: Set environment variables BEFORE creating HostBuilder!
         // ConfigureFunctionsWorkerDefaults calls AddEnvironmentVariables() which will read these
         Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated");
-        Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "8.0");
+        Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", $"{Environment.Version.Major}.0");
         Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("FUNCTIONS_APPLICATION_DIRECTORY", functionAppDirectory);
         // Pre-configure the ASP.NET Core server URL so that when ConfigureFunctionsWebApplication()

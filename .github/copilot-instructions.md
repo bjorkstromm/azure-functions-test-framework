@@ -7,7 +7,7 @@
 ## Project Overview
 This is an integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience. It runs Azure Functions in-process without func.exe, communicating via the worker's gRPC endpoints.
 
-**Current Status**: Both testing approaches are **fully functional**. The gRPC-based `FunctionsTestHost` supports full CRUD and TimerTrigger invocations (14/14 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). Tests run in parallel and in isolation. No known blockers.
+**Current Status**: Both testing approaches are **fully functional** for **Worker SDK 1.x (.NET 8) and Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD, TimerTrigger, QueueTrigger, and ServiceBusTrigger invocations (30/30 Worker1 tests pass, 8/8 Worker2 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass for both Worker 1.x and 2.x). All framework libraries target `net8.0;net9.0;net10.0`. Tests run in parallel and in isolation. No known blockers.
 
 ## Architecture
 
@@ -153,13 +153,19 @@ src/
     
 samples/
   Sample.FunctionApp/
-    Example Azure Functions app with TodoAPI
+    Worker SDK 1.x sample (net8.0) — TodoAPI + HeartbeatTimer + ServiceBus + Queue
+  Sample.FunctionApp.Worker2/
+    Worker SDK 2.x sample (net9.0) — same functions, updated packages
     
 tests/
   Sample.FunctionApp.Tests/
-    gRPC-based integration tests (FunctionsTestHost)
+    gRPC-based integration tests for Worker SDK 1.x (net8.0)
   Sample.FunctionApp.WebApplicationFactory.Tests/
-    WebApplicationFactory-based integration tests
+    WAF-based integration tests for Worker SDK 1.x (net8.0)
+  Sample.FunctionApp.Worker2.Tests/
+    gRPC-based integration tests for Worker SDK 2.x (net9.0)
+  Sample.FunctionApp.Worker2.WAF.Tests/
+    WAF-based integration tests for Worker SDK 2.x (net9.0)
 ```
 
 ## References
@@ -168,16 +174,18 @@ tests/
 - Worker Configuration: See WorkerHostBuilderExtensions.cs in azure-functions-dotnet-worker
 
 ## Success Metrics
-✅ Solution builds successfully
+✅ Solution builds successfully (net8.0 / net9.0 / net10.0)
 ✅ Worker starts in-process using HostBuilder
 ✅ Worker connects to gRPC server
 ✅ gRPC bidirectional streaming works
 ✅ Function loading/discovery (all 7 functions)
 ✅ Function invocation works (FunctionsTestHost — all HTTP methods + TimerTrigger)
-✅ All FunctionsTestHost integration tests pass (14/14)
+✅ All FunctionsTestHost integration tests pass (30/30 Worker1, 8/8 Worker2)
 ✅ FunctionsWebApplicationFactory works for all HTTP methods (GET, POST, PUT, DELETE)
 ✅ WithWebHostBuilder DI service overrides work end-to-end
 ✅ Tests run in parallel and in isolation (xUnit parallelizeTestCollections + IAsyncLifetime)
 ✅ Graceful gRPC EventStream shutdown (no connection-abort errors, no Kestrel 5 s timeout)
 ✅ CI workflow runs on pull requests and pushes to main
+✅ Worker SDK 1.x (1.21.0) and 2.x (2.51.0) both supported
+✅ All framework libraries target net8.0;net9.0;net10.0
 

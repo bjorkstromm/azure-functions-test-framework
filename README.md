@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes (30/30 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional for **Worker SDK 1.x (.NET 8) and Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes (30/30 tests pass for Worker 1.x). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass for both Worker 1.x and 2.x). All framework libraries target `net8.0;net9.0;net10.0`. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -247,18 +247,22 @@ public class ServiceBusFunctionTests : IAsyncLifetime
 
 ```
 src/
-  AzureFunctions.TestFramework.Core/       # gRPC host, worker hosting, HTTP invocation
-  AzureFunctions.TestFramework.AspNetCore/ # WebApplicationFactory-based testing
-  AzureFunctions.TestFramework.Http/       # HTTP-specific functionality (placeholder)
-  AzureFunctions.TestFramework.Timer/      # TimerTrigger invocation support
-  AzureFunctions.TestFramework.ServiceBus/ # ServiceBusTrigger invocation support
+  AzureFunctions.TestFramework.Core/       # gRPC host, worker hosting, HTTP invocation (net8.0;net9.0;net10.0)
+  AzureFunctions.TestFramework.AspNetCore/ # WebApplicationFactory-based testing (net8.0;net9.0;net10.0)
+  AzureFunctions.TestFramework.Http/       # HTTP-specific functionality (placeholder) (net8.0;net9.0;net10.0)
+  AzureFunctions.TestFramework.Timer/      # TimerTrigger invocation support (net8.0;net9.0;net10.0)
+  AzureFunctions.TestFramework.ServiceBus/ # ServiceBusTrigger invocation support (net8.0;net9.0;net10.0)
+  AzureFunctions.TestFramework.Queue/      # QueueTrigger invocation support (net8.0;net9.0;net10.0)
 
 samples/
-  Sample.FunctionApp/                      # Example Azure Functions app (TodoAPI + timers + service bus)
+  Sample.FunctionApp/                      # Worker SDK 1.x sample (net8.0, TodoAPI + timers + service bus)
+  Sample.FunctionApp.Worker2/              # Worker SDK 2.x sample (net9.0, same functions)
 
 tests/
-  Sample.FunctionApp.Tests/                         # gRPC-based integration tests (FunctionsTestHost)
-  Sample.FunctionApp.WebApplicationFactory.Tests/   # WebApplicationFactory-based integration tests
+  Sample.FunctionApp.Tests/                         # gRPC-based tests (Worker SDK 1.x / net8.0)
+  Sample.FunctionApp.WebApplicationFactory.Tests/   # WAF tests (Worker SDK 1.x / net8.0)
+  Sample.FunctionApp.Worker2.Tests/                 # gRPC-based tests (Worker SDK 2.x / net9.0)
+  Sample.FunctionApp.Worker2.WAF.Tests/             # WAF tests (Worker SDK 2.x / net9.0)
 ```
 
 ## Building
@@ -274,11 +278,17 @@ dotnet build
 # All tests
 dotnet test
 
-# gRPC-based tests only
+# Worker SDK 1.x gRPC tests (.NET 8)
 dotnet test tests/Sample.FunctionApp.Tests
 
-# WebApplicationFactory-based tests only
+# Worker SDK 1.x WebApplicationFactory tests (.NET 8)
 dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests
+
+# Worker SDK 2.x gRPC tests (.NET 9)
+dotnet test tests/Sample.FunctionApp.Worker2.Tests
+
+# Worker SDK 2.x WebApplicationFactory tests (.NET 9)
+dotnet test tests/Sample.FunctionApp.Worker2.WAF.Tests
 
 # Single test with detailed logging
 dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"

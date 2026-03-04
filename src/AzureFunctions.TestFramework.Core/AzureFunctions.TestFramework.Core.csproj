@@ -1,9 +1,13 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <!-- WorkerSdkMajorVersion controls which Worker SDK version is referenced.
+         Set to 1 (default) for Worker SDK 1.x, or 2 for Worker SDK 2.x. -->
+    <WorkerSdkMajorVersion Condition="'$(WorkerSdkMajorVersion)' == ''">1</WorkerSdkMajorVersion>
+    <DefineConstants Condition="'$(WorkerSdkMajorVersion)' == '2'">$(DefineConstants);WORKER_SDK_V2</DefineConstants>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,12 +20,18 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+  </ItemGroup>
+
+  <!-- Worker SDK 1.x packages -->
+  <ItemGroup Condition="'$(WorkerSdkMajorVersion)' == '1'">
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.21.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Grpc" Version="1.16.0" />
-    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.0" />
-    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- Worker SDK 2.x packages -->
+  <ItemGroup Condition="'$(WorkerSdkMajorVersion)' == '2'">
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.51.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Grpc" Version="2.51.0" />
   </ItemGroup>
 
   <ItemGroup>
