@@ -318,3 +318,63 @@ internal sealed class AspNetCoreForwardingHandler : HttpMessageHandler
         base.Dispose(disposing);
     }
 }
+
+/// <summary>
+/// An <see cref="HttpMessageHandler"/> that forwards requests to the worker's internal
+/// ASP.NET Core HTTP server (used when the worker is started with
+/// <c>ConfigureFunctionsWebApplication()</c>).
+/// <para>
+/// The handler rewrites the request URI to point to <c>http://127.0.0.1:{httpPort}</c> and
+/// injects a synthetic <c>x-ms-invocation-id</c> header when absent.  The worker's
+/// <c>InvocationIdStartupFilter</c> and <c>GrpcInvocationBridgeStartupFilter</c> then
+/// correlate the request with a gRPC <c>InvocationRequest</c> so that
+/// <c>WorkerRequestServicesMiddleware</c> can unblock and execute the function.
+/// </para>
+/// </summary>
+internal sealed class AspNetCoreForwardingHandler : HttpMessageHandler
+{
+    private const string InvocationIdHeader = "x-ms-invocation-id";
+
+    private readonly Uri _workerBaseUri;
+    private readonly HttpMessageInvoker _inner;
+
+    public AspNetCoreForwardingHandler(int httpPort)
+    {
+        _workerBaseUri = new Uri($"http://127.0.0.1:{httpPort}");
+        _inner = new HttpMessageInvoker(new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            UseProxy = false
+        });
+    }
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request,
+        CancellationToken cancellationToken)
+    {
+        // Rewrite URI to target the worker's Kestrel server while preserving path + query.
+        var original = request.RequestUri!;
+        request.RequestUri = new UriBuilder(_workerBaseUri)
+        {
+            Path = original.AbsolutePath,
+            Query = original.Query.TrimStart('?')
+        }.Uri;
+
+        // Inject a synthetic invocation ID if the caller didn't provide one.
+        if (!request.Headers.Contains(InvocationIdHeader))
+        {
+            request.Headers.TryAddWithoutValidation(InvocationIdHeader, Guid.NewGuid().ToString());
+        }
+
+        return await _inner.SendAsync(request, cancellationToken);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _inner.Dispose();
+        }
+        base.Dispose(disposing);
+    }
+}
