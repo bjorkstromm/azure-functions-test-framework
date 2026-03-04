@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer-trigger invocations, Service Bus trigger invocations, and queue trigger invocations (23/23 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). `WithHostBuilderFactory` now supports both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes (30/30 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -21,8 +21,9 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - Tests run in parallel (xUnit `parallelizeTestCollections`) and in isolation (per-test host via `IAsyncLifetime` for gRPC tests; shared `IClassFixture` factory + per-test `InMemoryTodoService.Reset()` for WAF tests)
 - gRPC EventStream shuts down gracefully on test teardown (no connection-abort errors, no Kestrel 5 s shutdown wait)
 - **TimerTrigger invocations** via `AzureFunctions.TestFramework.Timer` package (`InvokeTimerAsync` extension method)
-- **ServiceBusTrigger invocations** via `AzureFunctions.TestFramework.ServiceBus` package (`InvokeServiceBusAsync` extension method)
-- **QueueTrigger invocations** via `AzureFunctions.TestFramework.Queue` package (`InvokeQueueAsync` extension method)
+- **ServiceBus trigger invocations** via `AzureFunctions.TestFramework.ServiceBus` package (`InvokeServiceBusAsync` extension method)
+- **Queue trigger invocations** via `AzureFunctions.TestFramework.Queue` package (`InvokeQueueAsync` extension method)
+- **Function metadata discovery** via `IFunctionInvoker.GetFunctions()` — returns `IReadOnlyDictionary<string, IFunctionMetadata>` with name, function ID, entry point, script file, and raw binding JSON
 - **`WithHostBuilderFactory`** — non-WAF gRPC tests can reuse the app's own `Program.CreateWorkerHostBuilder` or `Program.CreateHostBuilder`, automatically inheriting all registered services without re-registering them in each test. Both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` are supported.
 
 ## Goals

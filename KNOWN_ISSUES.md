@@ -40,18 +40,19 @@
 - HttpResponseMapper converts gRPC InvocationResponse → HTTP response (bytes decoded as UTF-8)
 
 ### Test Infrastructure ✅
-- Sample TodoAPI function app with 7 HTTP endpoints (including Health + Echo)
-- 11 integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`): 1 unit + 7 TodoFunctions + 3 DI override tests
+- Sample function app with 7 HTTP endpoints (including Health + Echo), 1 HeartbeatTimer, 1 ServiceBus trigger, 1 Queue trigger
+- 14 integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`): 1 unit + 7 TodoFunctions + 3 DI override tests
 - 3 integration tests in `Sample.FunctionApp.Tests` using `WithHostBuilderFactory(Program.CreateWorkerHostBuilder)` — services inherited from `Program.cs` automatically (`ConfigureFunctionsWorkerDefaults()` mode)
 - 3 integration tests in `Sample.FunctionApp.Tests` using `WithHostBuilderFactory(Program.CreateHostBuilder)` — services inherited from `Program.cs` automatically (`ConfigureFunctionsWebApplication()` ASP.NET Core integration mode)
 - 3 timer integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Timer`)
 - 3 Service Bus integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.ServiceBus`)
-- 3 queue integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Queue`)
+- 3 Queue integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Queue`)
+- 4 function metadata discovery tests in `Sample.FunctionApp.Tests` (via `IFunctionInvoker.GetFunctions()` returning `IReadOnlyDictionary<string, IFunctionMetadata>`)
 - 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests` (`FunctionsWebApplicationFactory`)
 - `IAsyncLifetime` pattern for per-test setup/cleanup (each gRPC test gets its own isolated host; WAF tests share one factory via `IClassFixture` with per-test `InMemoryTodoService.Reset()` for state isolation)
 - Tests run in parallel between test collections (`xunit.runner.json` with `parallelizeTestCollections: true`)
 - xUnit integration working
-- All `FunctionsTestHost` tests pass (GET, POST, PUT, DELETE, 404)
+- All `FunctionsTestHost` tests pass (GET, POST, PUT, DELETE, 404, function metadata discovery)
 - All `FunctionsWebApplicationFactory` tests pass (GET, POST, PUT, DELETE, `WithWebHostBuilder` service overrides)
 - Graceful gRPC EventStream shutdown on test teardown (no connection-abort errors, no Kestrel 5 s timeout)
 
@@ -126,8 +127,8 @@ ConnectionAbortedException: The connection was aborted because the server is shu
 
 ### 1. Additional Trigger Types
 - ✅ Timer triggers (`AzureFunctions.TestFramework.Timer` package — `InvokeTimerAsync`)
-- ✅ Service Bus triggers (`AzureFunctions.TestFramework.ServiceBus` package — `InvokeServiceBusAsync`)
 - ✅ Queue triggers (`AzureFunctions.TestFramework.Queue` package — `InvokeQueueAsync`)
+- ✅ Service Bus triggers (`AzureFunctions.TestFramework.ServiceBus` package — `InvokeServiceBusAsync`)
 - Blob triggers  
 - Event Grid triggers
 
@@ -200,4 +201,4 @@ dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" 
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
 
-Last Updated: 2026-03-03 (session 9)
+Last Updated: 2026-03-04 (session 11)

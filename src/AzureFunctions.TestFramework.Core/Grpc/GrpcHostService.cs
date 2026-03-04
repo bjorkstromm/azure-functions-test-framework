@@ -1,4 +1,5 @@
 using Grpc.Core;
+using Microsoft.Azure.Functions.Worker.Core.FunctionMetadata;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
@@ -33,6 +34,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
     private readonly Dictionary<string, (string FunctionId, string ParameterName)> _queueFunctionMap
         = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function name (case-insensitive); Value: IFunctionMetadata
+    private readonly Dictionary<string, IFunctionMetadata> _functionMetadataMap
+        = new(StringComparer.OrdinalIgnoreCase);
 
     public GrpcHostService(ILogger<GrpcHostService> logger, Assembly functionsAssembly)
     {
@@ -60,6 +64,11 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// Key format is "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}".
     /// </summary>
     public IReadOnlyDictionary<string, string> FunctionRouteMap => _functionRouteToId;
+
+    /// <summary>
+    /// Gets the metadata for all discovered functions, keyed by function name.
+    /// </summary>
+    public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions() => _functionMetadataMap;
 
     /// <summary>
     /// Waits until all functions have been discovered and loaded.
@@ -320,6 +329,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             Error = success ? null : invResponse?.Result?.Exception?.Message
         };
     }
+
     /// <summary>
     /// Invokes a Service Bus–triggered function by name, passing <paramref name="bodyBytes"/> as the
     /// message body and optional <paramref name="triggerMetadataJson"/> as trigger metadata.
@@ -736,6 +746,15 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                             // Ignore malformed bindings
                         }
                     }
+
+                    // Store IFunctionMetadata for this function using DefaultFunctionMetadata
+                    _functionMetadataMap[functionMetadata.Name] = new DefaultFunctionMetadata
+                    {
+                        Name = functionMetadata.Name,
+                        EntryPoint = functionMetadata.EntryPoint,
+                        ScriptFile = functionMetadata.ScriptFile,
+                        RawBindings = functionMetadata.RawBindings.ToList()
+                    };
                 }
 
                 _functionsLoadedTcs.TrySetResult(true);
