@@ -83,7 +83,7 @@ public class TodoFunctionsTests : IAsyncLifetime
         var createdTodo = await createResponse.Content.ReadFromJsonAsync<Todo>();
 
         // Act
-        var response = await _client.GetAsync($"/api/todos/{createdTodo!.Id}");
+        var response = await _client!.GetAsync($"/api/todos/{createdTodo!.Id}");
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -113,7 +113,7 @@ public class TodoFunctionsTests : IAsyncLifetime
 
         // Act
         var updateData = new { Title = "Updated Title", IsCompleted = true };
-        var response = await _client.PutAsJsonAsync($"/api/todos/{createdTodo!.Id}", updateData);
+        var response = await _client!.PutAsJsonAsync($"/api/todos/{createdTodo!.Id}", updateData);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -132,7 +132,7 @@ public class TodoFunctionsTests : IAsyncLifetime
         var createdTodo = await createResponse.Content.ReadFromJsonAsync<Todo>();
 
         // Act
-        var response = await _client.DeleteAsync($"/api/todos/{createdTodo!.Id}");
+        var response = await _client!.DeleteAsync($"/api/todos/{createdTodo!.Id}");
 
         // Assert
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);

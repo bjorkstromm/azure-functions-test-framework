@@ -62,7 +62,7 @@ public class FunctionsWebApplicationFactoryTests
         Assert.NotNull(created);
         Assert.Equal("WAF Worker2 Test", created.Title);
 
-        var getResponse = await _client.GetAsync($"/api/todos/{created.Id}");
+        var getResponse = await _client!.GetAsync($"/api/todos/{created.Id}");
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
     }
 

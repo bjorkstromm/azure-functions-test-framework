@@ -65,11 +65,11 @@ public class FunctionMetadataDiscoveryTests : IAsyncLifetime
 
         // Assert — GetTodos should have an httpTrigger binding in RawBindings
         Assert.True(functions.TryGetValue("GetTodos", out var getTodos), "GetTodos not found");
-        Assert.NotEmpty(getTodos!.FunctionId);
-        Assert.NotEmpty(getTodos.EntryPoint);
+        Assert.NotEmpty(getTodos!.FunctionId!);
+        Assert.NotEmpty(getTodos.EntryPoint!);
 
         // RawBindings contains JSON strings; verify the httpTrigger binding is present
-        Assert.Contains(getTodos.RawBindings, b =>
+        Assert.Contains(getTodos.RawBindings!, b =>
             b.Contains("httpTrigger", StringComparison.OrdinalIgnoreCase) &&
             b.Contains("\"req\"", StringComparison.OrdinalIgnoreCase));
     }
@@ -82,9 +82,9 @@ public class FunctionMetadataDiscoveryTests : IAsyncLifetime
 
         // Assert — HeartbeatTimer should have a timerTrigger binding in RawBindings
         Assert.True(functions.TryGetValue("HeartbeatTimer", out var heartbeat), "HeartbeatTimer not found");
-        Assert.NotEmpty(heartbeat!.FunctionId);
+        Assert.NotEmpty(heartbeat!.FunctionId!);
 
-        Assert.Contains(heartbeat.RawBindings, b =>
+        Assert.Contains(heartbeat.RawBindings!, b =>
             b.Contains("timerTrigger", StringComparison.OrdinalIgnoreCase));
     }
 
@@ -99,7 +99,7 @@ public class FunctionMetadataDiscoveryTests : IAsyncLifetime
         {
             Assert.False(string.IsNullOrEmpty(metadata.Name), $"{name}: Name should not be empty");
             Assert.False(string.IsNullOrEmpty(metadata.FunctionId), $"{name}: FunctionId should not be empty");
-            Assert.NotEmpty(metadata.RawBindings);
+            Assert.NotEmpty(metadata.RawBindings!);
         }
     }
 }
