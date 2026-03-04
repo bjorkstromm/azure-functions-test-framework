@@ -32,15 +32,25 @@ public interface IFunctionsTestHostBuilder
 
     /// <summary>
     /// Specifies a factory used to create the underlying <see cref="IHostBuilder"/> for the
-    /// Functions worker.  Pass your application's <c>Program.CreateWorkerHostBuilder</c> method
-    /// here so that all services, middleware and configuration registered in <c>Program.cs</c>
-    /// are automatically available in the test host — exactly as they would be at runtime.
+    /// Functions worker.  Pass your application's <c>Program.CreateHostBuilder</c> or
+    /// <c>Program.CreateWorkerHostBuilder</c> method here so that all services, middleware and
+    /// configuration registered in <c>Program.cs</c> are automatically available in the test host
+    /// — exactly as they would be at runtime.
     /// <para>
-    /// The factory must configure the worker with <c>ConfigureFunctionsWorkerDefaults()</c>
-    /// (not <c>ConfigureFunctionsWebApplication()</c>), because the non-WAF gRPC path dispatches
-    /// invocations directly over gRPC and does not use an ASP.NET Core HTTP pipeline inside the
-    /// worker.
+    /// Both <c>ConfigureFunctionsWorkerDefaults()</c> and <c>ConfigureFunctionsWebApplication()</c>
+    /// are supported:
     /// </para>
+    /// <list type="bullet">
+    ///   <item><description>
+    ///     <c>ConfigureFunctionsWorkerDefaults()</c> — invocations are dispatched directly via
+    ///     the gRPC <c>InvocationRequest</c> channel (no ASP.NET Core HTTP pipeline needed).
+    ///   </description></item>
+    ///   <item><description>
+    ///     <c>ConfigureFunctionsWebApplication()</c> — the worker's ASP.NET Core HTTP server is
+    ///     started on an ephemeral port; <see cref="IFunctionsTestHost.CreateHttpClient"/> returns
+    ///     a client that forwards requests to that server.
+    ///   </description></item>
+    /// </list>
     /// <para>
     /// When a factory is provided the framework overlays the gRPC connection settings and
     /// <c>IAutoConfigureStartup</c> registrations on top of the returned builder; any
@@ -50,7 +60,7 @@ public interface IFunctionsTestHostBuilder
     /// </summary>
     /// <param name="factory">
     /// A delegate that accepts command-line arguments and returns a configured
-    /// <see cref="IHostBuilder"/>, e.g. <c>args => Program.CreateWorkerHostBuilder(args)</c>.
+    /// <see cref="IHostBuilder"/>, e.g. <c>args => Program.CreateHostBuilder(args)</c>.
     /// </param>
     IFunctionsTestHostBuilder WithHostBuilderFactory(Func<string[], IHostBuilder> factory);
 

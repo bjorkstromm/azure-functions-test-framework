@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer-trigger invocations, Service Bus trigger invocations, and queue trigger invocations (20/20 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer-trigger invocations, Service Bus trigger invocations, and queue trigger invocations (23/23 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass). `WithHostBuilderFactory` now supports both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -23,7 +23,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - **TimerTrigger invocations** via `AzureFunctions.TestFramework.Timer` package (`InvokeTimerAsync` extension method)
 - **ServiceBusTrigger invocations** via `AzureFunctions.TestFramework.ServiceBus` package (`InvokeServiceBusAsync` extension method)
 - **QueueTrigger invocations** via `AzureFunctions.TestFramework.Queue` package (`InvokeQueueAsync` extension method)
-- **`WithHostBuilderFactory`** — non-WAF gRPC tests can reuse the app's own `Program.CreateWorkerHostBuilder`, automatically inheriting all registered services without re-registering them in each test
+- **`WithHostBuilderFactory`** — non-WAF gRPC tests can reuse the app's own `Program.CreateWorkerHostBuilder` or `Program.CreateHostBuilder`, automatically inheriting all registered services without re-registering them in each test. Both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` are supported.
 
 ## Goals
 
@@ -53,7 +53,7 @@ _testHost = await new FunctionsTestHostBuilder()
     .BuildAndStartAsync();
 ```
 
-**Option B — Use `Program.CreateWorkerHostBuilder`** (inherit all app services automatically):
+**Option B — Use `Program.CreateWorkerHostBuilder`** (inherit all app services automatically, `ConfigureFunctionsWorkerDefaults()` mode):
 
 ```csharp
 // Program.cs — expose a worker-specific builder for gRPC non-WAF testing
@@ -78,9 +78,27 @@ _testHost = await new FunctionsTestHostBuilder()
     .BuildAndStartAsync();
 ```
 
-> ⚠️ The factory passed to `WithHostBuilderFactory` must use `ConfigureFunctionsWorkerDefaults()`, **not** `ConfigureFunctionsWebApplication()`.
-> `ConfigureFunctionsWebApplication()` sets up an internal ASP.NET Core pipeline inside the worker that requires a live HTTP server — which is not available in gRPC non-WAF mode.
-> Use `ConfigureFunctionsWebApplication()` only with `FunctionsWebApplicationFactory` (WAF mode).
+**Option C — Use `Program.CreateHostBuilder`** (inherit all app services automatically, `ConfigureFunctionsWebApplication()` ASP.NET Core integration mode):
+
+```csharp
+// Program.cs — the standard CreateHostBuilder uses ConfigureFunctionsWebApplication()
+public partial class Program
+{
+    public static IHostBuilder CreateHostBuilder(string[] args) =>
+        new HostBuilder()
+            .ConfigureFunctionsWebApplication()
+            .ConfigureServices(ConfigureServices);
+}
+
+// Test — framework auto-detects ASP.NET Core mode and routes HTTP requests
+// to the worker's Kestrel server instead of dispatching over gRPC directly
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyFunctions).Assembly)
+    .WithHostBuilderFactory(Program.CreateHostBuilder)
+    .BuildAndStartAsync();
+```
+
+> ℹ️ The framework auto-detects which mode is in use. With `ConfigureFunctionsWorkerDefaults()`, HTTP requests are dispatched via the gRPC `InvocationRequest` channel. With `ConfigureFunctionsWebApplication()`, the framework starts the worker's internal Kestrel server on an ephemeral port and routes `HttpClient` requests there.
 
 ### 2. FunctionsWebApplicationFactory (ASP.NET Core pipeline)
 

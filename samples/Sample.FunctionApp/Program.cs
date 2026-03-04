@@ -10,13 +10,16 @@ await Program.CreateHostBuilder(args).Build().RunAsync();
 // can locate and call it to build the host with a TestServer instead of Kestrel.
 public partial class Program
 {
-    // Used by FunctionsWebApplicationFactory (WAF / ASP.NET Core integration mode).
+    // Used by FunctionsWebApplicationFactory (WAF / ASP.NET Core integration mode) AND
+    // by FunctionsTestHostBuilder.WithHostBuilderFactory (non-WAF mode with ASP.NET Core integration).
+    // In non-WAF mode the framework auto-detects the ASP.NET Core server and routes HTTP requests
+    // to the worker's Kestrel server instead of dispatching directly over gRPC.
     public static IHostBuilder CreateHostBuilder(string[] args) =>
         new HostBuilder()
             .ConfigureFunctionsWebApplication()
             .ConfigureServices(ConfigureServices);
 
-    // Used by FunctionsTestHostBuilder.WithHostBuilderFactory (non-WAF gRPC mode).
+    // Used by FunctionsTestHostBuilder.WithHostBuilderFactory (non-WAF gRPC-direct mode).
     // Uses ConfigureFunctionsWorkerDefaults() so that HTTP trigger invocations are
     // dispatched directly via the gRPC InvocationRequest channel without requiring a
     // running ASP.NET Core HTTP pipeline inside the worker.

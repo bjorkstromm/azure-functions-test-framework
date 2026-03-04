@@ -97,6 +97,7 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
             workerLogger,
             actualPort,
             _functionsAssembly,
+            grpcHostService,
             _hostBuilderFactory);
 
         // Apply service configurators

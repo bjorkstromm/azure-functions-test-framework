@@ -42,7 +42,8 @@
 ### Test Infrastructure ✅
 - Sample TodoAPI function app with 7 HTTP endpoints (including Health + Echo)
 - 11 integration tests in `Sample.FunctionApp.Tests` (gRPC-based, `FunctionsTestHost`): 1 unit + 7 TodoFunctions + 3 DI override tests
-- 3 integration tests in `Sample.FunctionApp.Tests` using `WithHostBuilderFactory(Program.CreateWorkerHostBuilder)` — services inherited from `Program.cs` automatically
+- 3 integration tests in `Sample.FunctionApp.Tests` using `WithHostBuilderFactory(Program.CreateWorkerHostBuilder)` — services inherited from `Program.cs` automatically (`ConfigureFunctionsWorkerDefaults()` mode)
+- 3 integration tests in `Sample.FunctionApp.Tests` using `WithHostBuilderFactory(Program.CreateHostBuilder)` — services inherited from `Program.cs` automatically (`ConfigureFunctionsWebApplication()` ASP.NET Core integration mode)
 - 3 timer integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Timer`)
 - 3 Service Bus integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.ServiceBus`)
 - 3 queue integration tests in `Sample.FunctionApp.Tests` (via `AzureFunctions.TestFramework.Queue`)
@@ -61,6 +62,12 @@
 - Host startup completes in ~0.5 s — no longer hangs
 - All HTTP methods (GET, POST, PUT, DELETE) pass end-to-end
 - `WithWebHostBuilder` service overrides work — secondary worker EventStream ends cleanly before host DI is disposed
+
+### FunctionsTestHost — ASP.NET Core Integration Mode ✅
+- `WithHostBuilderFactory(Program.CreateHostBuilder)` now works with `ConfigureFunctionsWebApplication()` in non-WAF mode
+- The framework auto-detects ASP.NET Core integration by checking for `IServer` in the worker's DI container after startup
+- When detected: `WorkerHostService` starts the worker's Kestrel server on a pre-allocated ephemeral port; `CreateHttpClient()` returns a client backed by `AspNetCoreForwardingHandler` that rewrites request URIs and injects `x-ms-invocation-id`
+- Startup filters (`InvocationIdStartupFilter`, `GrpcInvocationBridgeStartupFilter`) are registered in the worker's DI for all factory-backed hosts; they are no-ops when `ConfigureFunctionsWorkerDefaults()` is used (no `IApplicationBuilder` pipeline exists)
 
 ## 🔴 Current Blockers
 

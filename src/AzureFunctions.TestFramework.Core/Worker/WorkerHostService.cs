@@ -1,8 +1,13 @@
+using AzureFunctions.TestFramework.Core.Grpc;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Net;
 using System.Reflection;
 
 namespace AzureFunctions.TestFramework.Core.Worker;
@@ -18,20 +23,34 @@ public class WorkerHostService : IWorkerHost
     private readonly int _grpcPort;
     private readonly Assembly _functionsAssembly;
     private readonly Func<string[], IHostBuilder>? _hostBuilderFactory;
+    private readonly GrpcHostService _grpcHostService;
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = new();
     private IHost? _workerHost;
     private bool _isInitialized;
+    private int? _httpPort;
+    private readonly int _allocatedHttpPort;
+
+    /// <summary>
+    /// The port on which the worker's ASP.NET Core HTTP server is listening, or <c>null</c>
+    /// when the worker is using <c>ConfigureFunctionsWorkerDefaults()</c> (gRPC-direct mode).
+    /// Populated after <see cref="StartAsync"/> when the worker has started successfully and
+    /// an ASP.NET Core HTTP server (<c>IServer</c>) is detected in its service container.
+    /// </summary>
+    public int? HttpPort => _httpPort;
 
     public WorkerHostService(
         ILogger<WorkerHostService> logger,
         int grpcPort,
         Assembly functionsAssembly,
+        GrpcHostService grpcHostService,
         Func<string[], IHostBuilder>? hostBuilderFactory = null)
     {
         _logger = logger;
         _grpcPort = grpcPort;
         _functionsAssembly = functionsAssembly;
+        _grpcHostService = grpcHostService;
         _hostBuilderFactory = hostBuilderFactory;
+        _allocatedHttpPort = FindAvailablePort();
     }
 
     /// <summary>
@@ -67,6 +86,16 @@ public class WorkerHostService : IWorkerHost
 
             // Start the worker
             await _workerHost.StartAsync(cancellationToken);
+
+            // Auto-detect ASP.NET Core integration mode: if an IServer is registered in the
+            // worker's DI container, the factory used ConfigureFunctionsWebApplication() and
+            // the worker has a live HTTP server listening on the allocated HTTP port.
+            if (_workerHost.Services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>() != null)
+            {
+                _httpPort = _allocatedHttpPort;
+                _logger.LogInformation(
+                    "ASP.NET Core integration detected; worker HTTP server on port {HttpPort}", _httpPort);
+            }
 
             _isInitialized = true;
             _logger.LogInformation("In-process Functions worker started successfully");
@@ -119,6 +148,7 @@ public class WorkerHostService : IWorkerHost
         var grpcUri = $"http://127.0.0.1:{_grpcPort}";
         var workerId = Guid.NewGuid().ToString();
         var requestId = Guid.NewGuid().ToString();
+        var httpUri = $"http://127.0.0.1:{_allocatedHttpPort}";
         
         _logger.LogInformation("Configuring worker to connect to {GrpcUri}", grpcUri);
         
@@ -130,13 +160,14 @@ public class WorkerHostService : IWorkerHost
         Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", "8.0");
         Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("FUNCTIONS_APPLICATION_DIRECTORY", functionAppDirectory);
+        // Pre-configure the ASP.NET Core server URL so that when ConfigureFunctionsWebApplication()
+        // is used the worker's Kestrel server listens on the allocated HTTP port.
+        // Ignored when ConfigureFunctionsWorkerDefaults() is used (no Kestrel is started).
+        Environment.SetEnvironmentVariable("ASPNETCORE_URLS", httpUri);
 
         // Get the base HostBuilder: use the factory if provided, otherwise create a fresh one.
         // When a factory (e.g. Program.CreateWorkerHostBuilder) is supplied, all services,
         // middleware and configuration registered in Program.cs are included automatically.
-        // The factory must use ConfigureFunctionsWorkerDefaults() (not ConfigureFunctionsWebApplication())
-        // because the non-WAF gRPC path dispatches invocations directly and does not use an
-        // ASP.NET Core HTTP pipeline inside the worker.
         var hostBuilder = _hostBuilderFactory != null
             ? _hostBuilderFactory([])
             : new HostBuilder();
@@ -155,7 +186,10 @@ public class WorkerHostService : IWorkerHost
                 ["Functions:Worker:HostEndpoint"] = grpcUri,
                 ["Functions:Worker:WorkerId"] = workerId,
                 ["Functions:Worker:RequestId"] = requestId,
-                ["Functions:Worker:GrpcMaxMessageLength"] = "2147483647"
+                ["Functions:Worker:GrpcMaxMessageLength"] = "2147483647",
+                // Ensure the ASP.NET Core URL is set at host-config level too so that
+                // ConfigureFunctionsWebApplication() picks it up reliably.
+                ["urls"] = httpUri
             };
 
             config.AddInMemoryCollection(configValues);
@@ -223,6 +257,23 @@ public class WorkerHostService : IWorkerHost
             config.AddInMemoryCollection(configValues);
         });
 
+        // Register the ASP.NET Core integration startup filters.
+        // When ConfigureFunctionsWebApplication() is used, these filters are invoked by the
+        // worker's ASP.NET Core pipeline for every incoming HTTP request:
+        //   1. InvocationIdStartupFilter  – injects a synthetic x-ms-invocation-id header.
+        //   2. GrpcInvocationBridgeStartupFilter – fires a gRPC InvocationRequest so that the
+        //      worker's WorkerRequestServicesMiddleware can correlate the HTTP request with a
+        //      FunctionContext and unblock.
+        // When ConfigureFunctionsWorkerDefaults() is used, no IApplicationBuilder pipeline
+        // exists so these filters are registered but never invoked — they are no-ops.
+        var grpcHostService = _grpcHostService;
+        hostBuilder.ConfigureServices(services =>
+        {
+            services.AddSingleton(grpcHostService);
+            services.AddTransient<IStartupFilter, InvocationIdStartupFilter>();
+            services.AddTransient<IStartupFilter, GrpcInvocationBridgeStartupFilter>();
+        });
+
         // Discover and invoke IAutoConfigureStartup implementations from the functions assembly.
         // This registers the source-generated GeneratedFunctionMetadataProvider (IFunctionMetadataProvider)
         // and DirectFunctionExecutor (IFunctionExecutor) so the worker can discover and execute functions.
@@ -250,5 +301,109 @@ public class WorkerHostService : IWorkerHost
         });
 
         return hostBuilder.Build();
+    }
+
+    private static int FindAvailablePort()
+    {
+        // Bind to port 0 so the OS assigns a free port, then read it back.
+        // The socket is closed before the caller uses the port, leaving a small window for
+        // another process to claim it.  This is an accepted trade-off in test utilities; the
+        // probability of collision is very low in practice.
+        using var socket = new System.Net.Sockets.Socket(
+            System.Net.Sockets.AddressFamily.InterNetwork,
+            System.Net.Sockets.SocketType.Stream,
+            System.Net.Sockets.ProtocolType.Tcp);
+        socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
+        return ((IPEndPoint)socket.LocalEndPoint!).Port;
+    }
+
+    /// <summary>
+    /// Startup filter that injects a synthetic <c>x-ms-invocation-id</c> header into every
+    /// incoming request that does not already carry one.  Used when the worker is configured
+    /// with <c>ConfigureFunctionsWebApplication()</c> (ASP.NET Core integration mode).
+    /// </summary>
+    private sealed class InvocationIdStartupFilter : IStartupFilter
+    {
+        private const string InvocationIdHeader = "x-ms-invocation-id";
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
+            app =>
+            {
+                app.Use(static async (context, nextMiddleware) =>
+                {
+                    if (!context.Request.Headers.ContainsKey(InvocationIdHeader))
+                    {
+                        context.Request.Headers[InvocationIdHeader] = Guid.NewGuid().ToString();
+                    }
+
+                    await nextMiddleware(context);
+                });
+
+                next(app);
+            };
+    }
+
+    /// <summary>
+    /// Startup filter that fires an <see cref="Grpc.GrpcHostService.SendInvocationRequestAsync"/>
+    /// call for every incoming HTTP request.  This unblocks the worker's
+    /// <c>WorkerRequestServicesMiddleware</c> which waits for a matching <c>FunctionContext</c>
+    /// created by the gRPC <c>InvocationRequest</c>.  Used when the worker is configured with
+    /// <c>ConfigureFunctionsWebApplication()</c> (ASP.NET Core integration mode).
+    /// </summary>
+    private sealed class GrpcInvocationBridgeStartupFilter : IStartupFilter
+    {
+        private const string InvocationIdHeader = "x-ms-invocation-id";
+        private readonly GrpcHostService _grpcHostService;
+        private readonly ILogger<GrpcInvocationBridgeStartupFilter> _logger;
+
+        public GrpcInvocationBridgeStartupFilter(
+            GrpcHostService grpcHostService,
+            ILogger<GrpcInvocationBridgeStartupFilter> logger)
+        {
+            _grpcHostService = grpcHostService;
+            _logger = logger;
+        }
+
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
+            app =>
+            {
+                var grpc = _grpcHostService;
+                var logger = _logger;
+
+                app.Use(async (context, nextMiddleware) =>
+                {
+                    if (context.Request.Headers.TryGetValue(
+                            InvocationIdHeader, out var invocationIdValues))
+                    {
+                        var invocationId = invocationIdValues.ToString();
+                        if (!string.IsNullOrEmpty(invocationId))
+                        {
+                            var method = context.Request.Method;
+                            var path = context.Request.Path.Value ?? string.Empty;
+
+                            // Fire-and-forget: send InvocationRequest so the worker's
+                            // FunctionsHttpProxyingMiddleware calls SetFunctionContextAsync,
+                            // which in turn unblocks WorkerRequestServicesMiddleware.
+                            _ = Task.Run(async () =>
+                            {
+                                try
+                                {
+                                    await grpc.SendInvocationRequestAsync(invocationId, method, path);
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.LogWarning(ex,
+                                        "Failed to send InvocationRequest for {InvocationId} {Method} {Path}",
+                                        invocationId, method, path);
+                                }
+                            });
+                        }
+                    }
+
+                    await nextMiddleware(context);
+                });
+
+                next(app);
+            };
     }
 }
