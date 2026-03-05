@@ -4,15 +4,10 @@
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <!-- WorkerSdkMajorVersion controls which Worker SDK version is referenced.
-         Set to 1 (default) for Worker SDK 1.x, or 2 for Worker SDK 2.x. -->
-    <WorkerSdkMajorVersion Condition="'$(WorkerSdkMajorVersion)' == ''">1</WorkerSdkMajorVersion>
-    <DefineConstants Condition="'$(WorkerSdkMajorVersion)' == '2'">$(DefineConstants);WORKER_SDK_V2</DefineConstants>
-  </PropertyGroup>
 
-  <ItemGroup>
-    <FrameworkReference Include="Microsoft.AspNetCore.App" />
-  </ItemGroup>
+    <Description>gRPC-based Azure Functions in-process test host for dotnet-isolated workers. Provides a TestServer-like experience without requiring func.exe.</Description>
+    <PackageTags>azure-functions testing dotnet integration-testing grpc</PackageTags>
+  </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" Version="2.62.0" />
@@ -22,14 +17,8 @@
     </PackageReference>
   </ItemGroup>
 
-  <!-- Worker SDK 1.x packages -->
-  <ItemGroup Condition="'$(WorkerSdkMajorVersion)' == '1'">
-    <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.21.0" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Grpc" Version="1.16.0" />
-  </ItemGroup>
-
   <!-- Worker SDK 2.x packages -->
-  <ItemGroup Condition="'$(WorkerSdkMajorVersion)' == '2'">
+  <ItemGroup>
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="2.51.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Grpc" Version="2.51.0" />
   </ItemGroup>

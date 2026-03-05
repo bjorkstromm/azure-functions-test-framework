@@ -1,16 +1,20 @@
-name: CI
+name: Publish
 
 on:
   push:
-    branches: [ "main" ]
-  pull_request:
+    tags:
+      - 'v*.*.*'
 
 jobs:
-  build-and-test:
+  publish:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: write  # Required for NuGet Trusted Publishing (OIDC token)
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Required by MinVer to read full git history
 
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
@@ -39,3 +43,13 @@ jobs:
 
       - name: Test WAF (Worker SDK 2.x / .NET 9)
         run: dotnet test tests/Sample.FunctionApp.Worker2.WAF.Tests --no-build --configuration Release --verbosity normal
+
+      - name: Pack
+        run: dotnet pack --no-build --configuration Release --output ./artifacts
+
+      - name: NuGet login (Trusted Publishing — OIDC → short-lived API key)
+        uses: NuGet/login@v1
+        id: nuget-login
+
+      - name: Push to NuGet.org
+        run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ steps.nuget-login.outputs.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate

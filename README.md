@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional for **Worker SDK 1.x (.NET 8) and Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes (30/30 tests pass for Worker 1.x). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass for both Worker 1.x and 2.x). All framework libraries target `net8.0;net9.0;net10.0`. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections

@@ -4,6 +4,8 @@
     <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <Description>TimerTrigger invocation support for the Azure Functions Test Framework. Enables triggering timer functions in integration tests.</Description>
+    <PackageTags>azure-functions testing dotnet integration-testing timer-trigger</PackageTags>
   </PropertyGroup>
 
   <ItemGroup>

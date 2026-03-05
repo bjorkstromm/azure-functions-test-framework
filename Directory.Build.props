@@ -8,9 +8,14 @@
     <Company>Azure Functions Test Framework</Company>
     <Copyright>Copyright (c) Azure Functions Test Framework Contributors</Copyright>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/YOUR_USERNAME/azure-functions-test-framework</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/YOUR_USERNAME/azure-functions-test-framework</RepositoryUrl>
+    <PackageProjectUrl>https://github.com/bjorkstromm/azure-functions-test-framework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bjorkstromm/azure-functions-test-framework</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
-    <Version>0.1.0</Version>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
 </Project>

@@ -3,11 +3,12 @@
 ## 🟢 What Works
 
 ### Core Infrastructure ✅
-- Solution structure with 10 projects builds successfully (6 framework libs + 2 sample apps + 2 test suites per Worker SDK variant)
+- Solution structure with 8 projects builds successfully (6 framework libs + 1 sample app + 2 test suites)
 - All NuGet dependencies resolve correctly
 - gRPC protocol definitions integrated from azure-functions-language-worker-protobuf
 - All framework libraries target `net8.0;net9.0;net10.0`
-- Worker SDK 1.x (1.21.0) and 2.x (2.51.0) supported from a single codebase via `WorkerSdkMajorVersion` MSBuild property
+- Worker SDK 2.x (2.51.0) exclusively — Worker SDK 1.x support dropped
+- NuGet packages produced via `dotnet pack` using MinVer versioning from git tags; published to NuGet.org via GitHub Actions `publish.yml` workflow on `v*.*.*` tag push
 
 ### Worker Hosting ✅
 - Azure Functions Worker starts in-process using HostBuilder
@@ -159,12 +160,6 @@ Support for testing:
 # Build solution
 dotnet build --configuration Release
 
-# Worker SDK 1.x gRPC tests (.NET 8)
-dotnet test tests/Sample.FunctionApp.Tests --no-build --configuration Release
-
-# Worker SDK 1.x WAF tests (.NET 8)
-dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests --no-build --configuration Release
-
 # Worker SDK 2.x gRPC tests (.NET 9)
 dotnet test tests/Sample.FunctionApp.Worker2.Tests --no-build --configuration Release
 
@@ -172,7 +167,10 @@ dotnet test tests/Sample.FunctionApp.Worker2.Tests --no-build --configuration Re
 dotnet test tests/Sample.FunctionApp.Worker2.WAF.Tests --no-build --configuration Release
 
 # Run single test with detailed output
-dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
+dotnet test tests/Sample.FunctionApp.Worker2.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
+
+# Pack NuGet packages locally (requires git tag for a clean version, otherwise MinVer uses 0.0.0-alpha.x)
+dotnet pack --configuration Release --output ./artifacts
 ```
 
 ## Useful References
@@ -195,7 +193,6 @@ dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" 
 
 ## Version Information
 - .NET: 8.0 / 9.0 / 10.0 (multitargeted)
-- Azure Functions Worker SDK 1.x: 1.21.0 (net8.0 sample)
 - Azure Functions Worker SDK 2.x: 2.51.0 (net9.0 sample)
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
