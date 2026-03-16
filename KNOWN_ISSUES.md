@@ -43,9 +43,9 @@
 - HttpResponseMapper converts gRPC InvocationResponse → HTTP response (bytes decoded as UTF-8)
 
 ### Test Infrastructure ✅
-- Sample function app with 8 HTTP endpoints (Todo CRUD + Health + Echo + Correlation), 1 HeartbeatTimer, 1 ServiceBus trigger, and 1 Queue trigger in `Sample.FunctionApp.Worker2` (`net9.0`)
-- **Worker SDK 2.x (net9.0)**: 10 integration tests in `Sample.FunctionApp.Worker2.Tests` pass (FunctionsTestHost-based)
-- **Worker SDK 2.x (net9.0)**: 6 integration tests in `Sample.FunctionApp.Worker2.WAF.Tests` pass (FunctionsWebApplicationFactory-based)
+- Sample function app with 8 HTTP endpoints (Todo CRUD + Health + Echo + Correlation), 1 HeartbeatTimer, 1 ServiceBus trigger, and 1 Queue trigger in `Sample.FunctionApp.Worker` (`net9.0`)
+- **Worker SDK 2.x (net9.0)**: 10 integration tests in `Sample.FunctionApp.Worker.Tests` pass (FunctionsTestHost-based)
+- **Worker SDK 2.x (net9.0)**: 6 integration tests in `Sample.FunctionApp.Worker.WAF.Tests` pass (FunctionsWebApplicationFactory-based)
 - `CorrelationIdMiddleware` is covered end-to-end in both test projects; the `FunctionsTestHost` sample uses `WithHostBuilderFactory(Program.CreateHostBuilder)` and the WAF sample uses `FunctionsWebApplicationFactory<Program>`
 
 ### FunctionsWebApplicationFactory ✅
@@ -159,13 +159,13 @@ Currently focused on HttpTrigger input. Need to support:
 dotnet build --configuration Release
 
 # Worker SDK 2.x gRPC tests (.NET 9)
-dotnet test tests/Sample.FunctionApp.Worker2.Tests --no-build --configuration Release
+dotnet test tests/Sample.FunctionApp.Worker.Tests --no-build --configuration Release
 
 # Worker SDK 2.x WAF tests (.NET 9)
-dotnet test tests/Sample.FunctionApp.Worker2.WAF.Tests --no-build --configuration Release
+dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests --no-build --configuration Release
 
 # Run single test with detailed output
-dotnet test tests/Sample.FunctionApp.Worker2.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
+dotnet test tests/Sample.FunctionApp.Worker.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
 
 # Pack NuGet packages locally (requires git tag for a clean version, otherwise MinVer uses 0.0.0-alpha.x)
 dotnet pack --configuration Release --output ./artifacts

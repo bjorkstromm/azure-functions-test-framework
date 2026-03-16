@@ -1,7 +1,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
-using Sample.FunctionApp.Worker2;
+using Sample.FunctionApp.Worker;
 
 await Program.CreateHostBuilder(args).Build().RunAsync();
 

@@ -2,13 +2,13 @@ using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Timer;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
-using Sample.FunctionApp.Worker2;
+using Sample.FunctionApp.Worker;
 using System.Net;
 using System.Net.Http.Json;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace Sample.FunctionApp.Worker2.Tests;
+namespace Sample.FunctionApp.Worker.Tests;
 
 /// <summary>
 /// Integration tests for the Worker SDK 2.x sample app using <see cref="FunctionsTestHost"/>.

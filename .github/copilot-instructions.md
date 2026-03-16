@@ -7,7 +7,7 @@
 ## Project Overview
 This is an integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience. It runs Azure Functions in-process without func.exe, communicating via the worker's gRPC endpoints.
 
-**Current Status**: Both testing approaches are **fully functional** for **Worker SDK 1.x (.NET 8) and Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD, TimerTrigger, QueueTrigger, and ServiceBusTrigger invocations (30/30 Worker1 tests pass, 8/8 Worker2 tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides (4/4 tests pass for both Worker 1.x and 2.x). All framework libraries target `net8.0;net9.0;net10.0`. Tests run in parallel and in isolation. No known blockers.
+**Current Status**: Both testing approaches are **fully functional** for the current **Worker SDK 2.x (.NET 9)** sample. The gRPC-based `FunctionsTestHost` supports full CRUD, TimerTrigger, QueueTrigger, and ServiceBusTrigger invocations (`10/10` Worker tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE, middleware assertions, and `WithWebHostBuilder` service overrides (`6/6` Worker WAF tests pass). All framework libraries target `net8.0;net9.0;net10.0`. Tests run in parallel and in isolation. No known blockers.
 
 ## Architecture
 
@@ -32,11 +32,11 @@ This is an integration testing framework for Azure Functions (dotnet-isolated) t
 
 4. **AzureFunctions.TestFramework.Timer**: TimerTrigger invocation support — depends on Core + `Microsoft.Azure.Functions.Worker.Extensions.Timer`. Exposes `InvokeTimerAsync(this IFunctionsTestHost, string functionName, TimerInfo? timerInfo = null)` extension method.
 
-5. **Sample.FunctionApp**: Example functions for testing (TodoAPI with CRUD operations + HeartbeatTimerFunction)
+5. **Sample.FunctionApp.Worker**: Example functions for testing (TodoAPI with CRUD operations + HeartbeatTimerFunction + Correlation middleware sample)
 
-6. **Sample.FunctionApp.Tests**: gRPC-based integration tests (`FunctionsTestHost`)
+6. **Sample.FunctionApp.Worker.Tests**: `FunctionsTestHost` integration tests
 
-7. **Sample.FunctionApp.WebApplicationFactory.Tests**: WebApplicationFactory-based integration tests
+7. **Sample.FunctionApp.Worker.WAF.Tests**: WebApplicationFactory-based integration tests
 
 ### How It Works
 
@@ -101,13 +101,13 @@ The Azure Functions worker SDK's `GrpcWorker.StopAsync()` returns `Task.Complete
 dotnet build
 
 # Run gRPC-based tests
-dotnet test tests/Sample.FunctionApp.Tests
+dotnet test tests/Sample.FunctionApp.Worker.Tests
 
 # Run WebApplicationFactory tests
-dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests
+dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests
 
 # Run single test
-dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
+dotnet test tests/Sample.FunctionApp.Worker.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
 ```
 
 ### Code Style
@@ -117,9 +117,9 @@ dotnet test tests/Sample.FunctionApp.Tests --filter "GetTodos_ReturnsEmptyList" 
 - Don't block the gRPC event stream (use Task.Run for long-running operations)
 
 ### Testing
-- Sample.FunctionApp has TodoAPI with 7 HTTP endpoints (CRUD + Health + Echo)
-- 14 integration tests in `Sample.FunctionApp.Tests` (1 unit + 7 gRPC TodoFunctions + 3 gRPC DI override + 3 Timer)
-- 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests`
+- Sample.FunctionApp.Worker has 8 HTTP endpoints (Todo CRUD + Health + Echo + Correlation)
+- 10 integration tests in `Sample.FunctionApp.Worker.Tests`
+- 6 integration tests in `Sample.FunctionApp.Worker.WAF.Tests`
 - gRPC tests use `IAsyncLifetime` per-test (each test gets its own `FunctionsTestHost`)
 - WAF tests use `IClassFixture<FunctionsWebApplicationFactory<Program>>` (one shared factory) + `IAsyncLifetime` to call `InMemoryTodoService.Reset()` for per-test state isolation
 
@@ -152,19 +152,13 @@ src/
     HTTP-specific functionality (placeholder)
     
 samples/
-  Sample.FunctionApp/
-    Worker SDK 1.x sample (net8.0) — TodoAPI + HeartbeatTimer + ServiceBus + Queue
-  Sample.FunctionApp.Worker2/
-    Worker SDK 2.x sample (net9.0) — same functions, updated packages
+  Sample.FunctionApp.Worker/
+    Worker SDK 2.x sample (net9.0) — TodoAPI + Correlation middleware + HeartbeatTimer + ServiceBus + Queue
     
 tests/
-  Sample.FunctionApp.Tests/
-    gRPC-based integration tests for Worker SDK 1.x (net8.0)
-  Sample.FunctionApp.WebApplicationFactory.Tests/
-    WAF-based integration tests for Worker SDK 1.x (net8.0)
-  Sample.FunctionApp.Worker2.Tests/
+  Sample.FunctionApp.Worker.Tests/
     gRPC-based integration tests for Worker SDK 2.x (net9.0)
-  Sample.FunctionApp.Worker2.WAF.Tests/
+  Sample.FunctionApp.Worker.WAF.Tests/
     WAF-based integration tests for Worker SDK 2.x (net9.0)
 ```
 
@@ -180,12 +174,12 @@ tests/
 ✅ gRPC bidirectional streaming works
 ✅ Function loading/discovery (all 7 functions)
 ✅ Function invocation works (FunctionsTestHost — all HTTP methods + TimerTrigger)
-✅ All FunctionsTestHost integration tests pass (30/30 Worker1, 8/8 Worker2)
+✅ All FunctionsTestHost integration tests pass (`10/10` Worker)
 ✅ FunctionsWebApplicationFactory works for all HTTP methods (GET, POST, PUT, DELETE)
 ✅ WithWebHostBuilder DI service overrides work end-to-end
 ✅ Tests run in parallel and in isolation (xUnit parallelizeTestCollections + IAsyncLifetime)
 ✅ Graceful gRPC EventStream shutdown (no connection-abort errors, no Kestrel 5 s timeout)
 ✅ CI workflow runs on pull requests and pushes to main
-✅ Worker SDK 1.x (1.21.0) and 2.x (2.51.0) both supported
+✅ Current sample targets Worker SDK 2.x (2.51.0)
 ✅ All framework libraries target net8.0;net9.0;net10.0
 

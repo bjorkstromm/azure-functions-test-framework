@@ -1,4 +1,4 @@
-namespace Sample.FunctionApp.Worker2;
+namespace Sample.FunctionApp.Worker;
 
 /// <summary>
 /// An in-memory implementation of <see cref="ITodoService"/> suitable for development and testing.

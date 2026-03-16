@@ -1,9 +1,9 @@
 using AzureFunctions.TestFramework.Core;
-using Sample.FunctionApp.Worker2;
+using Sample.FunctionApp.Worker;
 using System.Net.Http.Json;
 using Xunit;
 
-namespace Sample.FunctionApp.Worker2.Tests;
+namespace Sample.FunctionApp.Worker.Tests;
 
 public class CorrelationIdMiddlewareTests : IAsyncLifetime
 {

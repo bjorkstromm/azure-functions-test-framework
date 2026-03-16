@@ -1,4 +1,4 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -19,13 +19,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureFunctions.TestFramewor
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5D20AA90-6969-D8BD-9DCD-8634F4692FDA}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker2", "samples\Sample.FunctionApp.Worker2\Sample.FunctionApp.Worker2.csproj", "{F1A2B3C4-D5E6-7890-ABCD-EF0123456789}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker", "samples\Sample.FunctionApp.Worker\Sample.FunctionApp.Worker.csproj", "{F1A2B3C4-D5E6-7890-ABCD-EF0123456789}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker2.Tests", "tests\Sample.FunctionApp.Worker2.Tests\Sample.FunctionApp.Worker2.Tests.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F012345678AB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker.Tests", "tests\Sample.FunctionApp.Worker.Tests\Sample.FunctionApp.Worker.Tests.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F012345678AB}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker2.WAF.Tests", "tests\Sample.FunctionApp.Worker2.WAF.Tests\Sample.FunctionApp.Worker2.WAF.Tests.csproj", "{C3D4E5F6-A7B8-9012-CDEF-012345678ABC}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker.WAF.Tests", "tests\Sample.FunctionApp.Worker.WAF.Tests\Sample.FunctionApp.Worker.WAF.Tests.csproj", "{C3D4E5F6-A7B8-9012-CDEF-012345678ABC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

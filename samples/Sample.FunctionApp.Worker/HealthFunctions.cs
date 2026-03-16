@@ -2,7 +2,7 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using System.Net;
 
-namespace Sample.FunctionApp.Worker2;
+namespace Sample.FunctionApp.Worker;
 
 public class HealthFunctions
 {

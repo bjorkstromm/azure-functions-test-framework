@@ -1,7 +1,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Middleware;
 
-namespace Sample.FunctionApp.Worker2;
+namespace Sample.FunctionApp.Worker;
 
 public sealed class CorrelationIdMiddleware : IFunctionsWorkerMiddleware
 {

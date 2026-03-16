@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <AzureFunctionsVersion>v4</AzureFunctionsVersion>
     <OutputType>Exe</OutputType>
-    <RootNamespace>Sample.FunctionApp.Worker2</RootNamespace>
+    <RootNamespace>Sample.FunctionApp.Worker</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

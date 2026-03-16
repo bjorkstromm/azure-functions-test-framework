@@ -1,4 +1,4 @@
-namespace Sample.FunctionApp.Worker2;
+namespace Sample.FunctionApp.Worker;
 
 /// <summary>
 /// Provides CRUD operations for <see cref="TodoItem"/> entities.

@@ -1,8 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Sample.FunctionApp.Worker2;
+using Sample.FunctionApp.Worker;
 
-namespace Sample.FunctionApp.Worker2.WAF.Tests;
+namespace Sample.FunctionApp.Worker.WAF.Tests;
 
 /// <summary>
 /// Integration tests for the Worker SDK 2.x sample using <see cref="FunctionsWebApplicationFactory{TProgram}"/>.
@@ -56,11 +56,11 @@ public class FunctionsWebApplicationFactoryTests
     [Fact]
     public async Task CreateAndGetTodo_WorksEndToEnd()
     {
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "WAF Worker2 Test" });
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "WAF Worker Test" });
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = await createResponse.Content.ReadFromJsonAsync<TodoItem>();
         Assert.NotNull(created);
-        Assert.Equal("WAF Worker2 Test", created.Title);
+        Assert.Equal("WAF Worker Test", created.Title);
 
         var getResponse = await _client!.GetAsync($"/api/todos/{created.Id}");
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
@@ -71,8 +71,8 @@ public class FunctionsWebApplicationFactoryTests
     {
         var seededTodo = new TodoItem
         {
-            Id = "waf2-seeded-id",
-            Title = "WAF Worker2 Seeded Todo",
+            Id = "waf-seeded-id",
+            Title = "WAF Worker Seeded Todo",
             IsCompleted = false,
             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         };
@@ -92,7 +92,7 @@ public class FunctionsWebApplicationFactoryTests
         var todos = await response.Content.ReadFromJsonAsync<List<TodoItem>>();
         Assert.NotNull(todos);
         Assert.Single(todos);
-        Assert.Equal("waf2-seeded-id", todos[0].Id);
+        Assert.Equal("waf-seeded-id", todos[0].Id);
     }
 
     [Fact]

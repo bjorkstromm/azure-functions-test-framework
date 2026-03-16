@@ -26,9 +26,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\samples\Sample.FunctionApp.Worker2\Sample.FunctionApp.Worker2.csproj" />
-    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
-    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Timer\AzureFunctions.TestFramework.Timer.csproj" />
+    <ProjectReference Include="..\..\samples\Sample.FunctionApp.Worker\Sample.FunctionApp.Worker.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.AspNetCore\AzureFunctions.TestFramework.AspNetCore.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,7 +1,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
-namespace Sample.FunctionApp.Worker2;
+namespace Sample.FunctionApp.Worker;
 
 /// <summary>
 /// Example timer-triggered function. In tests, invoke via <c>host.InvokeTimerAsync("HeartbeatTimer")</c>.
