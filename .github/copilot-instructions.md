@@ -7,7 +7,7 @@
 ## Project Overview
 This is an integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience. It runs Azure Functions in-process without func.exe, communicating via the worker's gRPC endpoints.
 
-**Current Status**: Both testing approaches are **fully functional** for the current **Worker SDK 2.x (.NET 9)** sample. The gRPC-based `FunctionsTestHost` supports full CRUD, TimerTrigger, QueueTrigger, ServiceBusTrigger, middleware assertions, `Services`, and `ConfigureSetting()` (`15/15` Worker tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE, middleware assertions, and `WithWebHostBuilder` service overrides (`6/6` Worker WAF tests pass). Startup/readiness is event-driven and the direct gRPC path precompiles route matching per host. All framework libraries target `net8.0;net9.0;net10.0`. Tests run in parallel and in isolation. No known blockers.
+**Current Status**: Both testing approaches are **fully functional** for the current **Worker SDK 2.x (.NET 9)** sample. The gRPC-based `FunctionsTestHost` supports full CRUD, TimerTrigger, QueueTrigger, ServiceBusTrigger, middleware assertions, `Services`, and `ConfigureSetting()`. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE, middleware assertions, and `WithWebHostBuilder` service overrides. Startup/readiness is event-driven and the direct gRPC path precompiles route matching per host. All framework libraries target `net8.0;net9.0;net10.0`. Tests run in parallel and in isolation. No known blockers.
 
 ## Architecture
 
@@ -85,8 +85,8 @@ Uses Azure Functions RPC protocol from `azure-functions-language-worker-protobuf
 ### IAutoConfigureStartup (Critical)
 The functions assembly contains source-generated classes (`FunctionMetadataProviderAutoStartup`, `FunctionExecutorAutoStartup`) implementing `IAutoConfigureStartup`. Both the `WorkerHostService` and `FunctionsWebApplicationFactory.CreateHost` scan for and invoke these to register `GeneratedFunctionMetadataProvider` and `DirectFunctionExecutor`, overriding the defaults that would require a `functions.metadata` file.
 
-### Function ID Resolution (Fixed)
-`GeneratedFunctionMetadataProvider` computes a stable hash for each function (`Name` + `ScriptFile` + `EntryPoint`). `GrpcHostService` now stores the hash-based `FunctionId` from `FunctionMetadataResponse` in `_functionRouteToId` (not the GUID from `FunctionLoadRequest`), so `SendInvocationRequestAsync` sends the correct ID that matches the worker's internal `_functionMap`.
+### Function ID Resolution
+`GeneratedFunctionMetadataProvider` computes a stable hash for each function (`Name` + `ScriptFile` + `EntryPoint`). `GrpcHostService` stores the hash-based `FunctionId` from `FunctionMetadataResponse` in `_functionRouteToId` (not the GUID from `FunctionLoadRequest`), so `SendInvocationRequestAsync` sends the correct ID that matches the worker's internal `_functionMap`.
 
 ### GrpcWorker.StopAsync() is a No-Op
 The Azure Functions worker SDK's `GrpcWorker.StopAsync()` returns `Task.CompletedTask` immediately — it does NOT close the gRPC channel. This affects both WAF disposal and the `WithWebHostBuilder` scenario:
@@ -117,9 +117,6 @@ dotnet test tests/Sample.FunctionApp.Worker.Tests --filter "GetTodos_ReturnsEmpt
 - Don't block the gRPC event stream (use Task.Run for long-running operations)
 
 ### Testing
-- Sample.FunctionApp.Worker has 8 HTTP endpoints (Todo CRUD + Health + Echo + Correlation)
-- 15 integration tests in `Sample.FunctionApp.Worker.Tests`
-- 6 integration tests in `Sample.FunctionApp.Worker.WAF.Tests`
 - gRPC tests use `IAsyncLifetime` per-test (each test gets its own `FunctionsTestHost`)
 - WAF tests use `IClassFixture<FunctionsWebApplicationFactory<Program>>` (one shared factory) + `IAsyncLifetime` to call `InMemoryTodoService.Reset()` for per-test state isolation
 
@@ -172,9 +169,9 @@ tests/
 ✅ Worker starts in-process using HostBuilder
 ✅ Worker connects to gRPC server
 ✅ gRPC bidirectional streaming works
-✅ Function loading/discovery (all 7 functions)
+✅ Function loading/discovery
 ✅ Function invocation works (FunctionsTestHost — all HTTP methods + TimerTrigger)
-✅ All FunctionsTestHost integration tests pass (`15/15` Worker)
+✅ All FunctionsTestHost integration tests pass
 ✅ FunctionsWebApplicationFactory works for all HTTP methods (GET, POST, PUT, DELETE)
 ✅ WithWebHostBuilder DI service overrides work end-to-end
 ✅ Tests run in parallel and in isolation (xUnit parallelizeTestCollections + IAsyncLifetime)

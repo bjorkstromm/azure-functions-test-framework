@@ -3,7 +3,7 @@
 ## 🟢 What Works
 
 ### Core Infrastructure ✅
-- Solution structure with 8 projects builds successfully (6 framework libs + 1 sample app + 2 test suites)
+- Solution structure builds successfully
 - All NuGet dependencies resolve correctly
 - gRPC protocol definitions integrated from azure-functions-language-worker-protobuf
 - All framework libraries target `net8.0;net9.0;net10.0`
@@ -43,9 +43,9 @@
 - HttpResponseMapper converts gRPC InvocationResponse → HTTP response (bytes decoded as UTF-8)
 
 ### Test Infrastructure ✅
-- Sample function app with 9 HTTP endpoints (Todo CRUD + Health + Echo + Correlation + Configuration), 1 HeartbeatTimer, 1 ServiceBus trigger, and 1 Queue trigger in `Sample.FunctionApp.Worker` (`net9.0`)
-- **Worker SDK 2.x (net9.0)**: 15 integration tests in `Sample.FunctionApp.Worker.Tests` pass (FunctionsTestHost-based)
-- **Worker SDK 2.x (net9.0)**: 6 integration tests in `Sample.FunctionApp.Worker.WAF.Tests` pass (FunctionsWebApplicationFactory-based)
+- Sample function app with HTTP endpoints (Todo CRUD + Health + Echo + Correlation + Configuration), HeartbeatTimer, ServiceBus trigger, and Queue trigger in `Sample.FunctionApp.Worker` (`net9.0`)
+- **Worker SDK 2.x (net9.0)**: Integration tests in `Sample.FunctionApp.Worker.Tests` pass (FunctionsTestHost-based)
+- **Worker SDK 2.x (net9.0)**: Integration tests in `Sample.FunctionApp.Worker.WAF.Tests` pass (FunctionsWebApplicationFactory-based)
 - `CorrelationIdMiddleware` is covered end-to-end in both test projects; the `FunctionsTestHost` sample uses `WithHostBuilderFactory(Program.CreateHostBuilder)` and the WAF sample uses `FunctionsWebApplicationFactory<Program>`
 - `FunctionsTestHost.Services` exposes the worker service provider after startup
 - `FunctionsTestHostBuilder.ConfigureSetting()` overlays test-specific configuration values that functions can consume via `IConfiguration`
@@ -72,75 +72,13 @@
 
 _None. All known blockers have been resolved._
 
-### ~~FunctionsWebApplicationFactory — POST/PUT Function ID Mismatch~~ ✅ FIXED
-
-**What it was**: POST/PUT requests through `FunctionsWebApplicationFactory` failed because `GrpcHostService` used GUID-based function IDs while the worker's `_functionMap` used hash-based IDs from `GeneratedFunctionMetadataProvider`.
-
-**Fix applied**: `GrpcHostService` now stores the hash-based `FunctionId` from `FunctionMetadataResponse` (the value computed by the worker's `GeneratedFunctionMetadataProvider`) directly in `_functionRouteToId`, so `SendInvocationRequestAsync` sends the correct ID that matches the worker's internal `_functionMap`.
-
-### ~~FunctionsWebApplicationFactory — ObjectDisposedException after WithWebHostBuilder~~ ✅ FIXED
-
-**What it was**: `CreateAndGetTodo_WorksEndToEnd` threw `ObjectDisposedException: IServiceProvider` and hung when run after `WithWebHostBuilder_CanOverrideServices` in the same test run.
-
-**Root cause**: `GrpcWorker.StopAsync()` in the Azure Functions worker returns `Task.CompletedTask` immediately without closing the gRPC channel. As a result, when `customFactory.Dispose()` disposed the secondary host's DI container, the secondary worker was still connected to EventStream-2. The next test's `GrpcInvocationBridgeStartupFilter` wrote an `InvocationRequest` to `responseStream-2` (since EventStream-2 hadn't ended yet), which worker-2 received with its already-disposed `IServiceProvider`.
-
-**Fix applied**: Added a `GrpcAwareHost` wrapper (in `FunctionsWebApplicationFactory.CreateHost`) that wraps derived factory hosts. On `Dispose()`, it cancels the EventStream's `CancellationTokenSource` and waits for `_eventStreamFinished` before calling `_inner.Dispose()`. This ensures `_responseStream` is restored to the primary worker's stream before the secondary host's DI is torn down.
-
-### ~~FunctionsWebApplicationFactory — Host Startup Hang~~ ✅ FIXED
-
-**Root Cause (confirmed)**: The hang was **not** in `base.CreateHost()`. Diagnostics showed `CreateHost` completed in ~0.5 s with the worker already connected. The actual hang was in **HTTP request handling**: `WorkerRequestServicesMiddleware` blocked on `SetHttpContextAsync()` waiting for the worker's `FunctionsHttpProxyingMiddleware` to call `SetFunctionContextAsync()` — which is only triggered by an `InvocationRequest` from the host.
-
-**Fix applied**:
-- Added `GrpcInvocationBridgeStartupFilter` to `FunctionsWebApplicationFactory.ConfigureWebHost()`: fires `SendInvocationRequestAsync` for every incoming request before `WorkerRequestServicesMiddleware` is reached.
-- Added `GrpcHostService.FindFunctionId()` for route prefix stripping and `{param}` segment matching.
-- Added `GrpcHostService.SendInvocationRequestAsync()` to send a minimal `InvocationRequest` to the worker.
-
-### ~~POST/PUT Request Body Parsing (Critical)~~ ✅ FIXED
-
-**Issue**: Functions that read the HTTP request body (POST/PUT) were failing with:
-```
-System.NotSupportedException: GrpcHttpRequestData expects binary data only.
-The provided data type was 'String'.
-```
-
-**Fix applied** in `src/AzureFunctions.TestFramework.Core/Http/HttpRequestMapper.cs`:
-- Changed `TypedData.String` to `TypedData.Bytes` (via `ByteString.CopyFromUtf8`) for both `Body` and `RawBody`.
-
 ## 🟡 Known Issues (Non-Blocking)
 
-### 1. ~~Disposal Warnings~~ ✅ FIXED
-**Symptoms previously**: During test cleanup:
-```
-Error in event stream
-System.IO.IOException: The request stream was aborted.
-ConnectionAbortedException: The connection was aborted because the server is shutting down
-```
-
-**Fix applied**: `FunctionsWebApplicationFactory` now centralizes cleanup for both `Dispose(bool)` and `DisposeAsync()`, requests EventStream shutdown explicitly, stops the gRPC server, and then disposes the logger/server resources. Derived `WithWebHostBuilder` hosts also support async disposal via `GrpcAwareHost.DisposeAsync()`.
-
-### 2. ~~DI Service Overrides (FunctionsTestHost)~~ ✅ FIXED
-**Status**: Dedicated `FunctionsTestHost` coverage now verifies both inline service replacement and factory-backed overrides in `Sample.FunctionApp.Worker.Tests\FunctionsTestHostFeaturesTests.cs`.
-
-### 3. ~~WAF suite runtime dominated by shutdown~~ ✅ FIXED
-**Root cause**: A dotTrace snapshot of a single WAF test showed generic host shutdown frames (`Microsoft.Extensions.Hosting.Internal`, `HostOptions`, `ShutdownTimeout`, `StopAsync`, `WaitForShutdownAsync`) during the long tail. Narrowing the runs further showed that simple WAF tests dropped to ~`7.1s` after reducing host shutdown timeout, but `WithWebHostBuilder_CanOverrideServices` still took ~`37s`. The remaining slowness came from the base `WebApplicationFactory.WithWebHostBuilder` clone path, which did not preserve the framework's custom factory lifecycle behavior.
-
-**Fix applied**:
-- `FunctionsWebApplicationFactory` now configures `HostOptions.ShutdownTimeout = 1s` for WAF hosts.
-- `FunctionsWebApplicationFactory` exposes an explicit async disposal path for the primary factory.
-- `FunctionsWebApplicationFactory.WithWebHostBuilder(...)` now returns an independent `FunctionsWebApplicationFactory<TProgram>` instance that preserves the framework's custom startup/disposal logic instead of relying on the slow base clone path.
-- WAF tests use the async-aware fixture wrapper for the shared primary factory.
-
-**Validated result**:
-- Single WAF test (`Health_ReturnsHealthyStatus`): ~`7.1s` end-to-end, `79 ms` test duration.
-- Single `WithWebHostBuilder_CanOverrideServices` test: ~`7.4s` end-to-end, `167 ms` test duration.
-- Full WAF suite: ~`7.1s` end-to-end, `222 ms` total test duration.
+_None._
 
 ## 🔵 Future Enhancements
 
 ### 1. Additional Trigger Types
-- ✅ Timer triggers (`AzureFunctions.TestFramework.Timer` package — `InvokeTimerAsync`)
-- ✅ Queue triggers (`AzureFunctions.TestFramework.Queue` package — `InvokeQueueAsync`)
-- ✅ Service Bus triggers (`AzureFunctions.TestFramework.ServiceBus` package — `InvokeServiceBusAsync`)
 - Blob triggers  
 - Event Grid triggers
 
@@ -152,27 +90,12 @@ Currently focused on HttpTrigger input. Need to support:
 - Return value bindings
 
 ### 3. Middleware Scenarios
-- ✅ Custom middleware sample + end-to-end tests (`CorrelationIdMiddleware`)
 - Authorization middleware
 - Exception handling middleware
 
 ### 4. Configuration Support
-- ✅ Override application settings via `FunctionsTestHostBuilder.ConfigureSetting()`
 - Override host.json settings
 - Environment variable helper APIs
-
-### 5. ~~Parallel Test Execution~~ ✅ DONE
-- Tests run in parallel between test collections (xUnit `parallelizeTestCollections: true`)
-- gRPC tests: each test is isolated via `IAsyncLifetime` (per-test `FunctionsTestHost`)
-- WAF tests: shared async-aware fixture wrapper around `FunctionsWebApplicationFactory<Program>` + per-test `InMemoryTodoService.Reset()` for state isolation; WAF tests now run in ~7 s
-- Ephemeral gRPC ports ensure no port conflicts between parallel test instances
-
-### 6. Performance Optimizations
-- ✅ Event-driven startup/readiness replaced fixed startup delays and polling loops
-- ✅ Direct gRPC route matching now precompiles templates once per host instead of rescanning raw route strings per request
-- ✅ `FunctionsTestHost.CreateHttpClient()` now reuses host-local handlers instead of rebuilding them for every client
-- ✅ Optional shared-host gRPC fixture example added for suites that can reset state between tests
-- Default full-suite worker reuse remains opt-in because the current per-test-host model gives the safest isolation semantics
 
 ## Testing Commands
 
@@ -216,5 +139,3 @@ dotnet pack --configuration Release --output ./artifacts
 - Azure Functions Worker SDK 2.x: 2.51.0 (net9.0 sample)
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
-
-Last Updated: 2026-03-16
