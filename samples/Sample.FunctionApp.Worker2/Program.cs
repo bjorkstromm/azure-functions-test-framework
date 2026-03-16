@@ -13,14 +13,19 @@ public partial class Program
     // Used by FunctionsWebApplicationFactory (WAF / ASP.NET Core integration mode).
     public static IHostBuilder CreateHostBuilder(string[] args) =>
         new HostBuilder()
-            .ConfigureFunctionsWebApplication()
+            .ConfigureFunctionsWebApplication(ConfigureWorker)
             .ConfigureServices(ConfigureServices);
 
     // Used by FunctionsTestHostBuilder.WithHostBuilderFactory (non-WAF gRPC-direct mode).
     public static IHostBuilder CreateWorkerHostBuilder(string[] args) =>
         new HostBuilder()
-            .ConfigureFunctionsWorkerDefaults()
+            .ConfigureFunctionsWorkerDefaults(ConfigureWorker)
             .ConfigureServices(ConfigureServices);
+
+    private static void ConfigureWorker(IFunctionsWorkerApplicationBuilder workerApplication)
+    {
+        workerApplication.UseMiddleware<CorrelationIdMiddleware>();
+    }
 
     private static void ConfigureServices(IServiceCollection services)
     {

@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. The sample app now includes a `CorrelationIdMiddleware` example with end-to-end middleware assertions in both Worker2 test projects (`10/10` gRPC tests and `6/6` WAF tests passing). All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -25,6 +25,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - **Queue trigger invocations** via `AzureFunctions.TestFramework.Queue` package (`InvokeQueueAsync` extension method)
 - **Function metadata discovery** via `IFunctionInvoker.GetFunctions()` — returns `IReadOnlyDictionary<string, IFunctionMetadata>` with name, function ID, entry point, script file, and raw binding JSON
 - **`WithHostBuilderFactory`** — non-WAF gRPC tests can reuse the app's own `Program.CreateWorkerHostBuilder` or `Program.CreateHostBuilder`, automatically inheriting all registered services without re-registering them in each test. Both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` are supported.
+- **Middleware sample + testing** — `Sample.FunctionApp.Worker2` registers a `CorrelationIdMiddleware` that copies `x-correlation-id` into `FunctionContext.Items`, and both Worker2 test projects assert it through `/api/correlation`
 
 ## Goals
 
@@ -100,6 +101,8 @@ _testHost = await new FunctionsTestHostBuilder()
 ```
 
 > ℹ️ The framework auto-detects which mode is in use. With `ConfigureFunctionsWorkerDefaults()`, HTTP requests are dispatched via the gRPC `InvocationRequest` channel. With `ConfigureFunctionsWebApplication()`, the framework starts the worker's internal Kestrel server on an ephemeral port and routes `HttpClient` requests there.
+
+**Middleware example** — `Sample.FunctionApp.Worker2` registers `CorrelationIdMiddleware` from `Program.cs`. The middleware reads `x-correlation-id`, stores it in `FunctionContext.Items`, and the sample `/api/correlation` function exposes the value so both `FunctionsTestHost` and `FunctionsWebApplicationFactory` tests can assert it end-to-end.
 
 ### 2. FunctionsWebApplicationFactory (ASP.NET Core pipeline)
 
@@ -255,12 +258,9 @@ src/
   AzureFunctions.TestFramework.Queue/      # QueueTrigger invocation support (net8.0;net9.0;net10.0)
 
 samples/
-  Sample.FunctionApp/                      # Worker SDK 1.x sample (net8.0, TodoAPI + timers + service bus)
-  Sample.FunctionApp.Worker2/              # Worker SDK 2.x sample (net9.0, same functions)
+  Sample.FunctionApp.Worker2/              # Worker SDK 2.x sample (net9.0, TodoAPI + correlation middleware + triggers)
 
 tests/
-  Sample.FunctionApp.Tests/                         # gRPC-based tests (Worker SDK 1.x / net8.0)
-  Sample.FunctionApp.WebApplicationFactory.Tests/   # WAF tests (Worker SDK 1.x / net8.0)
   Sample.FunctionApp.Worker2.Tests/                 # gRPC-based tests (Worker SDK 2.x / net9.0)
   Sample.FunctionApp.Worker2.WAF.Tests/             # WAF tests (Worker SDK 2.x / net9.0)
 ```
@@ -277,12 +277,6 @@ dotnet build
 ```bash
 # All tests
 dotnet test
-
-# Worker SDK 1.x gRPC tests (.NET 8)
-dotnet test tests/Sample.FunctionApp.Tests
-
-# Worker SDK 1.x WebApplicationFactory tests (.NET 8)
-dotnet test tests/Sample.FunctionApp.WebApplicationFactory.Tests
 
 # Worker SDK 2.x gRPC tests (.NET 9)
 dotnet test tests/Sample.FunctionApp.Worker2.Tests

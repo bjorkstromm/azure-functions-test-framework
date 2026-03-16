@@ -95,6 +95,31 @@ public class FunctionsWebApplicationFactoryTests
         Assert.Equal("waf2-seeded-id", todos[0].Id);
     }
 
+    [Fact]
+    public async Task CorrelationEndpoint_ReturnsHeaderValue_FromMiddleware()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/correlation");
+        request.Headers.Add(CorrelationIdMiddleware.HeaderName, "waf-correlation-id");
+
+        var response = await _client!.SendAsync(request);
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
+        Assert.NotNull(payload);
+        Assert.Equal("waf-correlation-id", payload.CorrelationId);
+    }
+
+    [Fact]
+    public async Task CorrelationEndpoint_ReturnsNull_WhenHeaderMissing()
+    {
+        var response = await _client!.GetAsync("/api/correlation");
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
+        Assert.NotNull(payload);
+        Assert.Null(payload.CorrelationId);
+    }
+
     private sealed class SeededTodoService : ITodoService
     {
         private readonly List<TodoItem> _todos;

@@ -23,8 +23,8 @@
 - GrpcHostService implements FunctionRpc bidirectional streaming
 - Worker connects and sends StartStream message
 - WorkerInitRequest/Response exchange successful (using TaskCompletionSource, not Task.Delay)
-- FunctionsMetadataRequest/Response returns all 7 functions
-- FunctionLoadRequest/Response succeeds for all functions
+- FunctionsMetadataRequest/Response returns all sample functions
+- FunctionLoadRequest/Response succeeds for all sample functions
 - Logging and interceptor infrastructure working
 
 ### Function Loading/Discovery ✅
@@ -43,11 +43,10 @@
 - HttpResponseMapper converts gRPC InvocationResponse → HTTP response (bytes decoded as UTF-8)
 
 ### Test Infrastructure ✅
-- Sample function app with 7 HTTP endpoints (including Health + Echo), 1 HeartbeatTimer, 1 ServiceBus trigger, 1 Queue trigger — available for both Worker SDK 1.x (`Sample.FunctionApp`, net8.0) and 2.x (`Sample.FunctionApp.Worker2`, net9.0)
-- **Worker SDK 1.x (net8.0)**: 30 integration tests in `Sample.FunctionApp.Tests` pass (gRPC-based)
-- **Worker SDK 1.x (net8.0)**: 4 integration tests in `Sample.FunctionApp.WebApplicationFactory.Tests` pass (WAF-based)
-- **Worker SDK 2.x (net9.0)**: 8 integration tests in `Sample.FunctionApp.Worker2.Tests` pass (gRPC-based)
-- **Worker SDK 2.x (net9.0)**: 4 integration tests in `Sample.FunctionApp.Worker2.WAF.Tests` pass (WAF-based)
+- Sample function app with 8 HTTP endpoints (Todo CRUD + Health + Echo + Correlation), 1 HeartbeatTimer, 1 ServiceBus trigger, and 1 Queue trigger in `Sample.FunctionApp.Worker2` (`net9.0`)
+- **Worker SDK 2.x (net9.0)**: 10 integration tests in `Sample.FunctionApp.Worker2.Tests` pass (FunctionsTestHost-based)
+- **Worker SDK 2.x (net9.0)**: 6 integration tests in `Sample.FunctionApp.Worker2.WAF.Tests` pass (FunctionsWebApplicationFactory-based)
+- `CorrelationIdMiddleware` is covered end-to-end in both test projects; the `FunctionsTestHost` sample uses `WithHostBuilderFactory(Program.CreateHostBuilder)` and the WAF sample uses `FunctionsWebApplicationFactory<Program>`
 
 ### FunctionsWebApplicationFactory ✅
 - `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
@@ -132,9 +131,8 @@ Currently focused on HttpTrigger input. Need to support:
 - Table output bindings
 - Return value bindings
 
-### 3. Middleware Testing
-Support for testing:
-- Custom middleware
+### 3. Middleware Scenarios
+- ✅ Custom middleware sample + end-to-end tests (`CorrelationIdMiddleware`)
 - Authorization middleware
 - Exception handling middleware
 
@@ -197,4 +195,4 @@ dotnet pack --configuration Release --output ./artifacts
 - Grpc.AspNetCore: 2.62.0
 - xUnit: 2.4.2
 
-Last Updated: 2026-03-05 (session 12)
+Last Updated: 2026-03-16
