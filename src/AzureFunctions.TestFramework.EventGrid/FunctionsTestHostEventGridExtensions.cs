@@ -31,7 +31,19 @@ public static class FunctionsTestHostEventGridExtensions
     {
         ArgumentNullException.ThrowIfNull(eventGridEvent);
 
-        var eventJson = SerializeEventGridEvent(eventGridEvent);
+        var data = TryParseJson(eventGridEvent.Data);
+
+        var eventJson = JsonSerializer.Serialize(new
+        {
+            id = eventGridEvent.Id,
+            eventType = eventGridEvent.EventType,
+            subject = eventGridEvent.Subject,
+            eventTime = eventGridEvent.EventTime.UtcDateTime.ToString("o"),
+            data,
+            dataVersion = eventGridEvent.DataVersion,
+            metadataVersion = "1",
+            topic = string.Empty
+        }, _jsonOptions);
 
         var context = new FunctionInvocationContext
         {
@@ -58,7 +70,19 @@ public static class FunctionsTestHostEventGridExtensions
     {
         ArgumentNullException.ThrowIfNull(cloudEvent);
 
-        var eventJson = SerializeCloudEvent(cloudEvent);
+        var data = TryParseJson(cloudEvent.Data);
+
+        var eventJson = JsonSerializer.Serialize(new
+        {
+            specversion = "1.0",
+            id = cloudEvent.Id,
+            type = cloudEvent.Type,
+            source = cloudEvent.Source,
+            subject = cloudEvent.Subject,
+            time = cloudEvent.Time?.UtcDateTime.ToString("o"),
+            datacontenttype = cloudEvent.DataContentType,
+            data
+        }, _jsonOptions);
 
         var context = new FunctionInvocationContext
         {
@@ -70,58 +94,23 @@ public static class FunctionsTestHostEventGridExtensions
     }
 
     /// <summary>
-    /// Serializes an <see cref="EventGridEvent"/> to the EventGrid schema JSON string
-    /// that the worker's <c>EventGridEventConverter</c> expects.
+    /// Attempts to parse <paramref name="binaryData"/> as a JSON document element.
+    /// If <paramref name="binaryData"/> is <see langword="null"/> or not valid JSON, returns
+    /// <see langword="null"/> so the containing JSON object serializes the field as a null value
+    /// rather than embedding an invalid token.
     /// </summary>
-    private static string SerializeEventGridEvent(EventGridEvent e)
+    private static object? TryParseJson(BinaryData? binaryData)
     {
-        object? data = null;
-        if (e.Data != null)
+        if (binaryData == null) return null;
+        try
         {
-            try { data = JsonDocument.Parse(e.Data).RootElement; }
-            catch (JsonException) { data = e.Data.ToString(); }
+            return JsonDocument.Parse(binaryData).RootElement;
         }
-
-        var obj = new
+        catch (JsonException)
         {
-            id = e.Id,
-            eventType = e.EventType,
-            subject = e.Subject,
-            eventTime = e.EventTime.UtcDateTime.ToString("o"),
-            data,
-            dataVersion = e.DataVersion,
-            metadataVersion = "1",
-            topic = string.Empty
-        };
-
-        return JsonSerializer.Serialize(obj, _jsonOptions);
-    }
-
-    /// <summary>
-    /// Serializes a <see cref="CloudEvent"/> to the CloudEvents schema JSON string
-    /// that the worker's <c>CloudEventConverter</c> expects.
-    /// </summary>
-    private static string SerializeCloudEvent(CloudEvent e)
-    {
-        object? data = null;
-        if (e.Data != null)
-        {
-            try { data = JsonDocument.Parse(e.Data).RootElement; }
-            catch (JsonException) { data = e.Data.ToString(); }
+            // Data is not valid JSON (e.g. raw string or binary).
+            // Return as a plain string so the event can still be dispatched.
+            return binaryData.ToString();
         }
-
-        var obj = new
-        {
-            specversion = "1.0",
-            id = e.Id,
-            type = e.Type,
-            source = e.Source,
-            subject = e.Subject,
-            time = e.Time?.UtcDateTime.ToString("o"),
-            datacontenttype = e.DataContentType,
-            data
-        };
-
-        return JsonSerializer.Serialize(obj, _jsonOptions);
     }
 }

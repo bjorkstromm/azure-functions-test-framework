@@ -5,7 +5,12 @@ namespace Sample.FunctionApp.Worker;
 
 /// <summary>
 /// Example blob-triggered function. In tests, invoke via
-/// <c>host.InvokeBlobAsync("ProcessBlob", BinaryData.FromString("content"), "container/file.txt")</c>.
+/// <c>host.InvokeBlobAsync("ProcessBlob", BinaryData.FromString("content"), "file.txt")</c>.
+/// <para>
+/// This function uses <c>string</c> as the blob parameter type, which works for text blobs
+/// (the worker UTF-8 decodes the blob bytes).  For binary content use <c>byte[]</c> or
+/// <c>BinaryData</c> instead.
+/// </para>
 /// </summary>
 public class BlobFunction
 {

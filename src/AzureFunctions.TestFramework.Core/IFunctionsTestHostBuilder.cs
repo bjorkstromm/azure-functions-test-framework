@@ -39,9 +39,12 @@ public interface IFunctionsTestHostBuilder
     /// <c>Environment.GetEnvironmentVariable()</c> or <c>IConfiguration[key]</c>.
     /// </para>
     /// <para>
-    /// <b>Note:</b> Because environment variables are process-wide, setting them here may
-    /// affect other tests running in the same process.  Prefer <see cref="ConfigureSetting"/>
-    /// for values that can be expressed as in-memory configuration overrides.
+    /// <b>Note:</b> Environment variables are process-wide and the framework does <b>not</b>
+    /// restore their previous values after the test completes.  Variables set here persist for
+    /// the lifetime of the test process and will be visible to all subsequently created hosts.
+    /// Tests that rely on different values for the same variable should run sequentially
+    /// (separate xUnit test collection).  Prefer <see cref="ConfigureSetting"/> for values
+    /// that can be expressed as in-memory configuration overrides.
     /// </para>
     /// </summary>
     /// <param name="name">The environment variable name.</param>
