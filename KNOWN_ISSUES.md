@@ -121,16 +121,19 @@ ConnectionAbortedException: The connection was aborted because the server is shu
 ### 2. ~~DI Service Overrides (FunctionsTestHost)~~ ✅ FIXED
 **Status**: Dedicated `FunctionsTestHost` coverage now verifies both inline service replacement and factory-backed overrides in `Sample.FunctionApp.Worker.Tests\FunctionsTestHostFeaturesTests.cs`.
 
-### 3. WAF suite runtime is still dominated by factory shutdown
-**Status**: Non-blocking, measured but not yet resolved.
+### 3. ~~WAF suite runtime dominated by shutdown~~ ✅ FIXED
+**Root cause**: A dotTrace snapshot of a single WAF test showed generic host shutdown frames (`Microsoft.Extensions.Hosting.Internal`, `HostOptions`, `ShutdownTimeout`, `StopAsync`, `WaitForShutdownAsync`) during the long tail. Narrowing the runs further showed that simple WAF tests dropped to ~`7.1s` after reducing host shutdown timeout, but `WithWebHostBuilder_CanOverrideServices` still took ~`37s`. The remaining slowness came from the base `WebApplicationFactory.WithWebHostBuilder` clone path, which did not preserve the framework's custom factory lifecycle behavior.
 
-**What we measured**: Before this change, a targeted lifecycle diagnostic isolated the cost to the **primary `FunctionsWebApplicationFactory<Program>.Dispose()` call itself**, which took `30028ms`. In that run, factory construction was `119ms`, `CreateClient()` was `289ms`, requests were `11-74ms`, and derived factory disposal was only `8ms`. After implementing a framework-aware `DisposeAsync()` path and switching the WAF suite to an async-aware fixture wrapper, the latest validated WAF suite still took `38.1s` end-to-end even though the six test bodies reported only `251 ms` total work.
+**Fix applied**:
+- `FunctionsWebApplicationFactory` now configures `HostOptions.ShutdownTimeout = 1s` for WAF hosts.
+- `FunctionsWebApplicationFactory` exposes an explicit async disposal path for the primary factory.
+- `FunctionsWebApplicationFactory.WithWebHostBuilder(...)` now returns an independent `FunctionsWebApplicationFactory<TProgram>` instance that preserves the framework's custom startup/disposal logic instead of relying on the slow base clone path.
+- WAF tests use the async-aware fixture wrapper for the shared primary factory.
 
-**Additional finding**: Calling the inherited `WebApplicationFactory.DisposeAsync()` path before this change completed in `17ms` (`factory ctor=114ms; CreateClient=272ms; request=75ms; DisposeAsync=17ms`), which proved that the inherited async path was bypassing framework-specific cleanup. The repository now has an explicit async cleanup path, but that proper cleanup path did not materially reduce the overall WAF suite wall-clock.
-
-**What we tried**: Event-driven readiness is already in place. We also added explicit factory `DisposeAsync()`, async disposal support for derived hosts, an async-aware xUnit fixture wrapper, and reordered shutdown so the gRPC server is stopped before waiting for EventStream completion. These changes made cleanup semantics correct and consistent, but they did not produce a meaningful end-to-end runtime improvement.
-
-**Current conclusion**: The remaining WAF slowness still comes from shutdown/lifecycle behavior rather than request handling. The framework now exposes the correct async disposal hooks, so future work should instrument the shutdown path beneath those hooks (`WebApplicationFactory`, isolated worker host shutdown, and gRPC server stop) rather than continuing to optimize request execution or test fixture wiring.
+**Validated result**:
+- Single WAF test (`Health_ReturnsHealthyStatus`): ~`7.1s` end-to-end, `79 ms` test duration.
+- Single `WithWebHostBuilder_CanOverrideServices` test: ~`7.4s` end-to-end, `167 ms` test duration.
+- Full WAF suite: ~`7.1s` end-to-end, `222 ms` total test duration.
 
 ## 🔵 Future Enhancements
 
@@ -161,7 +164,7 @@ Currently focused on HttpTrigger input. Need to support:
 ### 5. ~~Parallel Test Execution~~ ✅ DONE
 - Tests run in parallel between test collections (xUnit `parallelizeTestCollections: true`)
 - gRPC tests: each test is isolated via `IAsyncLifetime` (per-test `FunctionsTestHost`)
-- WAF tests: shared async-aware fixture wrapper around `FunctionsWebApplicationFactory<Program>` + per-test `InMemoryTodoService.Reset()` for state isolation; WAF tests still run in ~38 s
+- WAF tests: shared async-aware fixture wrapper around `FunctionsWebApplicationFactory<Program>` + per-test `InMemoryTodoService.Reset()` for state isolation; WAF tests now run in ~7 s
 - Ephemeral gRPC ports ensure no port conflicts between parallel test instances
 
 ### 6. Performance Optimizations

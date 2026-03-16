@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, service-provider access via `Services`, configuration overrides via `ConfigureSetting`, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. The sample app now includes `CorrelationIdMiddleware`, configuration endpoints, and an opt-in shared-host gRPC fixture example. Startup/readiness is event-driven instead of delay/poll based, and the direct gRPC request path now precompiles route templates and reuses handlers per host. The Worker test projects are currently green (`15/15` gRPC tests and `6/6` WAF tests passing). `FunctionsWebApplicationFactory` now exposes an explicit framework-aware `DisposeAsync()` path, and the WAF tests use an async-aware fixture wrapper that routes xUnit teardown through that path. WAF request execution itself is still fast (`6/6` WAF tests report `251 ms` total test-body duration in the latest run), but the full WAF suite still takes about `38.1s` end-to-end, so the remaining shutdown cost is not resolved yet. All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, service-provider access via `Services`, configuration overrides via `ConfigureSetting`, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. The sample app now includes `CorrelationIdMiddleware`, configuration endpoints, and an opt-in shared-host gRPC fixture example. Startup/readiness is event-driven instead of delay/poll based, the direct gRPC request path now precompiles route templates and reuses handlers per host, and WAF host shutdown now uses a 1-second host timeout plus an explicit async disposal path. The Worker test projects are currently green (`15/15` gRPC tests and `6/6` WAF tests passing). A dotTrace-guided fix showed that the remaining WAF slowness came from the base `WebApplicationFactory.WithWebHostBuilder` clone path; `FunctionsWebApplicationFactory.WithWebHostBuilder(...)` now returns an independent factory instance that preserves the framework's startup/disposal behavior. The latest validated WAF suite now completes in about `7.1s` end-to-end with only `222 ms` of actual test-body time. All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -28,7 +28,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - **`FunctionsTestHost.Services`** — access the worker's configured service provider after startup to resolve singletons and inspect test state directly
 - **Configuration overrides** — `FunctionsTestHostBuilder.ConfigureSetting(key, value)` overlays test-specific configuration values into the worker host
 - **Middleware sample + testing** — `Sample.FunctionApp.Worker` registers a `CorrelationIdMiddleware` that copies `x-correlation-id` into `FunctionContext.Items`, and both Worker test projects assert it through `/api/correlation`
-- **Performance improvements** — startup waits now use worker connection/function-load signals instead of fixed delays, direct gRPC route matching is precompiled per host, and `CreateHttpClient()` reuses host-local handlers
+- **Performance improvements** — startup waits now use worker connection/function-load signals instead of fixed delays, direct gRPC route matching is precompiled per host, `CreateHttpClient()` reuses host-local handlers, and WAF test shutdown no longer falls back to the slow base `WithWebHostBuilder` clone path
 
 ## Goals
 
@@ -177,6 +177,8 @@ public class MyFunctionTests
         => (await _client!.GetAsync("/api/health")).EnsureSuccessStatusCode();
 }
 ```
+
+`FunctionsWebApplicationFactory.WithWebHostBuilder(...)` returns another `FunctionsWebApplicationFactory<TProgram>` instance rather than the base `WebApplicationFactory<TProgram>` clone path, so overridden-service scenarios keep the framework's custom startup/disposal behavior.
 
 ### 3. Timer Trigger Invocation
 

@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
@@ -43,6 +44,7 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     private readonly GrpcServerManager _grpcServerManager;
     private readonly GrpcHostService _grpcHostService;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly Action<IWebHostBuilder>? _additionalWebHostConfiguration;
     private readonly object _disposeLock = new();
     private bool _primaryHostCreated;
     private Task? _disposeTask;
@@ -52,7 +54,13 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     /// and immediately starts the in-process gRPC host server.
     /// </summary>
     public FunctionsWebApplicationFactory()
+        : this(null)
     {
+    }
+
+    private FunctionsWebApplicationFactory(Action<IWebHostBuilder>? additionalWebHostConfiguration)
+    {
+        _additionalWebHostConfiguration = additionalWebHostConfiguration;
         _loggerFactory = LoggerFactory.Create(builder =>
         {
             builder.SetMinimumLevel(LogLevel.Warning);
@@ -77,6 +85,18 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     /// </summary>
     public IReadOnlyDictionary<string, string> FunctionRouteMap => _grpcHostService.FunctionRouteMap;
 
+    /// <summary>
+    /// Creates a new independent factory with additional web-host configuration.
+    /// </summary>
+    public new FunctionsWebApplicationFactory<TProgram> WithWebHostBuilder(
+        Action<IWebHostBuilder> configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        return new FunctionsWebApplicationFactory<TProgram>(
+            CombineWebHostConfiguration(_additionalWebHostConfiguration, configuration));
+    }
+
     /// <inheritdoc/>
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -86,6 +106,10 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
         {
             // Make the GrpcHostService available for injection into the bridge startup filter.
             services.AddSingleton(grpcHostService);
+            services.Configure<HostOptions>(options =>
+            {
+                options.ShutdownTimeout = TimeSpan.FromSeconds(1);
+            });
 
             // InvocationIdStartupFilter must be registered first so its middleware runs first in
             // the pipeline, ensuring the x-ms-invocation-id header is present before the bridge
@@ -97,6 +121,8 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
             // WorkerRequestServicesMiddleware that is waiting for a matching FunctionContext.
             services.AddTransient<IStartupFilter, GrpcInvocationBridgeStartupFilter>();
         });
+
+        _additionalWebHostConfiguration?.Invoke(builder);
     }
 
     /// <inheritdoc/>
@@ -241,6 +267,22 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
         await _grpcHostService.WaitForShutdownAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
         await _grpcServerManager.DisposeAsync().ConfigureAwait(false);
         _loggerFactory.Dispose();
+    }
+
+    private static Action<IWebHostBuilder> CombineWebHostConfiguration(
+        Action<IWebHostBuilder>? existing,
+        Action<IWebHostBuilder> next)
+    {
+        if (existing is null)
+        {
+            return next;
+        }
+
+        return builder =>
+        {
+            existing(builder);
+            next(builder);
+        };
     }
 
     /// <summary>

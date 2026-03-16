@@ -74,7 +74,7 @@ public class FunctionsWebApplicationFactoryTests
             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         };
 
-        await using var customFactory = _fixture.Factory.WithWebHostBuilder(builder =>
+        using var customFactory = _fixture.Factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureServices(services =>
             {
