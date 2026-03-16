@@ -33,9 +33,9 @@ public class FunctionsTestHost : IFunctionsTestHost
     }
 
     /// <summary>
-    /// Gets the service provider (not yet implemented - will provide access to worker services).
+    /// Gets the worker service provider after the test host has started.
     /// </summary>
-    public IServiceProvider Services => throw new NotImplementedException("Service provider access coming soon");
+    public IServiceProvider Services => _workerHostService.Services;
 
     /// <summary>
     /// Gets the function invoker for executing functions.

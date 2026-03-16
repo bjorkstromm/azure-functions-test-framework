@@ -43,10 +43,13 @@
 - HttpResponseMapper converts gRPC InvocationResponse → HTTP response (bytes decoded as UTF-8)
 
 ### Test Infrastructure ✅
-- Sample function app with 8 HTTP endpoints (Todo CRUD + Health + Echo + Correlation), 1 HeartbeatTimer, 1 ServiceBus trigger, and 1 Queue trigger in `Sample.FunctionApp.Worker` (`net9.0`)
-- **Worker SDK 2.x (net9.0)**: 10 integration tests in `Sample.FunctionApp.Worker.Tests` pass (FunctionsTestHost-based)
+- Sample function app with 9 HTTP endpoints (Todo CRUD + Health + Echo + Correlation + Configuration), 1 HeartbeatTimer, 1 ServiceBus trigger, and 1 Queue trigger in `Sample.FunctionApp.Worker` (`net9.0`)
+- **Worker SDK 2.x (net9.0)**: 13 integration tests in `Sample.FunctionApp.Worker.Tests` pass (FunctionsTestHost-based)
 - **Worker SDK 2.x (net9.0)**: 6 integration tests in `Sample.FunctionApp.Worker.WAF.Tests` pass (FunctionsWebApplicationFactory-based)
 - `CorrelationIdMiddleware` is covered end-to-end in both test projects; the `FunctionsTestHost` sample uses `WithHostBuilderFactory(Program.CreateHostBuilder)` and the WAF sample uses `FunctionsWebApplicationFactory<Program>`
+- `FunctionsTestHost.Services` exposes the worker service provider after startup
+- `FunctionsTestHostBuilder.ConfigureSetting()` overlays test-specific configuration values that functions can consume via `IConfiguration`
+- Dedicated `FunctionsTestHost` tests now verify both inline service replacement and `WithHostBuilderFactory(Program.CreateWorkerHostBuilder)` service overrides
 
 ### FunctionsWebApplicationFactory ✅
 - `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
@@ -112,8 +115,8 @@ ConnectionAbortedException: The connection was aborted because the server is shu
 
 **Fix applied**: `FunctionsWebApplicationFactory.Dispose` now calls `_grpcHostService.SignalShutdownAsync()` after `base.Dispose()` but before `_grpcServerManager.StopAsync()`. This ends the EventStream gracefully so Kestrel can stop instantly without waiting for the 5-second `HostOptions.ShutdownTimeout`.
 
-### 2. ~~DI Service Overrides (FunctionsTestHost)~~ ✅ Partially Tested
-**Status**: DI service overrides work in `FunctionsWebApplicationFactory` (tested via `WithWebHostBuilder_CanOverrideServices`). For `FunctionsTestHost`, the infrastructure is in place (`FunctionsTestHostBuilder.ConfigureServices()` / `WorkerHostService.ConfigureServices()`) but no dedicated override tests exist yet.
+### 2. ~~DI Service Overrides (FunctionsTestHost)~~ ✅ FIXED
+**Status**: Dedicated `FunctionsTestHost` coverage now verifies both inline service replacement and factory-backed overrides in `Sample.FunctionApp.Worker.Tests\FunctionsTestHostFeaturesTests.cs`.
 
 ## 🔵 Future Enhancements
 
@@ -137,9 +140,9 @@ Currently focused on HttpTrigger input. Need to support:
 - Exception handling middleware
 
 ### 4. Configuration Support
+- ✅ Override application settings via `FunctionsTestHostBuilder.ConfigureSetting()`
 - Override host.json settings
-- Override application settings
-- Environment variable support
+- Environment variable helper APIs
 
 ### 5. ~~Parallel Test Execution~~ ✅ DONE
 - Tests run in parallel between test collections (xUnit `parallelizeTestCollections: true`)

@@ -26,7 +26,8 @@ public interface IFunctionsTestHostBuilder
     IFunctionsTestHostBuilder WithFunctionsWorkerAssembly(Assembly assembly);
 
     /// <summary>
-    /// Configures additional settings.
+    /// Configures a configuration value that will be added to the worker host's configuration.
+    /// Supports simple keys and hierarchical keys such as <c>Section:Key</c>.
     /// </summary>
     IFunctionsTestHostBuilder ConfigureSetting(string key, string value);
 

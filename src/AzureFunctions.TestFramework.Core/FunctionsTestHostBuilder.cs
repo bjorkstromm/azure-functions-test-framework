@@ -98,7 +98,8 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
             actualPort,
             _functionsAssembly,
             grpcHostService,
-            _hostBuilderFactory);
+            _hostBuilderFactory,
+            _settings);
 
         // Apply service configurators
         foreach (var configurator in _serviceConfigurators)

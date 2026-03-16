@@ -24,6 +24,7 @@ public class WorkerHostService : IWorkerHost
     private readonly Assembly _functionsAssembly;
     private readonly Func<string[], IHostBuilder>? _hostBuilderFactory;
     private readonly GrpcHostService _grpcHostService;
+    private readonly IReadOnlyDictionary<string, string> _settings;
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = new();
     private IHost? _workerHost;
     private bool _isInitialized;
@@ -38,18 +39,24 @@ public class WorkerHostService : IWorkerHost
     /// </summary>
     public int? HttpPort => _httpPort;
 
+    /// <inheritdoc />
+    public IServiceProvider Services => _workerHost?.Services
+        ?? throw new InvalidOperationException("Worker host has not been started");
+
     public WorkerHostService(
         ILogger<WorkerHostService> logger,
         int grpcPort,
         Assembly functionsAssembly,
         GrpcHostService grpcHostService,
-        Func<string[], IHostBuilder>? hostBuilderFactory = null)
+        Func<string[], IHostBuilder>? hostBuilderFactory = null,
+        IReadOnlyDictionary<string, string>? settings = null)
     {
         _logger = logger;
         _grpcPort = grpcPort;
         _functionsAssembly = functionsAssembly;
         _grpcHostService = grpcHostService;
         _hostBuilderFactory = hostBuilderFactory;
+        _settings = settings ?? new Dictionary<string, string>();
         _allocatedHttpPort = FindAvailablePort();
     }
 
@@ -192,6 +199,11 @@ public class WorkerHostService : IWorkerHost
                 ["urls"] = httpUri
             };
 
+            foreach (var setting in _settings)
+            {
+                configValues[setting.Key] = setting.Value;
+            }
+
             config.AddInMemoryCollection(configValues);
         });
         
@@ -207,6 +219,11 @@ public class WorkerHostService : IWorkerHost
                 ["AzureWebJobsScriptRoot"] = Path.GetDirectoryName(_functionsAssembly.Location) ?? string.Empty,
                 ["FUNCTIONS_WORKER_DIRECTORY"] = Path.GetDirectoryName(_functionsAssembly.Location) ?? string.Empty
             };
+
+            foreach (var setting in _settings)
+            {
+                configValues[setting.Key] = setting.Value;
+            }
 
             config.AddInMemoryCollection(configValues);
         });
@@ -252,6 +269,11 @@ public class WorkerHostService : IWorkerHost
                 ["Functions:Worker:RequestId"] = requestId,
                 ["Functions:Worker:GrpcMaxMessageLength"] = "2147483647"
             };
+
+            foreach (var setting in _settings)
+            {
+                configValues[setting.Key] = setting.Value;
+            }
 
             // Add with high priority so they override environment variables
             config.AddInMemoryCollection(configValues);

@@ -6,6 +6,11 @@ namespace AzureFunctions.TestFramework.Core;
 public interface IWorkerHost : IAsyncDisposable
 {
     /// <summary>
+    /// Gets the worker service provider after the host has started.
+    /// </summary>
+    IServiceProvider Services { get; }
+
+    /// <summary>
     /// Gets a value indicating whether the worker is initialized and ready.
     /// </summary>
     bool IsInitialized { get; }
