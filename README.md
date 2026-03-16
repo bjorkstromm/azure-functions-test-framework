@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, service-provider access via `Services`, configuration overrides via `ConfigureSetting`, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. The sample app includes `CorrelationIdMiddleware`, configuration endpoints, and an opt-in shared-host gRPC fixture example. Startup/readiness is event-driven instead of delay/poll based, the direct gRPC request path precompiles route templates and reuses handlers per host, and WAF host shutdown uses a short timeout plus an explicit async disposal path. All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus/blob/event-grid trigger invocations, function metadata discovery, service-provider access via `Services`, configuration overrides via `ConfigureSetting` and `ConfigureEnvironmentVariable`, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. The sample app includes `CorrelationIdMiddleware`, configuration endpoints, and an opt-in shared-host gRPC fixture example. Startup/readiness is event-driven instead of delay/poll based, the direct gRPC request path precompiles route templates and reuses handlers per host, and WAF host shutdown uses a short timeout plus an explicit async disposal path. All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -23,10 +23,13 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - **TimerTrigger invocations** via `AzureFunctions.TestFramework.Timer` package (`InvokeTimerAsync` extension method)
 - **ServiceBus trigger invocations** via `AzureFunctions.TestFramework.ServiceBus` package (`InvokeServiceBusAsync` extension method)
 - **Queue trigger invocations** via `AzureFunctions.TestFramework.Queue` package (`InvokeQueueAsync` extension method)
+- **Blob trigger invocations** via `AzureFunctions.TestFramework.Blob` package (`InvokeBlobAsync` extension method)
+- **Event Grid trigger invocations** via `AzureFunctions.TestFramework.EventGrid` package (`InvokeEventGridAsync` extension method, supports both `EventGridEvent` and `CloudEvent` schemas)
 - **Function metadata discovery** via `IFunctionInvoker.GetFunctions()` — returns `IReadOnlyDictionary<string, IFunctionMetadata>` with name, function ID, entry point, script file, and raw binding JSON
 - **`WithHostBuilderFactory`** — non-WAF gRPC tests can reuse the app's own `Program.CreateWorkerHostBuilder` or `Program.CreateHostBuilder`, automatically inheriting all registered services without re-registering them in each test. Both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` are supported.
 - **`FunctionsTestHost.Services`** — access the worker's configured service provider after startup to resolve singletons and inspect test state directly
 - **Configuration overrides** — `FunctionsTestHostBuilder.ConfigureSetting(key, value)` overlays test-specific configuration values into the worker host
+- **Environment variable overrides** — `FunctionsTestHostBuilder.ConfigureEnvironmentVariable(name, value)` sets process-level environment variables before the worker starts, so functions can read them via `IConfiguration` or `Environment.GetEnvironmentVariable`
 - **Middleware sample + testing** — `Sample.FunctionApp.Worker` registers a `CorrelationIdMiddleware` that copies `x-correlation-id` into `FunctionContext.Items`, and both Worker test projects assert it through `/api/correlation`
 - **Performance improvements** — startup waits now use worker connection/function-load signals instead of fixed delays, direct gRPC route matching is precompiled per host, `CreateHttpClient()` reuses host-local handlers, and WAF test shutdown no longer falls back to the slow base `WithWebHostBuilder` clone path
 
@@ -272,6 +275,106 @@ public class ServiceBusFunctionTests : IAsyncLifetime
 }
 ```
 
+### 5. Blob Trigger Invocation
+
+Use the `AzureFunctions.TestFramework.Blob` package to invoke blob-triggered functions directly from tests.
+
+```csharp
+// Reference: AzureFunctions.TestFramework.Blob
+using AzureFunctions.TestFramework.Blob;
+
+public class BlobFunctionTests : IAsyncLifetime
+{
+    private IFunctionsTestHost _testHost;
+
+    public async Task InitializeAsync()
+    {
+        _testHost = await new FunctionsTestHostBuilder()
+            .WithFunctionsAssembly(typeof(MyBlobFunction).Assembly)
+            .BuildAndStartAsync();
+    }
+
+    [Fact]
+    public async Task ProcessBlob_WithTextContent_Succeeds()
+    {
+        var content = BinaryData.FromString("Hello from blob!");
+        var result = await _testHost.InvokeBlobAsync("ProcessBlob", content, blobName: "test/file.txt");
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task ProcessBlob_WithJsonContent_Succeeds()
+    {
+        var content = BinaryData.FromObjectAsJson(new { id = "123", name = "test" });
+        var result = await _testHost.InvokeBlobAsync(
+            "ProcessBlob", content,
+            blobName: "orders/order-123.json",
+            containerName: "orders");
+        Assert.True(result.Success);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _testHost.StopAsync();
+        _testHost.Dispose();
+    }
+}
+```
+
+### 6. Event Grid Trigger Invocation
+
+Use the `AzureFunctions.TestFramework.EventGrid` package to invoke Event Grid–triggered functions directly from tests. Both `EventGridEvent` (EventGrid schema) and `CloudEvent` (CloudEvents schema) are supported.
+
+```csharp
+// Reference: AzureFunctions.TestFramework.EventGrid
+using AzureFunctions.TestFramework.EventGrid;
+using Azure.Messaging.EventGrid;
+using Azure.Messaging;
+
+public class EventGridFunctionTests : IAsyncLifetime
+{
+    private IFunctionsTestHost _testHost;
+
+    public async Task InitializeAsync()
+    {
+        _testHost = await new FunctionsTestHostBuilder()
+            .WithFunctionsAssembly(typeof(MyEventGridFunction).Assembly)
+            .BuildAndStartAsync();
+    }
+
+    [Fact]
+    public async Task ProcessEvent_WithEventGridEvent_Succeeds()
+    {
+        var eventGridEvent = new EventGridEvent(
+            subject: "orders/order-123",
+            eventType: "Order.Created",
+            dataVersion: "1.0",
+            data: BinaryData.FromObjectAsJson(new { orderId = "123" }));
+
+        var result = await _testHost.InvokeEventGridAsync("ProcessOrderEvent", eventGridEvent);
+        Assert.True(result.Success);
+    }
+
+    [Fact]
+    public async Task ProcessEvent_WithCloudEvent_Succeeds()
+    {
+        var cloudEvent = new CloudEvent(
+            source: "/orders",
+            type: "order.created",
+            jsonSerializableData: new { orderId = "123" });
+
+        var result = await _testHost.InvokeEventGridAsync("ProcessOrderEvent", cloudEvent);
+        Assert.True(result.Success);
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _testHost.StopAsync();
+        _testHost.Dispose();
+    }
+}
+```
+
 ```
 src/
   AzureFunctions.TestFramework.Core/       # gRPC host, worker hosting, HTTP invocation (net8.0;net9.0;net10.0)
@@ -280,6 +383,8 @@ src/
   AzureFunctions.TestFramework.Timer/      # TimerTrigger invocation support (net8.0;net9.0;net10.0)
   AzureFunctions.TestFramework.ServiceBus/ # ServiceBusTrigger invocation support (net8.0;net9.0;net10.0)
   AzureFunctions.TestFramework.Queue/      # QueueTrigger invocation support (net8.0;net9.0;net10.0)
+  AzureFunctions.TestFramework.Blob/       # BlobTrigger invocation support (net8.0;net9.0;net10.0)
+  AzureFunctions.TestFramework.EventGrid/  # EventGridTrigger invocation support (net8.0;net9.0;net10.0)
 
 samples/
   Sample.FunctionApp.Worker/              # Worker SDK 2.x sample (net9.0, TodoAPI + middleware + configuration endpoint + triggers)

@@ -32,6 +32,23 @@ public interface IFunctionsTestHostBuilder
     IFunctionsTestHostBuilder ConfigureSetting(string key, string value);
 
     /// <summary>
+    /// Sets a process-level environment variable before the worker starts, making it visible
+    /// to the worker's <c>IConfiguration</c> (via <c>AddEnvironmentVariables()</c>).
+    /// <para>
+    /// Use this to simulate Azure Functions App Settings that your function reads via
+    /// <c>Environment.GetEnvironmentVariable()</c> or <c>IConfiguration[key]</c>.
+    /// </para>
+    /// <para>
+    /// <b>Note:</b> Because environment variables are process-wide, setting them here may
+    /// affect other tests running in the same process.  Prefer <see cref="ConfigureSetting"/>
+    /// for values that can be expressed as in-memory configuration overrides.
+    /// </para>
+    /// </summary>
+    /// <param name="name">The environment variable name.</param>
+    /// <param name="value">The environment variable value.</param>
+    IFunctionsTestHostBuilder ConfigureEnvironmentVariable(string name, string value);
+
+    /// <summary>
     /// Specifies a factory used to create the underlying <see cref="IHostBuilder"/> for the
     /// Functions worker.  Pass your application's <c>Program.CreateHostBuilder</c> or
     /// <c>Program.CreateWorkerHostBuilder</c> method here so that all services, middleware and

@@ -30,5 +30,6 @@ public partial class Program
     private static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<ITodoService, InMemoryTodoService>();
+        services.AddSingleton<IProcessedItemsService, InMemoryProcessedItemsService>();
     }
 }

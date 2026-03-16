@@ -88,6 +88,29 @@ public class FunctionsTestHostFeaturesTests
         Assert.Equal("configured-value", payload.Value);
     }
 
+    [Fact]
+    public async Task ConfigureEnvironmentVariable_SetsEnvironmentVariableVisibleToFunction()
+    {
+        var envVarName = $"TEST_ENV_{Guid.NewGuid():N}";
+        const string envVarValue = "env-var-value";
+
+        await using var testHost = await new FunctionsTestHostBuilder()
+            .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
+            .ConfigureEnvironmentVariable(envVarName, envVarValue)
+            .BuildAndStartAsync();
+
+        var configuration = testHost.Services.GetRequiredService<IConfiguration>();
+        Assert.Equal(envVarValue, configuration[envVarName]);
+
+        using var client = testHost.CreateHttpClient();
+        var payload = await client.GetFromJsonAsync<ConfigurationValueResponse>(
+            $"/api/config/{Uri.EscapeDataString(envVarName)}");
+
+        Assert.NotNull(payload);
+        Assert.Equal(envVarValue, payload.Value);
+    }
+
     private sealed class SeededTodoService : ITodoService
     {
         private readonly List<TodoItem> _todos;

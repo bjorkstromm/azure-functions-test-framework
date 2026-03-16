@@ -25,6 +25,7 @@ public class WorkerHostService : IWorkerHost
     private readonly Func<string[], IHostBuilder>? _hostBuilderFactory;
     private readonly GrpcHostService _grpcHostService;
     private readonly IReadOnlyDictionary<string, string> _settings;
+    private readonly IReadOnlyDictionary<string, string> _environmentVariables;
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = new();
     private IHost? _workerHost;
     private bool _isInitialized;
@@ -49,7 +50,8 @@ public class WorkerHostService : IWorkerHost
         Assembly functionsAssembly,
         GrpcHostService grpcHostService,
         Func<string[], IHostBuilder>? hostBuilderFactory = null,
-        IReadOnlyDictionary<string, string>? settings = null)
+        IReadOnlyDictionary<string, string>? settings = null,
+        IReadOnlyDictionary<string, string>? environmentVariables = null)
     {
         _logger = logger;
         _grpcPort = grpcPort;
@@ -57,6 +59,7 @@ public class WorkerHostService : IWorkerHost
         _grpcHostService = grpcHostService;
         _hostBuilderFactory = hostBuilderFactory;
         _settings = settings ?? new Dictionary<string, string>();
+        _environmentVariables = environmentVariables ?? new Dictionary<string, string>();
         _allocatedHttpPort = FindAvailablePort();
     }
 
@@ -195,6 +198,14 @@ public class WorkerHostService : IWorkerHost
         // is used the worker's Kestrel server listens on the allocated HTTP port.
         // Ignored when ConfigureFunctionsWorkerDefaults() is used (no Kestrel is started).
         Environment.SetEnvironmentVariable("ASPNETCORE_URLS", httpUri);
+
+        // Apply user-configured environment variables (set BEFORE HostBuilder is created so they
+        // are picked up by ConfigureFunctionsWorkerDefaults/AddEnvironmentVariables).
+        foreach (var (name, value) in _environmentVariables)
+        {
+            Environment.SetEnvironmentVariable(name, value);
+            _logger.LogDebug("Set environment variable '{Name}'", name);
+        }
 
         // Get the base HostBuilder: use the factory if provided, otherwise create a fresh one.
         // When a factory (e.g. Program.CreateWorkerHostBuilder) is supplied, all services,

@@ -15,6 +15,7 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private Assembly? _functionsAssembly;
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = new();
     private readonly Dictionary<string, string> _settings = new();
+    private readonly Dictionary<string, string> _environmentVariables = new();
     private Func<string[], IHostBuilder>? _hostBuilderFactory;
 
     public IFunctionsTestHostBuilder WithFunctionAppAssembly(Assembly assembly)
@@ -44,6 +45,12 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     public IFunctionsTestHostBuilder ConfigureSetting(string key, string value)
     {
         _settings[key] = value;
+        return this;
+    }
+
+    public IFunctionsTestHostBuilder ConfigureEnvironmentVariable(string name, string value)
+    {
+        _environmentVariables[name] = value;
         return this;
     }
 
@@ -99,7 +106,8 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
             _functionsAssembly,
             grpcHostService,
             _hostBuilderFactory,
-            _settings);
+            _settings,
+            _environmentVariables);
 
         // Apply service configurators
         foreach (var configurator in _serviceConfigurators)
