@@ -43,7 +43,9 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     private readonly GrpcServerManager _grpcServerManager;
     private readonly GrpcHostService _grpcHostService;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly object _disposeLock = new();
     private bool _primaryHostCreated;
+    private Task? _disposeTask;
 
     /// <summary>
     /// Initializes a new instance of <see cref="FunctionsWebApplicationFactory{TProgram}"/>
@@ -194,21 +196,51 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     /// <inheritdoc/>
     protected override void Dispose(bool disposing)
     {
-        // Call base FIRST to stop the TestServer and the Functions worker.
-        base.Dispose(disposing);
-
-        if (disposing)
+        if (!disposing)
         {
-            // GrpcWorker.StopAsync() is a no-op, so the worker's gRPC channel stays open
-            // after base.Dispose(). Signal the EventStream to end gracefully before stopping
-            // the gRPC server so that Kestrel can shut down instantly instead of waiting for
-            // the HostOptions.ShutdownTimeout (default 5 s) to expire on each test disposal.
-            _grpcHostService.SignalShutdownAsync().GetAwaiter().GetResult();
-
-            _grpcServerManager.StopAsync().GetAwaiter().GetResult();
-            _grpcServerManager.DisposeAsync().AsTask().GetAwaiter().GetResult();
-            _loggerFactory.Dispose();
+            base.Dispose(disposing);
+            return;
         }
+
+        EnsureDisposedAsync(disposeAsync: false).GetAwaiter().GetResult();
+    }
+
+    /// <inheritdoc/>
+    public override async ValueTask DisposeAsync()
+    {
+        await EnsureDisposedAsync(disposeAsync: true).ConfigureAwait(false);
+        GC.SuppressFinalize(this);
+    }
+
+    private Task EnsureDisposedAsync(bool disposeAsync)
+    {
+        lock (_disposeLock)
+        {
+            _disposeTask ??= DisposeCoreAsync(disposeAsync);
+            return _disposeTask;
+        }
+    }
+
+    private async Task DisposeCoreAsync(bool disposeAsync)
+    {
+        if (disposeAsync)
+        {
+            await base.DisposeAsync().ConfigureAwait(false);
+        }
+        else
+        {
+            // Call base FIRST to stop the TestServer and the Functions worker.
+            base.Dispose(true);
+        }
+
+        // GrpcWorker.StopAsync() is a no-op, so the worker's gRPC channel can stay open
+        // after the base factory disposal path completes. Request shutdown first, then
+        // stop the gRPC server to actively break the read loop before awaiting stream exit.
+        _grpcHostService.RequestShutdown();
+        await _grpcServerManager.StopAsync().ConfigureAwait(false);
+        await _grpcHostService.WaitForShutdownAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+        await _grpcServerManager.DisposeAsync().ConfigureAwait(false);
+        _loggerFactory.Dispose();
     }
 
     /// <summary>
@@ -342,6 +374,20 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
                 .WaitAsync(TimeSpan.FromSeconds(5))
                 .GetAwaiter()
                 .GetResult();
+
+            _inner.Dispose();
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            _shutdownCts.Cancel();
+            await _eventStreamFinished.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+
+            if (_inner is IAsyncDisposable asyncDisposable)
+            {
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+                return;
+            }
 
             _inner.Dispose();
         }

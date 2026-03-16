@@ -115,12 +115,26 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     }
 
     /// <summary>
+    /// Signals the EventStream to shut down gracefully.
+    /// </summary>
+    public void RequestShutdown()
+    {
+        _shutdownCts.Cancel();
+    }
+
+    /// <summary>
+    /// Waits for the current EventStream to finish after shutdown has been requested.
+    /// </summary>
+    public Task WaitForShutdownAsync(TimeSpan timeout)
+        => _eventStreamFinished.Task.WaitAsync(timeout);
+
+    /// <summary>
     /// Signals the EventStream to shut down gracefully and waits for it to complete.
     /// Call this before stopping the gRPC server to avoid connection-abort errors.
     /// </summary>
     public async Task SignalShutdownAsync()
     {
-        _shutdownCts.Cancel();
+        RequestShutdown();
         await _eventStreamFinished.Task.WaitAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
     }
 

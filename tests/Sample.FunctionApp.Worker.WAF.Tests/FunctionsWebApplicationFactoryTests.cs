@@ -8,27 +8,24 @@ namespace Sample.FunctionApp.Worker.WAF.Tests;
 /// Integration tests for the Worker SDK 2.x sample using <see cref="FunctionsWebApplicationFactory{TProgram}"/>.
 /// </summary>
 public class FunctionsWebApplicationFactoryTests
-    : IClassFixture<FunctionsWebApplicationFactory<Program>>, IAsyncLifetime
+    : IClassFixture<FunctionsWebApplicationFactoryFixture>, IAsyncLifetime
 {
-    private readonly FunctionsWebApplicationFactory<Program> _factory;
+    private readonly FunctionsWebApplicationFactoryFixture _fixture;
     private HttpClient? _client;
     private readonly ITestOutputHelper _output;
 
     public FunctionsWebApplicationFactoryTests(
-        FunctionsWebApplicationFactory<Program> factory,
+        FunctionsWebApplicationFactoryFixture fixture,
         ITestOutputHelper output)
     {
-        _factory = factory;
+        _fixture = fixture;
         _output = output;
     }
 
-    public Task InitializeAsync()
+    public async Task InitializeAsync()
     {
-        if (_factory.Services.GetService(typeof(ITodoService)) is InMemoryTodoService todoService)
-            todoService.Reset();
-
-        _client = _factory.CreateClient();
-        return Task.CompletedTask;
+        await _fixture.ResetAsync();
+        _client = _fixture.Factory.CreateClient();
     }
 
     public Task DisposeAsync()
@@ -77,7 +74,7 @@ public class FunctionsWebApplicationFactoryTests
             CreatedAt = new DateTime(2025, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         };
 
-        using var customFactory = _factory.WithWebHostBuilder(builder =>
+        await using var customFactory = _fixture.Factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureServices(services =>
             {

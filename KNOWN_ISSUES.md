@@ -116,10 +116,21 @@ System.IO.IOException: The request stream was aborted.
 ConnectionAbortedException: The connection was aborted because the server is shutting down
 ```
 
-**Fix applied**: `FunctionsWebApplicationFactory.Dispose` now calls `_grpcHostService.SignalShutdownAsync()` after `base.Dispose()` but before `_grpcServerManager.StopAsync()`. This ends the EventStream gracefully so Kestrel can stop instantly without waiting for the 5-second `HostOptions.ShutdownTimeout`.
+**Fix applied**: `FunctionsWebApplicationFactory` now centralizes cleanup for both `Dispose(bool)` and `DisposeAsync()`, requests EventStream shutdown explicitly, stops the gRPC server, and then disposes the logger/server resources. Derived `WithWebHostBuilder` hosts also support async disposal via `GrpcAwareHost.DisposeAsync()`.
 
 ### 2. ~~DI Service Overrides (FunctionsTestHost)~~ ✅ FIXED
 **Status**: Dedicated `FunctionsTestHost` coverage now verifies both inline service replacement and factory-backed overrides in `Sample.FunctionApp.Worker.Tests\FunctionsTestHostFeaturesTests.cs`.
+
+### 3. WAF suite runtime is still dominated by factory shutdown
+**Status**: Non-blocking, measured but not yet resolved.
+
+**What we measured**: Before this change, a targeted lifecycle diagnostic isolated the cost to the **primary `FunctionsWebApplicationFactory<Program>.Dispose()` call itself**, which took `30028ms`. In that run, factory construction was `119ms`, `CreateClient()` was `289ms`, requests were `11-74ms`, and derived factory disposal was only `8ms`. After implementing a framework-aware `DisposeAsync()` path and switching the WAF suite to an async-aware fixture wrapper, the latest validated WAF suite still took `38.1s` end-to-end even though the six test bodies reported only `251 ms` total work.
+
+**Additional finding**: Calling the inherited `WebApplicationFactory.DisposeAsync()` path before this change completed in `17ms` (`factory ctor=114ms; CreateClient=272ms; request=75ms; DisposeAsync=17ms`), which proved that the inherited async path was bypassing framework-specific cleanup. The repository now has an explicit async cleanup path, but that proper cleanup path did not materially reduce the overall WAF suite wall-clock.
+
+**What we tried**: Event-driven readiness is already in place. We also added explicit factory `DisposeAsync()`, async disposal support for derived hosts, an async-aware xUnit fixture wrapper, and reordered shutdown so the gRPC server is stopped before waiting for EventStream completion. These changes made cleanup semantics correct and consistent, but they did not produce a meaningful end-to-end runtime improvement.
+
+**Current conclusion**: The remaining WAF slowness still comes from shutdown/lifecycle behavior rather than request handling. The framework now exposes the correct async disposal hooks, so future work should instrument the shutdown path beneath those hooks (`WebApplicationFactory`, isolated worker host shutdown, and gRPC server stop) rather than continuing to optimize request execution or test fixture wiring.
 
 ## 🔵 Future Enhancements
 
@@ -150,7 +161,7 @@ Currently focused on HttpTrigger input. Need to support:
 ### 5. ~~Parallel Test Execution~~ ✅ DONE
 - Tests run in parallel between test collections (xUnit `parallelizeTestCollections: true`)
 - gRPC tests: each test is isolated via `IAsyncLifetime` (per-test `FunctionsTestHost`)
-- WAF tests: shared `IClassFixture<FunctionsWebApplicationFactory<Program>>` factory + per-test `InMemoryTodoService.Reset()` for state isolation; WAF tests run in ~37 s
+- WAF tests: shared async-aware fixture wrapper around `FunctionsWebApplicationFactory<Program>` + per-test `InMemoryTodoService.Reset()` for state isolation; WAF tests still run in ~38 s
 - Ephemeral gRPC ports ensure no port conflicts between parallel test instances
 
 ### 6. Performance Optimizations

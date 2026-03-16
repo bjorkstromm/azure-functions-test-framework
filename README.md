@@ -6,7 +6,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, service-provider access via `Services`, configuration overrides via `ConfigureSetting`, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. The sample app now includes `CorrelationIdMiddleware`, configuration endpoints, and an opt-in shared-host gRPC fixture example. Startup/readiness is event-driven instead of delay/poll based, and the direct gRPC request path now precompiles route templates and reuses handlers per host. The Worker test projects are currently green (`15/15` gRPC tests and `6/6` WAF tests passing). All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus trigger invocations, function metadata discovery, service-provider access via `Services`, configuration overrides via `ConfigureSetting`, and `WithHostBuilderFactory` supporting both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` modes. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. The sample app now includes `CorrelationIdMiddleware`, configuration endpoints, and an opt-in shared-host gRPC fixture example. Startup/readiness is event-driven instead of delay/poll based, and the direct gRPC request path now precompiles route templates and reuses handlers per host. The Worker test projects are currently green (`15/15` gRPC tests and `6/6` WAF tests passing). `FunctionsWebApplicationFactory` now exposes an explicit framework-aware `DisposeAsync()` path, and the WAF tests use an async-aware fixture wrapper that routes xUnit teardown through that path. WAF request execution itself is still fast (`6/6` WAF tests report `251 ms` total test-body duration in the latest run), but the full WAF suite still takes about `38.1s` end-to-end, so the remaining shutdown cost is not resolved yet. All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -18,7 +18,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - Route matching with `{param}` placeholder support in both approaches
 - `WithWebHostBuilder` DI service overrides work end-to-end
 - CI workflow runs on pull requests and pushes to main
-- Tests run in parallel (xUnit `parallelizeTestCollections`) and in isolation (per-test host via `IAsyncLifetime` for gRPC tests; shared `IClassFixture` factory + per-test `InMemoryTodoService.Reset()` for WAF tests)
+- Tests run in parallel (xUnit `parallelizeTestCollections`) and in isolation (per-test host via `IAsyncLifetime` for gRPC tests; shared async-aware WAF fixture + per-test `InMemoryTodoService.Reset()` for WAF tests)
 - gRPC EventStream shuts down gracefully on test teardown (no connection-abort errors, no Kestrel 5 s shutdown wait)
 - **TimerTrigger invocations** via `AzureFunctions.TestFramework.Timer` package (`InvokeTimerAsync` extension method)
 - **ServiceBus trigger invocations** via `AzureFunctions.TestFramework.ServiceBus` package (`InvokeServiceBusAsync` extension method)
@@ -130,24 +130,39 @@ public partial class Program
 await Program.CreateHostBuilder(args).Build().RunAsync();
 ```
 
-**Usage** (recommended: shared factory + per-test state reset):
+**Usage** (recommended: shared factory fixture + per-test state reset):
 ```csharp
 // Reference: AzureFunctions.TestFramework.AspNetCore
-public class MyFunctionTests
-    : IClassFixture<FunctionsWebApplicationFactory<Program>>, IAsyncLifetime
+public sealed class MyFunctionFactoryFixture : IAsyncLifetime, IDisposable
 {
-    private readonly FunctionsWebApplicationFactory<Program> _factory;
+    public FunctionsWebApplicationFactory<Program> Factory { get; private set; } = default!;
+
+    public Task InitializeAsync()
+    {
+        Factory = new FunctionsWebApplicationFactory<Program>();
+        return Task.CompletedTask;
+    }
+
+    public Task DisposeAsync() => Factory.DisposeAsync().AsTask();
+
+    public void Dispose() => Factory.DisposeAsync().AsTask().GetAwaiter().GetResult();
+}
+
+public class MyFunctionTests
+    : IClassFixture<MyFunctionFactoryFixture>, IAsyncLifetime
+{
+    private readonly MyFunctionFactoryFixture _fixture;
     private HttpClient? _client;
 
-    public MyFunctionTests(FunctionsWebApplicationFactory<Program> factory)
-        => _factory = factory;
+    public MyFunctionTests(MyFunctionFactoryFixture fixture)
+        => _fixture = fixture;
 
     public Task InitializeAsync()
     {
         // Reset any shared singleton state before each test.
-        if (_factory.Services.GetService(typeof(IMyService)) is MyInMemoryService svc)
+        if (_fixture.Factory.Services.GetService(typeof(IMyService)) is MyInMemoryService svc)
             svc.Reset();
-        _client = _factory.CreateClient();
+        _client = _fixture.Factory.CreateClient();
         return Task.CompletedTask;
     }
 
