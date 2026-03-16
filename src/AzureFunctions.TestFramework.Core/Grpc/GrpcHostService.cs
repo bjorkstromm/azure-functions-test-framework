@@ -17,12 +17,15 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private readonly Assembly _functionsAssembly;
     private readonly Dictionary<string, TaskCompletionSource<StreamingMessage>> _pendingRequests = new();
     private readonly object _lock = new();
+    private readonly object _connectionLock = new();
     private IServerStreamWriter<StreamingMessage>? _responseStream;
     private string _workerId = string.Empty;
     private TaskCompletionSource<StreamingMessage>? _workerInitTcs;
     private TaskCompletionSource<bool> _functionsLoadedTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private TaskCompletionSource<int> _connectionTcs = new(TaskCreationOptions.RunContinuationsAsynchronously);
     private CancellationTokenSource _shutdownCts = new();
     private TaskCompletionSource _eventStreamFinished = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private int _connectionVersion;
     // Key format: "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}"
     private readonly Dictionary<string, string> _functionRouteToId = new(StringComparer.OrdinalIgnoreCase);
     // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
@@ -50,6 +53,21 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     public bool IsConnected => _responseStream != null;
 
     /// <summary>
+    /// Gets the current EventStream connection version.
+    /// Incremented whenever a new worker stream connects.
+    /// </summary>
+    public int ConnectionVersion
+    {
+        get
+        {
+            lock (_connectionLock)
+            {
+                return _connectionVersion;
+            }
+        }
+    }
+
+    /// <summary>
     /// Gets the worker ID.
     /// </summary>
     public string WorkerId => _workerId;
@@ -74,6 +92,27 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// Waits until all functions have been discovered and loaded.
     /// </summary>
     public Task WaitForFunctionsLoadedAsync() => _functionsLoadedTcs.Task;
+
+    /// <summary>
+    /// Waits until a worker connection newer than <paramref name="previousConnectionVersion"/> is active.
+    /// </summary>
+    public async Task WaitForConnectionAsync(
+        int previousConnectionVersion,
+        CancellationToken cancellationToken = default)
+    {
+        Task<int> waitTask;
+        lock (_connectionLock)
+        {
+            if (_connectionVersion > previousConnectionVersion)
+            {
+                return;
+            }
+
+            waitTask = _connectionTcs.Task;
+        }
+
+        await waitTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// Signals the EventStream to shut down gracefully and waits for it to complete.
@@ -111,6 +150,12 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         _shutdownCts = new CancellationTokenSource();
         _eventStreamFinished = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
         _responseStream = responseStream;
+        lock (_connectionLock)
+        {
+            _connectionVersion++;
+            _connectionTcs.TrySetResult(_connectionVersion);
+            _connectionTcs = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
         _logger.LogInformation("Worker connected to event stream");
 
         // Link our shutdown token with the server's request cancellation token so either

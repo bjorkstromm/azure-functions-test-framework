@@ -100,6 +100,7 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     /// <inheritdoc/>
     protected override IHost CreateHost(IHostBuilder builder)
     {
+        var previousConnectionVersion = _grpcHostService.ConnectionVersion;
         var grpcPort = _grpcServerManager.Port;
         var grpcUri = $"http://127.0.0.1:{grpcPort}";
         var workerId = Guid.NewGuid().ToString();
@@ -164,7 +165,7 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
         // routes are registered in the ASP.NET Core router before any test request arrives.
         // Use Task.Run to ensure we execute on a thread-pool thread and avoid potential
         // synchronization-context deadlocks when GetAwaiter().GetResult() is called.
-        Task.Run(WaitForFunctionsReadyAsync).GetAwaiter().GetResult();
+        Task.Run(() => WaitForFunctionsReadyAsync(previousConnectionVersion)).GetAwaiter().GetResult();
 
         if (_primaryHostCreated)
         {
@@ -181,19 +182,10 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
         return host;
     }
 
-    private async Task WaitForFunctionsReadyAsync()
+    private async Task WaitForFunctionsReadyAsync(int previousConnectionVersion)
     {
-        var timeout = TimeSpan.FromSeconds(30);
-        var start = DateTime.UtcNow;
-        while (!_grpcHostService.IsConnected && DateTime.UtcNow - start < timeout)
-        {
-            await Task.Delay(200);
-        }
-
-        if (!_grpcHostService.IsConnected)
-        {
-            throw new FunctionsTestHostException("Worker did not connect to gRPC server within timeout");
-        }
+        using var connectionCts = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        await _grpcHostService.WaitForConnectionAsync(previousConnectionVersion, connectionCts.Token);
 
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
         await _grpcHostService.WaitForFunctionsLoadedAsync().WaitAsync(cts.Token);

@@ -7,7 +7,7 @@
 ## Project Overview
 This is an integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience. It runs Azure Functions in-process without func.exe, communicating via the worker's gRPC endpoints.
 
-**Current Status**: Both testing approaches are **fully functional** for the current **Worker SDK 2.x (.NET 9)** sample. The gRPC-based `FunctionsTestHost` supports full CRUD, TimerTrigger, QueueTrigger, and ServiceBusTrigger invocations (`10/10` Worker tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE, middleware assertions, and `WithWebHostBuilder` service overrides (`6/6` Worker WAF tests pass). All framework libraries target `net8.0;net9.0;net10.0`. Tests run in parallel and in isolation. No known blockers.
+**Current Status**: Both testing approaches are **fully functional** for the current **Worker SDK 2.x (.NET 9)** sample. The gRPC-based `FunctionsTestHost` supports full CRUD, TimerTrigger, QueueTrigger, ServiceBusTrigger, middleware assertions, `Services`, and `ConfigureSetting()` (`15/15` Worker tests pass). `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE, middleware assertions, and `WithWebHostBuilder` service overrides (`6/6` Worker WAF tests pass). Startup/readiness is event-driven and the direct gRPC path precompiles route matching per host. All framework libraries target `net8.0;net9.0;net10.0`. Tests run in parallel and in isolation. No known blockers.
 
 ## Architecture
 
@@ -118,7 +118,7 @@ dotnet test tests/Sample.FunctionApp.Worker.Tests --filter "GetTodos_ReturnsEmpt
 
 ### Testing
 - Sample.FunctionApp.Worker has 8 HTTP endpoints (Todo CRUD + Health + Echo + Correlation)
-- 10 integration tests in `Sample.FunctionApp.Worker.Tests`
+- 15 integration tests in `Sample.FunctionApp.Worker.Tests`
 - 6 integration tests in `Sample.FunctionApp.Worker.WAF.Tests`
 - gRPC tests use `IAsyncLifetime` per-test (each test gets its own `FunctionsTestHost`)
 - WAF tests use `IClassFixture<FunctionsWebApplicationFactory<Program>>` (one shared factory) + `IAsyncLifetime` to call `InMemoryTodoService.Reset()` for per-test state isolation
@@ -174,7 +174,7 @@ tests/
 ✅ gRPC bidirectional streaming works
 ✅ Function loading/discovery (all 7 functions)
 ✅ Function invocation works (FunctionsTestHost — all HTTP methods + TimerTrigger)
-✅ All FunctionsTestHost integration tests pass (`10/10` Worker)
+✅ All FunctionsTestHost integration tests pass (`15/15` Worker)
 ✅ FunctionsWebApplicationFactory works for all HTTP methods (GET, POST, PUT, DELETE)
 ✅ WithWebHostBuilder DI service overrides work end-to-end
 ✅ Tests run in parallel and in isolation (xUnit parallelizeTestCollections + IAsyncLifetime)

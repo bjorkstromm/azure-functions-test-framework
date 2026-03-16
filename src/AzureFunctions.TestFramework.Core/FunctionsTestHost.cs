@@ -18,6 +18,7 @@ public class FunctionsTestHost : IFunctionsTestHost
     private readonly GrpcServerManager _grpcServerManager;
     private readonly WorkerHostService _workerHostService;
     private readonly GrpcHostService _grpcHostService;
+    private HttpMessageHandler? _cachedHandler;
     private bool _isStarted;
 
     internal FunctionsTestHost(
@@ -60,17 +61,18 @@ public class FunctionsTestHost : IFunctionsTestHost
         // The worker's startup filters handle x-ms-invocation-id injection and gRPC correlation.
         if (_workerHostService.HttpPort.HasValue)
         {
-            var handler = new AspNetCoreForwardingHandler(_workerHostService.HttpPort.Value);
-            return new HttpClient(handler)
+            var handler = _cachedHandler ??= new AspNetCoreForwardingHandler(_workerHostService.HttpPort.Value);
+            return new HttpClient(handler, disposeHandler: false)
             {
                 BaseAddress = new Uri("http://localhost/")
             };
         }
 
         // gRPC-direct mode (ConfigureFunctionsWorkerDefaults): dispatch via InvocationRequest.
-        var routeMap = new Dictionary<string, string>(_grpcHostService.FunctionRouteMap);
-        var grpcHandler = new Client.FunctionsHttpMessageHandler(_grpcHostService, routeMap);
-        return new HttpClient(grpcHandler)
+        var grpcHandler = _cachedHandler ??= new Client.FunctionsHttpMessageHandler(
+            _grpcHostService,
+            _grpcHostService.FunctionRouteMap);
+        return new HttpClient(grpcHandler, disposeHandler: false)
         {
             BaseAddress = new Uri("http://localhost/api/")
         };
@@ -91,27 +93,16 @@ public class FunctionsTestHost : IFunctionsTestHost
 
         try
         {
-            // 1. gRPC server is ALREADY started during Build()
-            // Just wait a moment for it to be fully ready to accept connections
-            await Task.Delay(500, cancellationToken);
-
-            // 2. Start Functions worker (connects to our gRPC server)
+            // 1. Start Functions worker (connects to our gRPC server)
+            var previousConnectionVersion = _grpcHostService.ConnectionVersion;
             await _workerHostService.StartAsync(cancellationToken);
 
-            // 3. Wait for worker to connect to gRPC
-            var timeout = TimeSpan.FromSeconds(30);
-            var start = DateTime.UtcNow;
-            while (!_grpcHostService.IsConnected && DateTime.UtcNow - start < timeout)
-            {
-                await Task.Delay(200, cancellationToken);
-            }
+            // 2. Wait for worker to connect to gRPC
+            using var connectionCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            connectionCts.CancelAfter(TimeSpan.FromSeconds(30));
+            await _grpcHostService.WaitForConnectionAsync(previousConnectionVersion, connectionCts.Token);
 
-            if (!_grpcHostService.IsConnected)
-            {
-                throw new FunctionsTestHostException("Worker did not connect to gRPC server within timeout");
-            }
-
-            // 4. Wait for functions to be discovered and loaded
+            // 3. Wait for functions to be discovered and loaded
             using var functionLoadCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
             functionLoadCts.CancelAfter(TimeSpan.FromSeconds(60));
             await _grpcHostService.WaitForFunctionsLoadedAsync().WaitAsync(functionLoadCts.Token);
@@ -162,6 +153,7 @@ public class FunctionsTestHost : IFunctionsTestHost
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
+        _cachedHandler?.Dispose();
         await _workerHostService.DisposeAsync();
         await _grpcServerManager.DisposeAsync();
     }

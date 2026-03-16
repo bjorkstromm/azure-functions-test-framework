@@ -44,12 +44,15 @@
 
 ### Test Infrastructure ✅
 - Sample function app with 9 HTTP endpoints (Todo CRUD + Health + Echo + Correlation + Configuration), 1 HeartbeatTimer, 1 ServiceBus trigger, and 1 Queue trigger in `Sample.FunctionApp.Worker` (`net9.0`)
-- **Worker SDK 2.x (net9.0)**: 13 integration tests in `Sample.FunctionApp.Worker.Tests` pass (FunctionsTestHost-based)
+- **Worker SDK 2.x (net9.0)**: 15 integration tests in `Sample.FunctionApp.Worker.Tests` pass (FunctionsTestHost-based)
 - **Worker SDK 2.x (net9.0)**: 6 integration tests in `Sample.FunctionApp.Worker.WAF.Tests` pass (FunctionsWebApplicationFactory-based)
 - `CorrelationIdMiddleware` is covered end-to-end in both test projects; the `FunctionsTestHost` sample uses `WithHostBuilderFactory(Program.CreateHostBuilder)` and the WAF sample uses `FunctionsWebApplicationFactory<Program>`
 - `FunctionsTestHost.Services` exposes the worker service provider after startup
 - `FunctionsTestHostBuilder.ConfigureSetting()` overlays test-specific configuration values that functions can consume via `IConfiguration`
 - Dedicated `FunctionsTestHost` tests now verify both inline service replacement and `WithHostBuilderFactory(Program.CreateWorkerHostBuilder)` service overrides
+- `FunctionsTestHost` startup and `FunctionsWebApplicationFactory` readiness are event-driven (worker connection + function-load signals) rather than fixed-delay polling
+- Direct gRPC HTTP dispatch precompiles route templates once per host, and `FunctionsTestHost.CreateHttpClient()` reuses host-local handlers
+- `Sample.FunctionApp.Worker.Tests\SharedFunctionsTestHostFixture.cs` demonstrates an opt-in shared-host pattern for suites that can reset state between tests
 
 ### FunctionsWebApplicationFactory ✅
 - `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
@@ -151,9 +154,11 @@ Currently focused on HttpTrigger input. Need to support:
 - Ephemeral gRPC ports ensure no port conflicts between parallel test instances
 
 ### 6. Performance Optimizations
-- Reuse worker instances across tests
-- Lazy initialization
-- Connection pooling
+- ✅ Event-driven startup/readiness replaced fixed startup delays and polling loops
+- ✅ Direct gRPC route matching now precompiles templates once per host instead of rescanning raw route strings per request
+- ✅ `FunctionsTestHost.CreateHttpClient()` now reuses host-local handlers instead of rebuilding them for every client
+- ✅ Optional shared-host gRPC fixture example added for suites that can reset state between tests
+- Default full-suite worker reuse remains opt-in because the current per-test-host model gives the safest isolation semantics
 
 ## Testing Commands
 

@@ -160,6 +160,30 @@ public class WorkerHostService : IWorkerHost
         _logger.LogInformation("Configuring worker to connect to {GrpcUri}", grpcUri);
         
         var functionAppDirectory = Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory;
+        var hostConfigurationValues = CreateConfigurationValues(
+            grpcUri,
+            workerId,
+            requestId,
+            functionAppDirectory,
+            httpUri,
+            includeFunctionDirectories: false,
+            includeUrls: true);
+        var appConfigurationValues = CreateConfigurationValues(
+            grpcUri,
+            workerId,
+            requestId,
+            functionAppDirectory,
+            httpUri,
+            includeFunctionDirectories: true,
+            includeUrls: false);
+        var overrideConfigurationValues = CreateConfigurationValues(
+            grpcUri,
+            workerId,
+            requestId,
+            functionAppDirectory,
+            httpUri,
+            includeFunctionDirectories: false,
+            includeUrls: false);
 
         // IMPORTANT: Set environment variables BEFORE creating HostBuilder!
         // ConfigureFunctionsWorkerDefaults calls AddEnvironmentVariables() which will read these
@@ -187,45 +211,13 @@ public class WorkerHostService : IWorkerHost
         // So we configure BEFORE calling ConfigureFunctionsWorkerDefaults
         hostBuilder.ConfigureHostConfiguration(config =>
         {
-            // These get added BEFORE the worker's own configuration
-            var configValues = new Dictionary<string, string?>
-            {
-                ["Functions:Worker:HostEndpoint"] = grpcUri,
-                ["Functions:Worker:WorkerId"] = workerId,
-                ["Functions:Worker:RequestId"] = requestId,
-                ["Functions:Worker:GrpcMaxMessageLength"] = "2147483647",
-                // Ensure the ASP.NET Core URL is set at host-config level too so that
-                // ConfigureFunctionsWebApplication() picks it up reliably.
-                ["urls"] = httpUri
-            };
-
-            foreach (var setting in _settings)
-            {
-                configValues[setting.Key] = setting.Value;
-            }
-
-            config.AddInMemoryCollection(configValues);
+            config.AddInMemoryCollection(hostConfigurationValues);
         });
         
         // Configure app configuration with the same values
         hostBuilder.ConfigureAppConfiguration((context, config) =>
         {
-            var configValues = new Dictionary<string, string?>
-            {
-                ["Functions:Worker:HostEndpoint"] = grpcUri,
-                ["Functions:Worker:WorkerId"] = workerId,
-                ["Functions:Worker:RequestId"] = requestId,
-                ["Functions:Worker:GrpcMaxMessageLength"] = "2147483647",
-                ["AzureWebJobsScriptRoot"] = Path.GetDirectoryName(_functionsAssembly.Location) ?? string.Empty,
-                ["FUNCTIONS_WORKER_DIRECTORY"] = Path.GetDirectoryName(_functionsAssembly.Location) ?? string.Empty
-            };
-
-            foreach (var setting in _settings)
-            {
-                configValues[setting.Key] = setting.Value;
-            }
-
-            config.AddInMemoryCollection(configValues);
+            config.AddInMemoryCollection(appConfigurationValues);
         });
 
         if (_hostBuilderFactory == null)
@@ -262,21 +254,8 @@ public class WorkerHostService : IWorkerHost
         // so our values override any defaults from environment variables
         hostBuilder.ConfigureAppConfiguration((context, config) =>
         {
-            var configValues = new Dictionary<string, string?>
-            {
-                ["Functions:Worker:HostEndpoint"] = grpcUri,
-                ["Functions:Worker:WorkerId"] = workerId,
-                ["Functions:Worker:RequestId"] = requestId,
-                ["Functions:Worker:GrpcMaxMessageLength"] = "2147483647"
-            };
-
-            foreach (var setting in _settings)
-            {
-                configValues[setting.Key] = setting.Value;
-            }
-
             // Add with high priority so they override environment variables
-            config.AddInMemoryCollection(configValues);
+            config.AddInMemoryCollection(overrideConfigurationValues);
         });
 
         // Register the ASP.NET Core integration startup filters.
@@ -323,6 +302,42 @@ public class WorkerHostService : IWorkerHost
         });
 
         return hostBuilder.Build();
+    }
+
+    private Dictionary<string, string?> CreateConfigurationValues(
+        string grpcUri,
+        string workerId,
+        string requestId,
+        string functionAppDirectory,
+        string httpUri,
+        bool includeFunctionDirectories,
+        bool includeUrls)
+    {
+        var configValues = new Dictionary<string, string?>
+        {
+            ["Functions:Worker:HostEndpoint"] = grpcUri,
+            ["Functions:Worker:WorkerId"] = workerId,
+            ["Functions:Worker:RequestId"] = requestId,
+            ["Functions:Worker:GrpcMaxMessageLength"] = "2147483647"
+        };
+
+        if (includeFunctionDirectories)
+        {
+            configValues["AzureWebJobsScriptRoot"] = functionAppDirectory;
+            configValues["FUNCTIONS_WORKER_DIRECTORY"] = functionAppDirectory;
+        }
+
+        if (includeUrls)
+        {
+            configValues["urls"] = httpUri;
+        }
+
+        foreach (var setting in _settings)
+        {
+            configValues[setting.Key] = setting.Value;
+        }
+
+        return configValues;
     }
 
     private static int FindAvailablePort()

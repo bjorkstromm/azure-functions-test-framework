@@ -14,16 +14,42 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
     private readonly GrpcHostService _grpcHostService;
     private readonly HttpRequestMapper _requestMapper;
     private readonly HttpResponseMapper _responseMapper;
-    private readonly Dictionary<string, string> _routeToFunctionMap;
+    private readonly IReadOnlyDictionary<string, string> _routeToFunctionMap;
+    private readonly Dictionary<string, string> _exactRouteMap;
+    private readonly List<RoutePatternEntry> _patternRoutes;
 
     public FunctionsHttpMessageHandler(
         GrpcHostService grpcHostService,
-        Dictionary<string, string> routeToFunctionMap)
+        IReadOnlyDictionary<string, string> routeToFunctionMap)
     {
         _grpcHostService = grpcHostService;
         _requestMapper = new HttpRequestMapper();
         _responseMapper = new HttpResponseMapper();
         _routeToFunctionMap = routeToFunctionMap;
+        _exactRouteMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        _patternRoutes = new List<RoutePatternEntry>();
+
+        foreach (var (routeKey, functionId) in _routeToFunctionMap)
+        {
+            var colonIdx = routeKey.IndexOf(':');
+            if (colonIdx < 0)
+            {
+                continue;
+            }
+
+            var method = routeKey.Substring(0, colonIdx).ToUpperInvariant();
+            var route = NormalizePath(routeKey.Substring(colonIdx + 1));
+            var routeSegments = route.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var hasParameters = routeSegments.Any(static seg => seg.Length > 2 && seg[0] == '{' && seg[^1] == '}');
+
+            if (!hasParameters)
+            {
+                _exactRouteMap[$"{method}:{route}"] = functionId;
+                continue;
+            }
+
+            _patternRoutes.Add(new RoutePatternEntry(method, functionId, routeSegments));
+        }
     }
 
     protected override async Task<HttpResponseMessage> SendAsync(
@@ -85,7 +111,7 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
 
     private Dictionary<string, string> ExtractHeaders(HttpRequestMessage request)
     {
-        var headers = new Dictionary<string, string>();
+        var headers = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var header in request.Headers)
         {
@@ -115,7 +141,7 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
 
     private Dictionary<string, string> ExtractQueryParameters(HttpRequestMessage request)
     {
-        var queryParams = new Dictionary<string, string>();
+        var queryParams = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
         if (request.RequestUri?.Query == null)
         {
@@ -143,63 +169,33 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
     private (string? FunctionId, IReadOnlyDictionary<string, string> RouteParams) FindFunctionMatch(
         string httpMethod, string path)
     {
-        // Normalize the path (strip leading slash and "api/" prefix)
-        var normalizedPath = path.TrimStart('/');
-        if (normalizedPath.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
-        {
-            normalizedPath = normalizedPath.Substring(4);
-        }
-        // Strip query string
-        var queryIndex = normalizedPath.IndexOf('?');
-        if (queryIndex >= 0)
-        {
-            normalizedPath = normalizedPath.Substring(0, queryIndex);
-        }
-
+        var normalizedPath = NormalizePath(path);
         var upperMethod = httpMethod.ToUpperInvariant();
         var pathSegments = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
-        // Try exact match first, then pattern match
-        foreach (var kvp in _routeToFunctionMap)
+        if (_exactRouteMap.TryGetValue($"{upperMethod}:{normalizedPath}", out var exactFunctionId))
         {
-            // Keys are in format "METHOD:route"
-            var colonIdx = kvp.Key.IndexOf(':');
-            if (colonIdx < 0) continue;
+            return (exactFunctionId, System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
+        }
 
-            var keyMethod = kvp.Key.Substring(0, colonIdx);
-            var keyRoute = kvp.Key.Substring(colonIdx + 1);
-
-            if (!string.Equals(keyMethod, upperMethod, StringComparison.OrdinalIgnoreCase))
+        foreach (var pattern in _patternRoutes)
+        {
+            if (!string.Equals(pattern.Method, upperMethod, StringComparison.Ordinal))
             {
                 continue;
             }
 
-            var route = keyRoute.TrimStart('/');
-            if (route.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
-            {
-                route = route.Substring(4);
-            }
-
-            // Exact match — no route parameters to extract.
-            if (string.Equals(normalizedPath, route, StringComparison.OrdinalIgnoreCase))
-            {
-                return (kvp.Value, System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
-            }
-
-            // Pattern match: route segments may contain {param} placeholders.
-            var routeSegments = route.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            if (routeSegments.Length != pathSegments.Length)
+            if (pattern.Segments.Length != pathSegments.Length)
             {
                 continue;
             }
 
             var match = true;
-            for (int i = 0; i < routeSegments.Length; i++)
+            for (int i = 0; i < pattern.Segments.Length; i++)
             {
-                var seg = routeSegments[i];
+                var seg = pattern.Segments[i];
                 if (seg.StartsWith('{') && seg.EndsWith('}'))
                 {
-                    // Parameter placeholder — matches any value.
                     continue;
                 }
 
@@ -212,22 +208,40 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
 
             if (match)
             {
-                // Extract route parameter values (e.g. "{id}" → pathSegments[i]).
                 var routeParams = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                for (int i = 0; i < routeSegments.Length; i++)
+                for (int i = 0; i < pattern.Segments.Length; i++)
                 {
-                    var seg = routeSegments[i];
+                    var seg = pattern.Segments[i];
                     if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}')
                     {
                         routeParams[seg.Substring(1, seg.Length - 2)] = pathSegments[i];
                     }
                 }
-                return (kvp.Value, routeParams);
+                return (pattern.FunctionId, routeParams);
             }
         }
 
         return (null, System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
     }
+
+    private static string NormalizePath(string path)
+    {
+        var normalizedPath = path.TrimStart('/');
+        if (normalizedPath.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedPath = normalizedPath.Substring(4);
+        }
+
+        var queryIndex = normalizedPath.IndexOf('?');
+        if (queryIndex >= 0)
+        {
+            normalizedPath = normalizedPath.Substring(0, queryIndex);
+        }
+
+        return normalizedPath;
+    }
+
+    private sealed record RoutePatternEntry(string Method, string FunctionId, string[] Segments);
 
     private HttpResponseMessage CreateHttpResponseMessage(HttpTestResponse testResponse)
     {
