@@ -43,6 +43,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
     private readonly Dictionary<string, (string FunctionId, string ParameterName)> _eventGridFunctionMap
         = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function ID; Value: synthetic input bindings that should be added by the test host.
+    private readonly Dictionary<string, List<ParameterBinding>> _syntheticInputBindingsByFunctionId
+        = new(StringComparer.OrdinalIgnoreCase);
     // Key: function name (case-insensitive); Value: IFunctionMetadata
     private readonly Dictionary<string, IFunctionMetadata> _functionMetadataMap
         = new(StringComparer.OrdinalIgnoreCase);
@@ -93,6 +96,16 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// Gets the metadata for all discovered functions, keyed by function name.
     /// </summary>
     public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions() => _functionMetadataMap;
+
+    internal IReadOnlyList<ParameterBinding> GetSyntheticInputBindings(string functionId)
+    {
+        if (_syntheticInputBindingsByFunctionId.TryGetValue(functionId, out var bindings))
+        {
+            return bindings;
+        }
+
+        return [];
+    }
 
     /// <summary>
     /// Waits until all functions have been discovered and loaded.
@@ -952,6 +965,38 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                                     _eventGridFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
                                     _logger.LogDebug("Mapped Event Grid function '{Name}' (param '{Param}') to ID '{FunctionId}'",
                                         functionMetadata.Name, paramName, functionMetadata.FunctionId);
+                                }
+                                else if (triggerType.Equals("durableClient", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    var paramName = root.TryGetProperty("name", out var nameProp)
+                                        ? nameProp.GetString() ?? "durableClient"
+                                        : "durableClient";
+                                    var taskHub = root.TryGetProperty("taskHub", out var taskHubProp)
+                                        ? taskHubProp.GetString()
+                                        : null;
+                                    var connectionName = root.TryGetProperty("connectionName", out var connectionNameProp)
+                                        ? connectionNameProp.GetString()
+                                        : null;
+
+                                    if (!_syntheticInputBindingsByFunctionId.TryGetValue(functionMetadata.FunctionId, out var bindings))
+                                    {
+                                        bindings = [];
+                                        _syntheticInputBindingsByFunctionId[functionMetadata.FunctionId] = bindings;
+                                    }
+
+                                    bindings.Add(new ParameterBinding
+                                    {
+                                        Name = paramName,
+                                        Data = new TypedData
+                                        {
+                                            String = DurableClientBindingDefaults.CreatePayload(taskHub, connectionName)
+                                        }
+                                    });
+
+                                    _logger.LogDebug(
+                                        "Mapped durable client binding '{BindingName}' for function '{Name}' to synthetic payload",
+                                        paramName,
+                                        functionMetadata.Name);
                                 }
                             }
                         }

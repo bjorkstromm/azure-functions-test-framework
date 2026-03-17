@@ -4,6 +4,9 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using System.Collections;
 
 namespace AzureFunctions.TestFramework.Durable;
 
@@ -28,20 +31,106 @@ public static class FunctionsTestHostBuilderDurableExtensions
 
         return builder.ConfigureServices(services =>
         {
+            var durableBindingConfigurations = DiscoverDurableClientBindings(functionsAssembly);
+
             services.TryAddSingleton(new FakeDurableFunctionCatalog(functionsAssembly));
             services.TryAddSingleton<FakeDurableOrchestrationRunner>();
             services.TryAddSingleton<FakeDurableTaskClient>();
             services.TryAddSingleton<DurableTaskClient>(provider => provider.GetRequiredService<FakeDurableTaskClient>());
             services.TryAddSingleton<FunctionsDurableClientProvider>();
-            services.TryAddSingleton<FakeDurableTaskClientInputConverter>();
-
-            services.AddOptions<WorkerOptions>().Configure(options =>
-            {
-                if (!options.InputConverters.Contains(typeof(FakeDurableTaskClientInputConverter)))
-                {
-                    options.InputConverters.RegisterAt<FakeDurableTaskClientInputConverter>(0);
-                }
-            });
+            RegisterInternalDurableClientProvider(services, durableBindingConfigurations);
         });
+    }
+
+    private static void RegisterInternalDurableClientProvider(
+        IServiceCollection services,
+        IReadOnlyCollection<(string TaskHub, string ConnectionName)> durableBindingConfigurations)
+    {
+        var providerType = typeof(DurableClientAttribute).Assembly.GetType(
+            "Microsoft.Azure.Functions.Worker.Extensions.DurableTask.FunctionsDurableClientProvider",
+            throwOnError: true)!;
+
+        services.TryAddSingleton(providerType, serviceProvider =>
+        {
+            var loggerFactory = serviceProvider.GetRequiredService<ILoggerFactory>();
+            var options = serviceProvider.GetService<IOptions<DurableTaskClientOptions>>()
+                ?? Options.Create(new DurableTaskClientOptions());
+
+            var provider = Activator.CreateInstance(
+                providerType,
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                binder: null,
+                args: [loggerFactory, options],
+                culture: null)!;
+
+            var clientsField = providerType.GetField("clients", BindingFlags.Instance | BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Could not find internal Durable client cache field.");
+            var clients = clientsField.GetValue(provider) as IDictionary
+                ?? throw new InvalidOperationException("Could not access internal Durable client cache.");
+
+            var clientKeyType = providerType.GetNestedType("ClientKey", BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Could not find internal Durable client key type.");
+            var clientHolderType = providerType.GetNestedType("ClientHolder", BindingFlags.NonPublic)
+                ?? throw new InvalidOperationException("Could not find internal Durable client holder type.");
+
+            var clientKeyConstructor = clientKeyType
+                .GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Single(ctor =>
+                {
+                    var parameters = ctor.GetParameters();
+                    return parameters.Length == 3
+                        && parameters[0].ParameterType == typeof(Uri)
+                        && parameters[1].ParameterType == typeof(string)
+                        && parameters[2].ParameterType == typeof(string);
+                });
+            var clientHolderConstructor = clientHolderType
+                .GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                .Single(ctor =>
+                {
+                    var parameters = ctor.GetParameters();
+                    return parameters.Length == 2
+                        && parameters[0].ParameterType == typeof(DurableTaskClient);
+                });
+            var fakeClient = serviceProvider.GetRequiredService<FakeDurableTaskClient>();
+            var endpoint = new Uri(DurableClientBindingDefaults.RpcBaseUrl);
+
+            foreach (var bindingConfiguration in durableBindingConfigurations)
+            {
+                var key = clientKeyConstructor.Invoke([endpoint, bindingConfiguration.TaskHub, bindingConfiguration.ConnectionName]);
+                var holder = clientHolderConstructor.Invoke([fakeClient, null]);
+                clients[key] = holder;
+            }
+
+            return provider;
+        });
+    }
+
+    private static IReadOnlyCollection<(string TaskHub, string ConnectionName)> DiscoverDurableClientBindings(Assembly functionsAssembly)
+    {
+        HashSet<(string TaskHub, string ConnectionName)> bindings = [];
+
+        foreach (var type in functionsAssembly.GetTypes())
+        {
+            foreach (var method in type.GetMethods(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static))
+            {
+                foreach (var parameter in method.GetParameters())
+                {
+                    var attribute = parameter.GetCustomAttribute<DurableClientAttribute>();
+                    if (attribute == null || parameter.ParameterType != typeof(DurableTaskClient))
+                    {
+                        continue;
+                    }
+
+                    bindings.Add((attribute.TaskHub ?? string.Empty, attribute.ConnectionName ?? string.Empty));
+                }
+            }
+        }
+
+        if (bindings.Count == 0)
+        {
+            bindings.Add((string.Empty, string.Empty));
+        }
+
+        return bindings;
     }
 }

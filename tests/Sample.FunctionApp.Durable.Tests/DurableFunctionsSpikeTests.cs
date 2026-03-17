@@ -21,7 +21,7 @@ public sealed class DurableFunctionsSpikeTests
         var activity = Assert.Contains(nameof(DurableGreetingFunctions.CreateGreeting), functions);
 
         Assert.True(starter.HasBindingType("httpTrigger"));
-        Assert.False(starter.HasBindingType("durableClient"));
+        Assert.True(starter.HasBindingType("durableClient"));
         Assert.Equal("orchestrationTrigger", orchestrator.GetDurableTriggerType());
         Assert.Equal("activityTrigger", activity.GetDurableTriggerType());
     }
@@ -33,8 +33,10 @@ public sealed class DurableFunctionsSpikeTests
         using var client = testHost.CreateHttpClient();
 
         using var response = await client.GetAsync("/api/durable/hello/martin");
+        var content = await response.Content.ReadAsStringAsync();
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Hello, martin!", content);
     }
 
     [Fact]

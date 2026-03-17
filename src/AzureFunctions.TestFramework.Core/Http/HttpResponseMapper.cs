@@ -34,13 +34,16 @@ public class HttpResponseMapper
 
         // Extract HTTP response from return value or output bindings
         var httpData = GetHttpResponseData(invocationResponse);
-        
+
         if (httpData == null)
         {
+            var body = GetDirectReturnValueBody(invocationResponse);
+
             return new HttpTestResponse
             {
                 StatusCode = HttpStatusCode.OK,
-                Success = true
+                Success = true,
+                Body = body
             };
         }
 
@@ -86,6 +89,16 @@ public class HttpResponseMapper
             .FirstOrDefault(p => p.Data?.Http != null);
 
         return httpOutput?.Data?.Http;
+    }
+
+    private string GetDirectReturnValueBody(InvocationResponse invocationResponse)
+    {
+        if (invocationResponse.ReturnValue == null)
+        {
+            return string.Empty;
+        }
+
+        return ExtractBody(invocationResponse.ReturnValue);
     }
 
     private string ExtractBody(TypedData data)

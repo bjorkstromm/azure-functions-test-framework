@@ -55,7 +55,7 @@
 - Direct gRPC HTTP dispatch precompiles route templates once per host, and `FunctionsTestHost.CreateHttpClient()` reuses host-local handlers
 - `Sample.FunctionApp.Worker.Tests\SharedFunctionsTestHostFixture.cs` demonstrates an opt-in shared-host pattern for suites that can reset state between tests
 - Durable spike support exists in separate projects: `AzureFunctions.TestFramework.Durable`, `Sample.FunctionApp.Durable`, and `Sample.FunctionApp.Durable.Tests`
-- `Sample.FunctionApp.Durable.Tests` verifies durable metadata discovery, HTTP starter execution, and provider-driven orchestration completion fully in-process
+- `Sample.FunctionApp.Durable.Tests` verifies durable metadata discovery, `[DurableClient]` HTTP starter execution, and provider-driven orchestration completion fully in-process
 
 ### FunctionsWebApplicationFactory ✅
 - `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
@@ -86,14 +86,12 @@
 
 - `ConfigureEnvironmentVariable(name, value)` sets process-level environment variables which are shared across all parallel tests. Tests that use different values for the same variable name should run sequentially (place them in a separate xUnit collection).
 - The durable spike currently uses a framework-owned fake path (`ConfigureFakeDurableSupport(...)` + `FunctionsDurableClientProvider`) instead of bootstrapping the real Durable runtime and execution engine.
-- On the direct gRPC HTTP path, the fake durable starter sample returns `200 OK` but its returned string is not yet surfaced in the HTTP response body. The orchestration output is still available through the fake `DurableTaskClient` / `FunctionsDurableClientProvider` path and is covered by tests.
 
 ## 🔵 Future Enhancements
 
 ### 1. Durable Functions
 - Decide whether to keep the current fake-backed model as the primary durable testing story or add a separate real-runtime track later
-- Support richer durable APIs on the fake path (`[DurableClient]`, sub-orchestrations, external events, custom status, management payload helpers)
-- Fix direct gRPC HTTP response-body mapping for fake durable starter return values
+- Support richer durable APIs on the fake path (sub-orchestrations, external events, custom status, management payload helpers)
 
 ### 2. Output Bindings
 Currently focused on trigger (input) invocations. Need to support surfacing output binding data to tests:

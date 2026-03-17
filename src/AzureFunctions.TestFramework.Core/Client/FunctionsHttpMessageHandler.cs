@@ -93,6 +93,11 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                 });
             }
 
+            foreach (var binding in _grpcHostService.GetSyntheticInputBindings(functionId))
+            {
+                grpcRequest.InvocationRequest.InputData.Add(binding);
+            }
+
             // 5. Send to worker via gRPC (in-process)
             var grpcResponse = await _grpcHostService.SendMessageAsync(
                 grpcRequest,
