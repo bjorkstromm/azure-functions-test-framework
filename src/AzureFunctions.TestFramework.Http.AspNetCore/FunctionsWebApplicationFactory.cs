@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-namespace AzureFunctions.TestFramework.AspNetCore;
+namespace AzureFunctions.TestFramework.Http.AspNetCore;
 
 /// <summary>
 /// A <see cref="WebApplicationFactory{TEntryPoint}"/> for Azure Functions (dotnet-isolated) apps

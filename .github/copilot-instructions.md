@@ -22,7 +22,7 @@ This is an integration testing framework for Azure Functions (dotnet-isolated) t
    - `FunctionsHttpMessageHandler`: Custom HttpMessageHandler for intercepting HTTP requests
    - `HttpRequestMapper`/`HttpResponseMapper`: Convert between HTTP and gRPC messages
 
-2. **AzureFunctions.TestFramework.AspNetCore**: WebApplicationFactory-based testing
+2. **AzureFunctions.TestFramework.Http.AspNetCore**: WebApplicationFactory-based testing
    - `FunctionsWebApplicationFactory<TProgram>`: Extends `WebApplicationFactory<TProgram>`
    - `InvocationIdStartupFilter`: Injects `x-ms-invocation-id` header when absent
    - `GrpcInvocationBridgeStartupFilter`: Fires `InvocationRequest` for every HTTP request, unblocking `WorkerRequestServicesMiddleware`
@@ -141,7 +141,7 @@ src/
     ├── FunctionsTestHost.cs           # Main orchestrator
     └── FunctionsTestHostBuilder.cs    # Fluent builder API
     
-  AzureFunctions.TestFramework.AspNetCore/
+  AzureFunctions.TestFramework.Http.AspNetCore/
     WebApplicationFactory-based testing
     └── FunctionsWebApplicationFactory.cs
     

@@ -650,7 +650,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         var success = invocationResponse?.Result?.Status == StatusResult.Types.Status.Success;
         var logs = invocationResponse?.Result?.Logs.Select(log => log.Message).ToList() ?? [];
 
-        Dictionary<string, object> outputData = new(StringComparer.OrdinalIgnoreCase);
+        Dictionary<string, object?> outputData = new(StringComparer.OrdinalIgnoreCase);
         if (invocationResponse != null)
         {
             foreach (var output in invocationResponse.OutputData)

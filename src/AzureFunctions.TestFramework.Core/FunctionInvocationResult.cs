@@ -20,7 +20,7 @@ public class FunctionInvocationResult
     /// <summary>
     /// Gets or sets the output data from the function.
     /// </summary>
-    public Dictionary<string, object> OutputData { get; set; } = new();
+    public Dictionary<string, object?> OutputData { get; set; } = new();
 
     /// <summary>
     /// Gets or sets the return value from the function.

@@ -6,7 +6,16 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ## ⚠️ Project Status: Early Development
 
-**Current Status**: Both testing approaches are fully functional for **Worker SDK 2.x (.NET 9)**. The gRPC-based `FunctionsTestHost` supports full CRUD HTTP invocations, timer/queue/service-bus/blob/event-grid trigger invocations, function metadata discovery, service-provider access via `Services`, configuration overrides via `ConfigureSetting` and `ConfigureEnvironmentVariable`, and output capture for non-HTTP trigger invocations via `FunctionInvocationResult` (`ReadReturnValueAs<T>()` and `ReadOutputAs<T>()`) covering plain return values plus queue/blob/table output-binding payloads. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE and `WithWebHostBuilder` service overrides. The sample app includes `CorrelationIdMiddleware`, configuration endpoints, output-binding samples, and an opt-in shared-host gRPC fixture example. Startup/readiness is event-driven instead of delay/poll based, the direct gRPC request path precompiles route templates and reuses handlers per host, and WAF host shutdown uses a short timeout plus an explicit async disposal path. All framework libraries target `net8.0;net9.0;net10.0` and are published as NuGet packages to NuGet.org (versioned via MinVer from git tags). A separate Durable Functions spike now exists via `AzureFunctions.TestFramework.Durable`, `Sample.FunctionApp.Durable`, and `Sample.FunctionApp.Durable.Tests`; it provides a fake-backed, fully in-process starter/orchestrator/activity path centered on `ConfigureFakeDurableSupport(...)`, supports Azure-style `[DurableClient] DurableTaskClient` injection, sub-orchestrators, direct activity invocation via `IFunctionsTestHost` extensions, custom-status/status-helper coverage, and both wait-then-raise and raise-before-wait external events. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
+### Current status
+
+- **Worker SDK 2.x sample**: Fully functional for the current **.NET 9** sample app and test suites
+- **Core host (`AzureFunctions.TestFramework.Core`)**: Full CRUD HTTP invocations, function metadata discovery, `Services`, `ConfigureSetting`, `ConfigureEnvironmentVariable`, and non-HTTP result/output capture via `FunctionInvocationResult`
+- **Trigger packages**: Timer, Queue, Service Bus, Blob, and Event Grid trigger invocation helpers are implemented and covered by sample/tests
+- **ASP.NET Core package (`AzureFunctions.TestFramework.Http.AspNetCore`)**: `FunctionsWebApplicationFactory<TProgram>` supports full CRUD, middleware assertions, and `WithWebHostBuilder` service overrides
+- **Durable package (`AzureFunctions.TestFramework.Durable`)**: Fake-backed durable support covers `[DurableClient]`, sub-orchestrators, direct activities, custom status, and buffered external events
+- **Performance / reliability**: Startup is event-driven, direct gRPC route matching is precompiled per host, and WAF teardown uses the explicit async cleanup path
+- **NuGet packaging**: All framework libraries target `net8.0;net9.0;net10.0` and produce NuGet packages with shared README/license/project metadata via `src\Directory.Build.props`
+- **Current blockers**: None for the active Worker SDK 2.x sample/test suites; see [KNOWN_ISSUES.md](https://github.com/bjorkstromm/azure-functions-test-framework/blob/main/KNOWN_ISSUES.md) for the small set of caveats that remain
 
 ### What Works ✅
 - gRPC server starts and accepts connections
@@ -43,6 +52,46 @@ This framework aims to provide:
 - **Two testing approaches**: gRPC-based (`FunctionsTestHost`) and ASP.NET Core pipeline-based (`FunctionsWebApplicationFactory`)
 - **Full DI control**: Override services for testing
 - **Middleware support**: Test middleware registered in `Program.cs`
+
+## NuGet package map
+
+The shipping package set is currently:
+
+- `AzureFunctions.TestFramework.Core` — gRPC-based in-process test host, HTTP client path, metadata inspection, and shared invocation result types
+- `AzureFunctions.TestFramework.Http.AspNetCore` — `FunctionsWebApplicationFactory<TProgram>` integration for ASP.NET Core pipeline testing
+- `AzureFunctions.TestFramework.Http` — currently minimal HTTP-focused package kept in the published package set for future HTTP-specific helpers
+- `AzureFunctions.TestFramework.Timer` — `InvokeTimerAsync(...)`
+- `AzureFunctions.TestFramework.Queue` — `InvokeQueueAsync(...)`
+- `AzureFunctions.TestFramework.ServiceBus` — `InvokeServiceBusAsync(...)`
+- `AzureFunctions.TestFramework.Blob` — `InvokeBlobAsync(...)`
+- `AzureFunctions.TestFramework.EventGrid` — `InvokeEventGridAsync(...)` for both `EventGridEvent` and `CloudEvent`
+- `AzureFunctions.TestFramework.Durable` — fake-backed durable helpers including `ConfigureFakeDurableSupport(...)`, durable client/provider helpers, status helpers, and direct activity invocation
+
+## Common commands
+
+```bash
+# Build solution
+dotnet build --configuration Release
+
+# Worker SDK 2.x gRPC tests (.NET 9)
+dotnet test tests/Sample.FunctionApp.Worker.Tests --no-build --configuration Release
+
+# Worker SDK 2.x WAF tests (.NET 9)
+dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests --no-build --configuration Release
+
+# Durable Functions spike tests (.NET 9)
+dotnet test tests/Sample.FunctionApp.Durable.Tests --configuration Release
+
+# Pack NuGet packages locally
+dotnet pack --configuration Release --output ./artifacts
+```
+
+## Next likely areas
+
+- Richer durable lifecycle helpers (terminate/suspend/resume and more management helpers)
+- Additional typed helpers for more complex output payloads
+- More middleware scenarios such as authorization and exception handling
+- More binding types such as Event Hubs, Cosmos DB, and SignalR
 
 ## Approaches
 
@@ -137,7 +186,7 @@ await Program.CreateHostBuilder(args).Build().RunAsync();
 
 **Usage** (recommended: shared factory fixture + per-test state reset):
 ```csharp
-// Reference: AzureFunctions.TestFramework.AspNetCore
+// Reference: AzureFunctions.TestFramework.Http.AspNetCore
 public sealed class MyFunctionFactoryFixture : IAsyncLifetime, IDisposable
 {
     public FunctionsWebApplicationFactory<Program> Factory { get; private set; } = default!;
@@ -404,7 +453,7 @@ Current spike result:
 ```  
 src/
   AzureFunctions.TestFramework.Core/       # gRPC host, worker hosting, HTTP invocation (net8.0;net9.0;net10.0)
-  AzureFunctions.TestFramework.AspNetCore/ # WebApplicationFactory-based testing (net8.0;net9.0;net10.0)
+  AzureFunctions.TestFramework.Http.AspNetCore/ # WebApplicationFactory-based testing (net8.0;net9.0;net10.0)
   AzureFunctions.TestFramework.Http/       # HTTP-specific functionality (placeholder) (net8.0;net9.0;net10.0)
   AzureFunctions.TestFramework.Timer/      # TimerTrigger invocation support (net8.0;net9.0;net10.0)
   AzureFunctions.TestFramework.ServiceBus/ # ServiceBusTrigger invocation support (net8.0;net9.0;net10.0)
@@ -451,7 +500,7 @@ dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=det
 
 ## Known Issues
 
-Existing HTTP/timer/queue/service-bus/blob/event-grid paths have no current blockers. The durable spike also runs fully in-process now with starter/orchestrator/activity/sub-orchestrator coverage and direct activity helpers. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for the current status.
+Existing HTTP/timer/queue/service-bus/blob/event-grid paths have no current blockers. The durable spike also runs fully in-process now with starter/orchestrator/activity/sub-orchestrator coverage and direct activity helpers. See the latest status notes in [KNOWN_ISSUES.md](https://github.com/bjorkstromm/azure-functions-test-framework/blob/main/KNOWN_ISSUES.md).
 
 ## References
 

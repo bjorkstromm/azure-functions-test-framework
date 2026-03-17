@@ -12,6 +12,14 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <Authors>Azure Functions Test Framework contributors</Authors>
+    <Company>Azure Functions Test Framework</Company>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/bjorkstromm/azure-functions-test-framework</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/bjorkstromm/azure-functions-test-framework.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
   </PropertyGroup>
 </Project>

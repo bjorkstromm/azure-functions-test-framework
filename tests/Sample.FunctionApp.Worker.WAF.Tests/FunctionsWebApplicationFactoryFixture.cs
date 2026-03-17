@@ -1,4 +1,4 @@
-using AzureFunctions.TestFramework.AspNetCore;
+using AzureFunctions.TestFramework.Http.AspNetCore;
 using Microsoft.Extensions.DependencyInjection;
 using Sample.FunctionApp.Worker;
 using Xunit;
