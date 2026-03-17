@@ -51,6 +51,11 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private readonly Dictionary<string, IFunctionMetadata> _functionMetadataMap
         = new(StringComparer.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="GrpcHostService"/> class.
+    /// </summary>
+    /// <param name="logger">The logger used for host/worker protocol events.</param>
+    /// <param name="functionsAssembly">The assembly containing the functions under test.</param>
     public GrpcHostService(ILogger<GrpcHostService> logger, Assembly functionsAssembly)
     {
         _logger = logger;

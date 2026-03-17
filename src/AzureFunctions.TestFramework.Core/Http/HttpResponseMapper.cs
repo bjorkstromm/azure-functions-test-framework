@@ -119,10 +119,29 @@ public class HttpResponseMapper
 /// </summary>
 public class HttpTestResponse
 {
+    /// <summary>
+    /// Gets or sets a value indicating whether the invocation succeeded.
+    /// </summary>
     public bool Success { get; set; }
+
+    /// <summary>
+    /// Gets or sets the HTTP status code.
+    /// </summary>
     public HttpStatusCode StatusCode { get; set; } = HttpStatusCode.OK;
+
+    /// <summary>
+    /// Gets or sets the HTTP response headers.
+    /// </summary>
     public Dictionary<string, string> Headers { get; set; } = new();
+
+    /// <summary>
+    /// Gets or sets the response body.
+    /// </summary>
     public string Body { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Gets or sets the error message when the invocation fails.
+    /// </summary>
     public string? Error { get; set; }
 
     /// <summary>

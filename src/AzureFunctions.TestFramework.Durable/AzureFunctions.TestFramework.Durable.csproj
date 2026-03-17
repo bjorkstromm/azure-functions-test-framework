@@ -10,7 +10,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.14.1" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.16.2" />
   </ItemGroup>
 
 </Project>

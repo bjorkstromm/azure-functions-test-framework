@@ -14,7 +14,8 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - **ASP.NET Core package (`AzureFunctions.TestFramework.Http.AspNetCore`)**: `FunctionsWebApplicationFactory<TProgram>` supports full CRUD, middleware assertions, and `WithWebHostBuilder` service overrides
 - **Durable package (`AzureFunctions.TestFramework.Durable`)**: Fake-backed durable support covers `[DurableClient]`, sub-orchestrators, direct activities, custom status, and buffered external events
 - **Performance / reliability**: Startup is event-driven, direct gRPC route matching is precompiled per host, and WAF teardown uses the explicit async cleanup path
-- **NuGet packaging**: All framework libraries target `net8.0;net9.0;net10.0` and produce NuGet packages with shared README/license/project metadata via `src\Directory.Build.props`
+- **NuGet packaging**: All framework libraries target `net8.0;net9.0;net10.0` and produce NuGet packages with shared README/license/project metadata, Source Link, deterministic release builds, and symbol packages
+- **Build health**: The current Release build is clean after filling in the remaining public XML documentation comments in `AzureFunctions.TestFramework.Core`
 - **Current blockers**: None for the active Worker SDK 2.x sample/test suites; see [KNOWN_ISSUES.md](https://github.com/bjorkstromm/azure-functions-test-framework/blob/main/KNOWN_ISSUES.md) for the small set of caveats that remain
 
 ### What Works ✅

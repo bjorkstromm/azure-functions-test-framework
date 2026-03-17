@@ -18,6 +18,11 @@ public class GrpcServerManager : IAsyncDisposable
     private IHost? _grpcHost;
     private int _port;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="GrpcServerManager"/> class.
+    /// </summary>
+    /// <param name="logger">The logger used for server lifecycle messages.</param>
+    /// <param name="hostService">The gRPC host service exposed by the server.</param>
     public GrpcServerManager(
         ILogger<GrpcServerManager> logger,
         GrpcHostService hostService)
@@ -101,6 +106,9 @@ public class GrpcServerManager : IAsyncDisposable
         }
     }
 
+    /// <summary>
+    /// Asynchronously stops and disposes the underlying gRPC host.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         if (_grpcHost != null)

@@ -44,6 +44,16 @@ public class WorkerHostService : IWorkerHost
     public IServiceProvider Services => _workerHost?.Services
         ?? throw new InvalidOperationException("Worker host has not been started");
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="WorkerHostService"/> class.
+    /// </summary>
+    /// <param name="logger">The logger used for worker lifecycle messages.</param>
+    /// <param name="grpcPort">The gRPC port exposed by the in-process host.</param>
+    /// <param name="functionsAssembly">The assembly containing the functions under test.</param>
+    /// <param name="grpcHostService">The gRPC host service coordinating worker communication.</param>
+    /// <param name="hostBuilderFactory">Optional factory for creating the worker host builder.</param>
+    /// <param name="settings">Optional configuration overrides for the worker host.</param>
+    /// <param name="environmentVariables">Optional environment variables to set before startup.</param>
     public WorkerHostService(
         ILogger<WorkerHostService> logger,
         int grpcPort,
@@ -143,6 +153,9 @@ public class WorkerHostService : IWorkerHost
             "The worker communicates via the gRPC server.");
     }
 
+    /// <summary>
+    /// Asynchronously stops and disposes the worker host.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         if (_workerHost != null)

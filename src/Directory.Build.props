@@ -1,4 +1,6 @@
 <Project>
+  <Import Project="..\Directory.Build.props" />
+
   <ItemGroup>
     <None Include="$(MSBuildThisFileDirectory)..\README.md" Pack="true" PackagePath="\" />
     <PackageReference Include="MinVer" Version="6.0.0">
@@ -12,6 +14,8 @@
   </ItemGroup>
 
   <PropertyGroup>
+    <ContinuousIntegrationBuild Condition="'$(ContinuousIntegrationBuild)' == '' and '$(Configuration)' == 'Release'">true</ContinuousIntegrationBuild>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
     <Authors>Azure Functions Test Framework contributors</Authors>
     <Company>Azure Functions Test Framework</Company>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>

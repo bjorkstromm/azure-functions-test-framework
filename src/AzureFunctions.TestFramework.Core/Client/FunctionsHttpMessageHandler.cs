@@ -18,6 +18,11 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
     private readonly Dictionary<string, string> _exactRouteMap;
     private readonly List<RoutePatternEntry> _patternRoutes;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FunctionsHttpMessageHandler"/> class.
+    /// </summary>
+    /// <param name="grpcHostService">The in-process gRPC host service used to dispatch invocations.</param>
+    /// <param name="routeToFunctionMap">The loaded HTTP route map keyed by <c>{METHOD}:{route}</c>.</param>
     public FunctionsHttpMessageHandler(
         GrpcHostService grpcHostService,
         IReadOnlyDictionary<string, string> routeToFunctionMap)
@@ -52,6 +57,12 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
         }
     }
 
+    /// <summary>
+    /// Sends an HTTP request through the in-process Functions worker and returns the mapped response.
+    /// </summary>
+    /// <param name="request">The HTTP request to send.</param>
+    /// <param name="cancellationToken">A token that can cancel the operation.</param>
+    /// <returns>The HTTP response produced by the function invocation.</returns>
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)

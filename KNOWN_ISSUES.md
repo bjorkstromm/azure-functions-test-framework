@@ -11,4 +11,3 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 - `FunctionsTestHostBuilder.ConfigureEnvironmentVariable(name, value)` sets process-level environment variables, so tests that need different values for the same variable name should not run in parallel.
 - The durable support package currently uses a framework-owned fake path (`ConfigureFakeDurableSupport(...)` + `FunctionsDurableClientProvider`) instead of the real Durable runtime and execution engine.
 - `AzureFunctions.TestFramework.Http` is still a minimal package with little public surface area today; it is packed/published so the package set stays stable while HTTP-specific helpers are added later.
-- The sample apps still emit the upstream `CSC : warning AD0001` from `Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore.RegistrationExpectedInASPNetIntegration`; build/test/pack succeeds, but the warning remains until the upstream analyzer issue is fixed.

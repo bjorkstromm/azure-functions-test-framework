@@ -18,36 +18,68 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private readonly Dictionary<string, string> _environmentVariables = new();
     private Func<string[], IHostBuilder>? _hostBuilderFactory;
 
+    /// <summary>
+    /// Sets the function application assembly to load into the test host.
+    /// </summary>
+    /// <param name="assembly">The function application assembly.</param>
+    /// <returns>The current builder.</returns>
     public IFunctionsTestHostBuilder WithFunctionAppAssembly(Assembly assembly)
     {
         _functionsAssembly = assembly;
         return this;
     }
 
+    /// <summary>
+    /// Adds a service-configuration callback that runs when the worker host is built.
+    /// </summary>
+    /// <param name="configure">The callback used to register or override services.</param>
+    /// <returns>The current builder.</returns>
     public IFunctionsTestHostBuilder ConfigureServices(Action<IServiceCollection> configure)
     {
         _serviceConfigurators.Add(configure);
         return this;
     }
 
+    /// <summary>
+    /// Sets the functions assembly to load into the test host.
+    /// </summary>
+    /// <param name="assembly">The assembly containing the functions under test.</param>
+    /// <returns>The current builder.</returns>
     public IFunctionsTestHostBuilder WithFunctionsAssembly(Assembly assembly)
     {
         _functionsAssembly = assembly;
         return this;
     }
 
+    /// <summary>
+    /// Sets the functions worker assembly to load into the test host.
+    /// </summary>
+    /// <param name="assembly">The assembly containing the worker functions.</param>
+    /// <returns>The current builder.</returns>
     public IFunctionsTestHostBuilder WithFunctionsWorkerAssembly(Assembly assembly)
     {
         // For now, same as WithFunctionsAssembly
         return WithFunctionsAssembly(assembly);
     }
 
+    /// <summary>
+    /// Adds or overrides a configuration setting for the worker host.
+    /// </summary>
+    /// <param name="key">The configuration key.</param>
+    /// <param name="value">The configuration value.</param>
+    /// <returns>The current builder.</returns>
     public IFunctionsTestHostBuilder ConfigureSetting(string key, string value)
     {
         _settings[key] = value;
         return this;
     }
 
+    /// <summary>
+    /// Sets a process-level environment variable before the worker host starts.
+    /// </summary>
+    /// <param name="name">The environment variable name.</param>
+    /// <param name="value">The environment variable value.</param>
+    /// <returns>The current builder.</returns>
     public IFunctionsTestHostBuilder ConfigureEnvironmentVariable(string name, string value)
     {
         _environmentVariables[name] = value;
@@ -71,6 +103,10 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
         return host;
     }
 
+    /// <summary>
+    /// Builds the test host without starting it.
+    /// </summary>
+    /// <returns>The constructed test host.</returns>
     public IFunctionsTestHost Build()
     {
         if (_functionsAssembly == null)

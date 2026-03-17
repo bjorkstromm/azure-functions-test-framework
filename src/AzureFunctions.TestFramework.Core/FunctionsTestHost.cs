@@ -150,6 +150,9 @@ public class FunctionsTestHost : IFunctionsTestHost
         }
     }
 
+    /// <summary>
+    /// Asynchronously stops the host and releases all managed resources.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
@@ -158,6 +161,9 @@ public class FunctionsTestHost : IFunctionsTestHost
         await _grpcServerManager.DisposeAsync();
     }
 
+    /// <summary>
+    /// Stops the host and releases all managed resources.
+    /// </summary>
     public void Dispose()
     {
         DisposeAsync().AsTask().GetAwaiter().GetResult();
