@@ -203,6 +203,8 @@ internal class FunctionInvoker : IFunctionInvoker
             "timerTrigger" => InvokeTimerAsync(functionName, context, cancellationToken),
             "serviceBusTrigger" => InvokeServiceBusAsync(functionName, context, cancellationToken),
             "queueTrigger" => InvokeQueueAsync(functionName, context, cancellationToken),
+            "blobTrigger" => InvokeBlobAsync(functionName, context, cancellationToken),
+            "eventGridTrigger" => InvokeEventGridAsync(functionName, context, cancellationToken),
             _ => throw new NotSupportedException(
                 $"Trigger type '{context.TriggerType}' is not supported by this invoker. " +
                 $"Use a trigger-specific extension package (e.g. AzureFunctions.TestFramework.Timer).")
@@ -243,6 +245,31 @@ internal class FunctionInvoker : IFunctionInvoker
             ? new ReadOnlyMemory<byte>(bytes)
             : ReadOnlyMemory<byte>.Empty;
         return _grpcHostService.InvokeQueueFunctionAsync(functionName, messageBytes, cancellationToken);
+    }
+
+    private Task<FunctionInvocationResult> InvokeBlobAsync(
+        string functionName,
+        FunctionInvocationContext context,
+        CancellationToken cancellationToken)
+    {
+        var contentBytes = context.InputData.TryGetValue("$blobContentBytes", out var b) && b is byte[] bytes
+            ? new ReadOnlyMemory<byte>(bytes)
+            : ReadOnlyMemory<byte>.Empty;
+        var triggerMetadata = context.InputData.TryGetValue("$triggerMetadata", out var m)
+            ? m?.ToString()
+            : null;
+        return _grpcHostService.InvokeBlobFunctionAsync(functionName, contentBytes, triggerMetadata, cancellationToken);
+    }
+
+    private Task<FunctionInvocationResult> InvokeEventGridAsync(
+        string functionName,
+        FunctionInvocationContext context,
+        CancellationToken cancellationToken)
+    {
+        var eventJson = context.InputData.TryGetValue("$eventJson", out var j)
+            ? j?.ToString() ?? "{}"
+            : "{}";
+        return _grpcHostService.InvokeEventGridFunctionAsync(functionName, eventJson, cancellationToken);
     }
 
     public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions()

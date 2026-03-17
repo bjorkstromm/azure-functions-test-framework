@@ -37,6 +37,12 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
     private readonly Dictionary<string, (string FunctionId, string ParameterName)> _queueFunctionMap
         = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
+    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _blobFunctionMap
+        = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
+    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _eventGridFunctionMap
+        = new(StringComparer.OrdinalIgnoreCase);
     // Key: function name (case-insensitive); Value: IFunctionMetadata
     private readonly Dictionary<string, IFunctionMetadata> _functionMetadataMap
         = new(StringComparer.OrdinalIgnoreCase);
@@ -519,6 +525,135 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         };
     }
 
+    /// <summary>
+    /// Invokes a blob-triggered function by name, passing <paramref name="contentBytes"/> as the
+    /// blob content and optional <paramref name="triggerMetadataJson"/> as trigger metadata.
+    /// Returns a <see cref="FunctionInvocationResult"/> describing success or failure.
+    /// </summary>
+    /// <param name="functionName">The name of the blob function (case-insensitive).</param>
+    /// <param name="contentBytes">The raw bytes of the blob content.</param>
+    /// <param name="triggerMetadataJson">
+    /// Optional JSON string containing blob metadata (BlobName, ContainerName, etc.)
+    /// used by the worker to bind blob-related parameters.
+    /// </param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<FunctionInvocationResult> InvokeBlobFunctionAsync(
+        string functionName,
+        ReadOnlyMemory<byte> contentBytes,
+        string? triggerMetadataJson = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_blobFunctionMap.TryGetValue(functionName, out var entry))
+        {
+            var available = string.Join(", ", _blobFunctionMap.Keys);
+            throw new InvalidOperationException(
+                $"No blob function '{functionName}' found. Available blob functions: [{available}]");
+        }
+
+        var invocationId = Guid.NewGuid().ToString();
+        var invocationRequest = new InvocationRequest
+        {
+            InvocationId = invocationId,
+            FunctionId = entry.FunctionId,
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
+                TraceState = string.Empty
+            }
+        };
+
+        invocationRequest.InputData.Add(new ParameterBinding
+        {
+            Name = entry.ParameterName,
+            Data = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFrom(contentBytes.Span) }
+        });
+
+        if (!string.IsNullOrEmpty(triggerMetadataJson))
+        {
+            invocationRequest.TriggerMetadata.Add(
+                entry.ParameterName,
+                new TypedData { Json = triggerMetadataJson });
+        }
+
+        var message = new StreamingMessage
+        {
+            RequestId = invocationId,
+            InvocationRequest = invocationRequest
+        };
+
+        var response = await SendMessageAsync(message, cancellationToken);
+        var invResponse = response.InvocationResponse;
+        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
+
+        _logger.LogDebug("Blob invocation {InvocationId} for '{FunctionName}' {Result}",
+            invocationId, functionName, success ? "succeeded" : "failed");
+
+        return new FunctionInvocationResult
+        {
+            InvocationId = invocationId,
+            Success = success,
+            Error = success ? null : invResponse?.Result?.Exception?.Message
+        };
+    }
+
+    /// <summary>
+    /// Invokes an Event Grid–triggered function by name, passing <paramref name="eventJson"/> as the
+    /// serialized event data.  Returns a <see cref="FunctionInvocationResult"/> describing success or failure.
+    /// </summary>
+    /// <param name="functionName">The name of the Event Grid function (case-insensitive).</param>
+    /// <param name="eventJson">JSON-serialized event (EventGridEvent or CloudEvent schema).</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    public async Task<FunctionInvocationResult> InvokeEventGridFunctionAsync(
+        string functionName,
+        string eventJson,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_eventGridFunctionMap.TryGetValue(functionName, out var entry))
+        {
+            var available = string.Join(", ", _eventGridFunctionMap.Keys);
+            throw new InvalidOperationException(
+                $"No Event Grid function '{functionName}' found. Available Event Grid functions: [{available}]");
+        }
+
+        var invocationId = Guid.NewGuid().ToString();
+        var invocationRequest = new InvocationRequest
+        {
+            InvocationId = invocationId,
+            FunctionId = entry.FunctionId,
+            TraceContext = new RpcTraceContext
+            {
+                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
+                TraceState = string.Empty
+            }
+        };
+
+        invocationRequest.InputData.Add(new ParameterBinding
+        {
+            Name = entry.ParameterName,
+            Data = new TypedData { Json = eventJson }
+        });
+
+        var message = new StreamingMessage
+        {
+            RequestId = invocationId,
+            InvocationRequest = invocationRequest
+        };
+
+        var response = await SendMessageAsync(message, cancellationToken);
+        var invResponse = response.InvocationResponse;
+        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
+
+        _logger.LogDebug("Event Grid invocation {InvocationId} for '{FunctionName}' {Result}",
+            invocationId, functionName, success ? "succeeded" : "failed");
+
+        return new FunctionInvocationResult
+        {
+            InvocationId = invocationId,
+            Success = success,
+            Error = success ? null : invResponse?.Result?.Exception?.Message
+        };
+    }
+
     internal string? FindFunctionId(string httpMethod, string requestPath, string routePrefix = "api")
         => FindFunctionMatch(httpMethod, requestPath, routePrefix).FunctionId;
 
@@ -796,6 +931,26 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                                         : "myQueueItem";
                                     _queueFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
                                     _logger.LogDebug("Mapped queue function '{Name}' (param '{Param}') to ID '{FunctionId}'",
+                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
+                                }
+                                else if (triggerType.Equals("blobTrigger", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // The "name" field is the function parameter name for the blob binding.
+                                    var paramName = root.TryGetProperty("name", out var nameProp)
+                                        ? nameProp.GetString() ?? "myBlob"
+                                        : "myBlob";
+                                    _blobFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
+                                    _logger.LogDebug("Mapped blob function '{Name}' (param '{Param}') to ID '{FunctionId}'",
+                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
+                                }
+                                else if (triggerType.Equals("eventGridTrigger", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    // The "name" field is the function parameter name for the Event Grid binding.
+                                    var paramName = root.TryGetProperty("name", out var nameProp)
+                                        ? nameProp.GetString() ?? "eventGridEvent"
+                                        : "eventGridEvent";
+                                    _eventGridFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
+                                    _logger.LogDebug("Mapped Event Grid function '{Name}' (param '{Param}') to ID '{FunctionId}'",
                                         functionMetadata.Name, paramName, functionMetadata.FunctionId);
                                 }
                             }

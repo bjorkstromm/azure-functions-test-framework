@@ -43,12 +43,13 @@
 - HttpResponseMapper converts gRPC InvocationResponse → HTTP response (bytes decoded as UTF-8)
 
 ### Test Infrastructure ✅
-- Sample function app with HTTP endpoints (Todo CRUD + Health + Echo + Correlation + Configuration), HeartbeatTimer, ServiceBus trigger, and Queue trigger in `Sample.FunctionApp.Worker` (`net9.0`)
+- Sample function app with HTTP endpoints (Todo CRUD + Health + Echo + Correlation + Configuration), HeartbeatTimer, ServiceBus trigger, Queue trigger, Blob trigger, and Event Grid trigger in `Sample.FunctionApp.Worker` (`net9.0`)
 - **Worker SDK 2.x (net9.0)**: Integration tests in `Sample.FunctionApp.Worker.Tests` pass (FunctionsTestHost-based)
 - **Worker SDK 2.x (net9.0)**: Integration tests in `Sample.FunctionApp.Worker.WAF.Tests` pass (FunctionsWebApplicationFactory-based)
 - `CorrelationIdMiddleware` is covered end-to-end in both test projects; the `FunctionsTestHost` sample uses `WithHostBuilderFactory(Program.CreateHostBuilder)` and the WAF sample uses `FunctionsWebApplicationFactory<Program>`
 - `FunctionsTestHost.Services` exposes the worker service provider after startup
 - `FunctionsTestHostBuilder.ConfigureSetting()` overlays test-specific configuration values that functions can consume via `IConfiguration`
+- `FunctionsTestHostBuilder.ConfigureEnvironmentVariable()` sets process-level environment variables visible to the worker via `IConfiguration` and `Environment.GetEnvironmentVariable()`
 - Dedicated `FunctionsTestHost` tests now verify both inline service replacement and `WithHostBuilderFactory(Program.CreateWorkerHostBuilder)` service overrides
 - `FunctionsTestHost` startup and `FunctionsWebApplicationFactory` readiness are event-driven (worker connection + function-load signals) rather than fixed-delay polling
 - Direct gRPC HTTP dispatch precompiles route templates once per host, and `FunctionsTestHost.CreateHttpClient()` reuses host-local handlers
@@ -68,34 +69,38 @@
 - When detected: `WorkerHostService` starts the worker's Kestrel server on a pre-allocated ephemeral port; `CreateHttpClient()` returns a client backed by `AspNetCoreForwardingHandler` that rewrites request URIs and injects `x-ms-invocation-id`
 - Startup filters (`InvocationIdStartupFilter`, `GrpcInvocationBridgeStartupFilter`) are registered in the worker's DI for all factory-backed hosts; they are no-ops when `ConfigureFunctionsWorkerDefaults()` is used (no `IApplicationBuilder` pipeline exists)
 
+### Trigger Invocations ✅
+- **TimerTrigger** — `AzureFunctions.TestFramework.Timer`: `host.InvokeTimerAsync(name, timerInfo?)`
+- **ServiceBusTrigger** — `AzureFunctions.TestFramework.ServiceBus`: `host.InvokeServiceBusAsync(name, ServiceBusMessage)`
+- **QueueTrigger** — `AzureFunctions.TestFramework.Queue`: `host.InvokeQueueAsync(name, QueueMessage)`
+- **BlobTrigger** — `AzureFunctions.TestFramework.Blob`: `host.InvokeBlobAsync(name, BinaryData, blobName?, containerName?)`
+- **EventGridTrigger** — `AzureFunctions.TestFramework.EventGrid`: `host.InvokeEventGridAsync(name, EventGridEvent)` and `host.InvokeEventGridAsync(name, CloudEvent)`
+
 ## 🔴 Current Blockers
 
 _None. All known blockers have been resolved._
 
 ## 🟡 Known Issues (Non-Blocking)
 
-_None._
+- `ConfigureEnvironmentVariable(name, value)` sets process-level environment variables which are shared across all parallel tests. Tests that use different values for the same variable name should run sequentially (place them in a separate xUnit collection).
 
 ## 🔵 Future Enhancements
 
-### 1. Additional Trigger Types
-- Blob triggers  
-- Event Grid triggers
-
-### 2. Output Bindings
-Currently focused on HttpTrigger input. Need to support:
+### 1. Output Bindings
+Currently focused on trigger (input) invocations. Need to support surfacing output binding data to tests:
 - Queue output bindings
 - Blob output bindings
 - Table output bindings
 - Return value bindings
 
-### 3. Middleware Scenarios
+### 2. Middleware Scenarios
 - Authorization middleware
 - Exception handling middleware
 
-### 4. Configuration Support
-- Override host.json settings
-- Environment variable helper APIs
+### 3. Additional Binding Types
+- Event Hubs trigger
+- Cosmos DB trigger
+- SignalR bindings
 
 ## Testing Commands
 
