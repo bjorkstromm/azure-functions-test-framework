@@ -298,7 +298,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     }
 
     /// <summary>
-    /// Sends an <see cref="InvocationRequest"/> to the worker for a given invocation ID and HTTP
+    /// Sends an <c>InvocationRequest</c> to the worker for a given invocation ID and HTTP
     /// route.  The invocation ID must match the <c>x-ms-invocation-id</c> header already placed
     /// on the in-flight request so that the worker's <c>IHttpCoordinator</c> can correlate it.
     /// </summary>

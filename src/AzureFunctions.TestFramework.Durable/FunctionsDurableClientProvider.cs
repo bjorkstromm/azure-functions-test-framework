@@ -10,6 +10,10 @@ public sealed class FunctionsDurableClientProvider
 {
     private readonly DurableTaskClient _client;
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FunctionsDurableClientProvider"/> class.
+    /// </summary>
+    /// <param name="client">The fake-backed durable client to expose to tests.</param>
     public FunctionsDurableClientProvider(DurableTaskClient client)
     {
         _client = client;

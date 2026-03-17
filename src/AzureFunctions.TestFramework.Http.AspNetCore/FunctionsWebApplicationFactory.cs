@@ -311,7 +311,7 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     }
 
     /// <summary>
-    /// Startup filter that fires an <see cref="InvocationRequest"/> over the in-process gRPC
+    /// Startup filter that fires an <c>InvocationRequest</c> over the in-process gRPC
     /// channel for every incoming HTTP request.
     /// <para>
     /// In production the Azure Functions host creates an <c>InvocationRequest</c> and sends it
