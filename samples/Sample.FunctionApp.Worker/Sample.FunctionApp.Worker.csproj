@@ -18,6 +18,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.24.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.5.3" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs" Version="6.8.1" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Tables" Version="1.5.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.EventGrid" Version="3.6.0" />
     <PackageReference Include="Azure.Messaging.EventGrid" Version="4.31.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.7" />

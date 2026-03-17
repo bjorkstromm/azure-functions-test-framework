@@ -130,4 +130,51 @@ public class TriggerFunctionsTests : IAsyncLifetime
             [$"output:{messageText}", $"output:{messageText}:copy"],
             messages!);
     }
+
+    [Fact]
+    public async Task InvokeQueueAsync_CapturesBlobOutputBindingData()
+    {
+        var messageText = "Hello blob binding!";
+        var message = QueuesModelFactory.QueueMessage(
+            messageId: Guid.NewGuid().ToString(),
+            popReceipt: "pop-receipt",
+            messageText: messageText,
+            dequeueCount: 1);
+
+        var result = await _testHost!.InvokeQueueAsync("CreateBlobOutputDocument", message);
+
+        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
+        Assert.Null(result.ReturnValue);
+
+        var outputBinding = Assert.Single(result.OutputData);
+        var content = result.ReadOutputAs<string>(outputBinding.Key);
+
+        Assert.Equal("Content", outputBinding.Key);
+        Assert.Equal($"blob:{messageText}", content);
+    }
+
+    [Fact]
+    public async Task InvokeQueueAsync_CapturesTableOutputBindingData()
+    {
+        var messageText = "Hello table binding!";
+        var message = QueuesModelFactory.QueueMessage(
+            messageId: Guid.NewGuid().ToString(),
+            popReceipt: "pop-receipt",
+            messageText: messageText,
+            dequeueCount: 1);
+
+        var result = await _testHost!.InvokeQueueAsync("CreateTableOutputEntity", message);
+
+        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
+        Assert.Null(result.ReturnValue);
+
+        var outputBinding = Assert.Single(result.OutputData);
+        var entity = result.ReadOutputAs<CapturedTableEntity>(outputBinding.Key);
+
+        Assert.Equal("Entity", outputBinding.Key);
+        Assert.NotNull(entity);
+        Assert.Equal("captured", entity!.PartitionKey);
+        Assert.Equal($"row-{messageText.Length}", entity.RowKey);
+        Assert.Equal($"table:{messageText}", entity.Payload);
+    }
 }

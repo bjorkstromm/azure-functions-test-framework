@@ -1,3 +1,5 @@
+using Azure;
+using Azure.Data.Tables;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
@@ -35,10 +37,60 @@ public class OutputBindingFunctions
             ]
         };
     }
+
+    [Function("CreateBlobOutputDocument")]
+    public BlobOutputBindingResult CreateBlobOutputDocument([QueueTrigger("blob-output-binding-queue")] string message)
+    {
+        _logger.LogInformation("Creating blob output document for {Message}", message);
+        return new BlobOutputBindingResult
+        {
+            Content = $"blob:{message}"
+        };
+    }
+
+    [Function("CreateTableOutputEntity")]
+    public TableOutputBindingResult CreateTableOutputEntity([QueueTrigger("table-output-binding-queue")] string message)
+    {
+        _logger.LogInformation("Creating table output entity for {Message}", message);
+        return new TableOutputBindingResult
+        {
+            Entity = new CapturedTableEntity
+            {
+                PartitionKey = "captured",
+                RowKey = $"row-{message.Length}",
+                Payload = $"table:{message}"
+            }
+        };
+    }
 }
 
 public sealed class QueueOutputBindingResult
 {
     [QueueOutput("captured-output-queue")]
     public string[] Messages { get; set; } = [];
+}
+
+public sealed class BlobOutputBindingResult
+{
+    [BlobOutput("captured-output/blob-output.txt")]
+    public string Content { get; set; } = string.Empty;
+}
+
+public sealed class TableOutputBindingResult
+{
+    [TableOutput("CapturedOutputTable")]
+    public CapturedTableEntity Entity { get; set; } = new();
+}
+
+public sealed class CapturedTableEntity : ITableEntity
+{
+    public string PartitionKey { get; set; } = string.Empty;
+
+    public string RowKey { get; set; } = string.Empty;
+
+    public DateTimeOffset? Timestamp { get; set; }
+
+    public ETag ETag { get; set; }
+
+    public string Payload { get; set; } = string.Empty;
 }

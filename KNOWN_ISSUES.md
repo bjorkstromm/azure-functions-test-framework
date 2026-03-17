@@ -94,10 +94,9 @@
 - Support richer durable APIs on the fake path (termination/suspend/resume, management payload helpers beyond the current status-query flow, richer event-history semantics)
 
 ### 2. Output Bindings
-Current support now includes trigger invocation return values and queue output bindings through `FunctionInvocationResult`. Remaining gaps:
-- Blob output bindings
-- Table output bindings
+Current support now includes trigger invocation return values plus queue/blob/table output bindings through `FunctionInvocationResult`. Remaining gaps:
 - Additional typed/HTTP management helpers for more complex output payloads
+- Other output binding types beyond the current sample coverage
 
 ### 3. Middleware Scenarios
 - Authorization middleware
