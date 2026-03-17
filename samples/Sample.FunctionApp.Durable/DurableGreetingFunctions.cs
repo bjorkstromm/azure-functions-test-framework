@@ -128,6 +128,21 @@ public class DurableGreetingFunctions
         return greeting;
     }
 
+    [Function(nameof(RunGreetingAwaitEventOrchestration))]
+    public static async Task<string> RunGreetingAwaitEventOrchestration(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
+    {
+        var name = context.GetInput<string>() ?? string.Empty;
+        context.SetCustomStatus(new GreetingProgressStatus("waiting-for-event", name, null));
+
+        var externalEvent = await context.WaitForExternalEvent<GreetingSuffixEvent>("greeting-suffix");
+        var greeting = await context.CallActivityAsync<string>(nameof(CreateGreeting), name);
+        var finalMessage = $"{greeting} ({externalEvent.Suffix})";
+
+        context.SetCustomStatus(new GreetingProgressStatus("completed-after-event", name, finalMessage));
+        return finalMessage;
+    }
+
     [Function(nameof(CreateGreeting))]
     public static string CreateGreeting([ActivityTrigger] string name)
     {
@@ -174,3 +189,6 @@ public sealed record GreetingProgressStatus(
     [property: JsonPropertyName("phase")] string Phase,
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("message")] string? Message);
+
+public sealed record GreetingSuffixEvent(
+    [property: JsonPropertyName("suffix")] string Suffix);

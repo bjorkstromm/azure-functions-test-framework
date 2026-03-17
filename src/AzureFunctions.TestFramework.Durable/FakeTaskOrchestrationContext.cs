@@ -8,7 +8,9 @@ namespace AzureFunctions.TestFramework.Durable;
 internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
 {
     private readonly Func<TaskName, object?, CancellationToken, Task<object?>> _activityDispatcher;
+    private readonly Func<string, string, CancellationToken, Task<object?>> _externalEventDispatcher;
     private readonly Func<TaskName, object?, CancellationToken, Task<object?>> _subOrchestrationDispatcher;
+    private readonly Action<object?>? _customStatusSink;
     private readonly object? _input;
     private readonly IServiceProvider _serviceProvider;
 
@@ -18,7 +20,9 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         object? input,
         IServiceProvider serviceProvider,
         Func<TaskName, object?, CancellationToken, Task<object?>> activityDispatcher,
-        Func<TaskName, object?, CancellationToken, Task<object?>> subOrchestrationDispatcher)
+        Func<TaskName, object?, CancellationToken, Task<object?>> subOrchestrationDispatcher,
+        Func<string, string, CancellationToken, Task<object?>> externalEventDispatcher,
+        Action<object?>? customStatusSink = null)
     {
         Name = orchestrationName;
         InstanceId = instanceId;
@@ -26,6 +30,8 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         _serviceProvider = serviceProvider;
         _activityDispatcher = activityDispatcher;
         _subOrchestrationDispatcher = subOrchestrationDispatcher;
+        _externalEventDispatcher = externalEventDispatcher;
+        _customStatusSink = customStatusSink;
     }
 
     public object? ContinueAsNewParameter { get; private set; }
@@ -103,10 +109,13 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
     public override void SetCustomStatus(object? customStatus)
     {
         CustomStatus = customStatus;
+        _customStatusSink?.Invoke(customStatus);
     }
 
-    public override Task<T> WaitForExternalEvent<T>(string eventName, CancellationToken cancellationToken = default)
+    public override async Task<T> WaitForExternalEvent<T>(string eventName, CancellationToken cancellationToken = default)
     {
-        throw new NotSupportedException("External events are not supported by the fake durable runner.");
+        var payload = await _externalEventDispatcher(InstanceId, eventName, cancellationToken).ConfigureAwait(false);
+        return (T?)FakeDurableOrchestrationRunner.ConvertValue(payload, typeof(T))!;
     }
+
 }

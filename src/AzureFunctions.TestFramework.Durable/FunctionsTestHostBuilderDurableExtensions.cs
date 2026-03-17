@@ -34,6 +34,7 @@ public static class FunctionsTestHostBuilderDurableExtensions
             var durableBindingConfigurations = DiscoverDurableClientBindings(functionsAssembly);
 
             services.TryAddSingleton(new FakeDurableFunctionCatalog(functionsAssembly));
+            services.TryAddSingleton<FakeDurableExternalEventHub>();
             services.TryAddSingleton<FakeDurableOrchestrationRunner>();
             services.TryAddSingleton<FakeDurableTaskClient>();
             services.TryAddSingleton<DurableTaskClient>(provider => provider.GetRequiredService<FakeDurableTaskClient>());

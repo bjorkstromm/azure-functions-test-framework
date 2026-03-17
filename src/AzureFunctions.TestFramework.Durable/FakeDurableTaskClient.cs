@@ -9,14 +9,19 @@ namespace AzureFunctions.TestFramework.Durable;
 internal sealed class FakeDurableTaskClient : DurableTaskClient
 {
     private readonly JsonDataConverter _dataConverter = JsonDataConverter.Default;
+    private readonly FakeDurableExternalEventHub _externalEventHub;
     private readonly ConcurrentDictionary<string, FakeDurableInstanceState> _instances = new(StringComparer.OrdinalIgnoreCase);
     private readonly ILogger<FakeDurableTaskClient> _logger;
     private readonly FakeDurableOrchestrationRunner _runner;
 
-    public FakeDurableTaskClient(FakeDurableOrchestrationRunner runner, ILogger<FakeDurableTaskClient> logger)
+    public FakeDurableTaskClient(
+        FakeDurableOrchestrationRunner runner,
+        FakeDurableExternalEventHub externalEventHub,
+        ILogger<FakeDurableTaskClient> logger)
         : base("FAKE")
     {
         _runner = runner;
+        _externalEventHub = externalEventHub;
         _logger = logger;
     }
 
@@ -46,7 +51,12 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         object? eventPayload = null,
         CancellationToken cancellation = default)
     {
-        throw new NotSupportedException("External events are not supported by the fake durable client.");
+        _ = GetRequiredInstance(instanceId);
+        _logger.LogInformation(
+            "Raising fake durable external event {EventName} for instance {InstanceId}",
+            eventName,
+            instanceId);
+        return _externalEventHub.RaiseEventAsync(instanceId, eventName, eventPayload, cancellation);
     }
 
     public override Task ResumeInstanceAsync(
@@ -78,7 +88,12 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         {
             try
             {
-                var result = await _runner.RunOrchestrationWithDetailsAsync(orchestratorName.Name, instanceId, input, cancellation)
+                var result = await _runner.RunOrchestrationWithDetailsAsync(
+                        orchestratorName.Name,
+                        instanceId,
+                        input,
+                        state.MarkCustomStatus,
+                        cancellation)
                     .ConfigureAwait(false);
                 state.MarkCompleted(result.Output, result.CustomStatus);
                 _logger.LogInformation("Fake durable instance {InstanceId} completed successfully", instanceId);
@@ -171,6 +186,15 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
                 _output = output;
                 _customStatus = customStatus;
                 RuntimeStatus = OrchestrationRuntimeStatus.Completed;
+                LastUpdatedAt = DateTimeOffset.UtcNow;
+            }
+        }
+
+        public void MarkCustomStatus(object? customStatus)
+        {
+            lock (_syncLock)
+            {
+                _customStatus = customStatus;
                 LastUpdatedAt = DateTimeOffset.UtcNow;
             }
         }

@@ -10,16 +10,19 @@ namespace AzureFunctions.TestFramework.Durable;
 internal sealed class FakeDurableOrchestrationRunner
 {
     private readonly FakeDurableFunctionCatalog _catalog;
+    private readonly FakeDurableExternalEventHub _externalEventHub;
     private readonly ILogger<FakeDurableOrchestrationRunner> _logger;
     private readonly IServiceProvider _serviceProvider;
     private int _subOrchestrationSequence;
 
     public FakeDurableOrchestrationRunner(
         FakeDurableFunctionCatalog catalog,
+        FakeDurableExternalEventHub externalEventHub,
         IServiceProvider serviceProvider,
         ILogger<FakeDurableOrchestrationRunner> logger)
     {
         _catalog = catalog;
+        _externalEventHub = externalEventHub;
         _serviceProvider = serviceProvider;
         _logger = logger;
     }
@@ -30,7 +33,13 @@ internal sealed class FakeDurableOrchestrationRunner
         object? input,
         CancellationToken cancellationToken)
     {
-        var result = await RunOrchestrationCoreAsync(orchestratorName, instanceId, input, cancellationToken).ConfigureAwait(false);
+        var result = await RunOrchestrationCoreAsync(
+                orchestratorName,
+                instanceId,
+                input,
+                customStatusSink: null,
+                cancellationToken)
+            .ConfigureAwait(false);
         return result.Output;
     }
 
@@ -38,9 +47,10 @@ internal sealed class FakeDurableOrchestrationRunner
         string orchestratorName,
         string instanceId,
         object? input,
+        Action<object?>? customStatusSink,
         CancellationToken cancellationToken)
     {
-        return await RunOrchestrationCoreAsync(orchestratorName, instanceId, input, cancellationToken).ConfigureAwait(false);
+        return await RunOrchestrationCoreAsync(orchestratorName, instanceId, input, customStatusSink, cancellationToken).ConfigureAwait(false);
     }
 
     internal Task<object?> InvokeActivityAsync(
@@ -88,7 +98,7 @@ internal sealed class FakeDurableOrchestrationRunner
             parentInstanceId,
             childInstanceId);
 
-        var result = await RunOrchestrationCoreAsync(orchestratorName.Name, childInstanceId, input, cancellationToken)
+        var result = await RunOrchestrationCoreAsync(orchestratorName.Name, childInstanceId, input, customStatusSink: null, cancellationToken)
             .ConfigureAwait(false);
 
         _logger.LogInformation(
@@ -104,6 +114,7 @@ internal sealed class FakeDurableOrchestrationRunner
         string orchestratorName,
         string instanceId,
         object? input,
+        Action<object?>? customStatusSink,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation("Running fake durable orchestrator {OrchestratorName} for instance {InstanceId}", orchestratorName, instanceId);
@@ -118,7 +129,10 @@ internal sealed class FakeDurableOrchestrationRunner
             scope.ServiceProvider,
             InvokeActivityAsync,
             (childName, childInput, childCancellationToken) =>
-                InvokeSubOrchestrationAsync(childName, instanceId, childInput, childCancellationToken));
+                InvokeSubOrchestrationAsync(childName, instanceId, childInput, childCancellationToken),
+            (waitingInstanceId, eventName, eventCancellationToken) =>
+                _externalEventHub.WaitForEventAsync(waitingInstanceId, eventName, eventCancellationToken),
+            customStatusSink);
 
         var target = CreateTarget(orchestrator.Method, scope.ServiceProvider);
         var arguments = BuildArguments(
