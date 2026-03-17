@@ -4,7 +4,7 @@ namespace AzureFunctions.TestFramework.Durable;
 
 internal sealed class FakeDurableExternalEventHub
 {
-    private readonly ConcurrentDictionary<EventKey, TaskCompletionSource<object?>> _waiters = new();
+    private readonly ConcurrentDictionary<EventKey, EventState> _states = new();
 
     public async Task<object?> WaitForEventAsync(
         string instanceId,
@@ -15,28 +15,56 @@ internal sealed class FakeDurableExternalEventHub
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
 
         var key = new EventKey(instanceId, eventName);
-        var waiter = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (!_waiters.TryAdd(key, waiter))
+        var state = _states.GetOrAdd(key, static _ => new EventState());
+        TaskCompletionSource<object?>? waiter = null;
+
+        lock (state.SyncRoot)
         {
-            throw new InvalidOperationException(
-                $"A fake durable orchestration waiter is already registered for instance '{instanceId}' and event '{eventName}'.");
+            if (state.BufferedEvents.Count > 0)
+            {
+                var payload = state.BufferedEvents.Dequeue();
+                TryCleanup(key, state);
+                return payload;
+            }
+
+            if (state.Waiter is not null)
+            {
+                throw new InvalidOperationException(
+                    $"A fake durable orchestration waiter is already registered for instance '{instanceId}' and event '{eventName}'.");
+            }
+
+            waiter = new TaskCompletionSource<object?>(TaskCreationOptions.RunContinuationsAsynchronously);
+            state.Waiter = waiter;
         }
 
         using var registration = cancellationToken.Register(() =>
         {
-            if (_waiters.TryRemove(key, out var pendingWaiter))
+            lock (state.SyncRoot)
             {
-                pendingWaiter.TrySetCanceled(cancellationToken);
+                if (ReferenceEquals(state.Waiter, waiter))
+                {
+                    state.Waiter = null;
+                    waiter!.TrySetCanceled(cancellationToken);
+                    TryCleanup(key, state);
+                }
             }
         });
 
         try
         {
-            return await waiter.Task.ConfigureAwait(false);
+            return await waiter!.Task.ConfigureAwait(false);
         }
         finally
         {
-            _waiters.TryRemove(key, out _);
+            lock (state.SyncRoot)
+            {
+                if (ReferenceEquals(state.Waiter, waiter))
+                {
+                    state.Waiter = null;
+                }
+
+                TryCleanup(key, state);
+            }
         }
     }
 
@@ -51,14 +79,43 @@ internal sealed class FakeDurableExternalEventHub
         cancellationToken.ThrowIfCancellationRequested();
 
         var key = new EventKey(instanceId, eventName);
-        if (!_waiters.TryRemove(key, out var waiter))
+        var state = _states.GetOrAdd(key, static _ => new EventState());
+        TaskCompletionSource<object?>? waiter = null;
+
+        lock (state.SyncRoot)
         {
-            throw new InvalidOperationException(
-                $"No fake durable orchestration is currently waiting for event '{eventName}' on instance '{instanceId}'.");
+            if (state.Waiter is not null)
+            {
+                waiter = state.Waiter;
+                state.Waiter = null;
+            }
+            else
+            {
+                state.BufferedEvents.Enqueue(payload);
+            }
+
+            TryCleanup(key, state);
         }
 
-        waiter.TrySetResult(payload);
+        waiter?.TrySetResult(payload);
         return Task.CompletedTask;
+    }
+
+    private void TryCleanup(EventKey key, EventState state)
+    {
+        if (state.Waiter is null && state.BufferedEvents.Count == 0)
+        {
+            _states.TryRemove(new KeyValuePair<EventKey, EventState>(key, state));
+        }
+    }
+
+    private sealed class EventState
+    {
+        public Queue<object?> BufferedEvents { get; } = new();
+
+        public object SyncRoot { get; } = new();
+
+        public TaskCompletionSource<object?>? Waiter { get; set; }
     }
 
     private readonly record struct EventKey(string InstanceId, string EventName);

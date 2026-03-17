@@ -55,7 +55,7 @@
 - Direct gRPC HTTP dispatch precompiles route templates once per host, and `FunctionsTestHost.CreateHttpClient()` reuses host-local handlers
 - `Sample.FunctionApp.Worker.Tests\SharedFunctionsTestHostFixture.cs` demonstrates an opt-in shared-host pattern for suites that can reset state between tests
 - Durable spike support exists in separate projects: `AzureFunctions.TestFramework.Durable`, `Sample.FunctionApp.Durable`, and `Sample.FunctionApp.Durable.Tests`
-- `Sample.FunctionApp.Durable.Tests` verifies durable metadata discovery, `[DurableClient]` HTTP starter execution, direct activity invocation, sub-orchestrator execution, fake custom-status visibility, external-event resume, and provider-driven orchestration completion fully in-process
+- `Sample.FunctionApp.Durable.Tests` verifies durable metadata discovery, `[DurableClient]` HTTP starter execution, direct activity invocation, sub-orchestrator execution, fake custom-status visibility, buffered external-event resume, and provider-driven orchestration completion fully in-process
 
 ### FunctionsWebApplicationFactory ✅
 - `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
@@ -86,13 +86,12 @@
 
 - `ConfigureEnvironmentVariable(name, value)` sets process-level environment variables which are shared across all parallel tests. Tests that use different values for the same variable name should run sequentially (place them in a separate xUnit collection).
 - The durable spike currently uses a framework-owned fake path (`ConfigureFakeDurableSupport(...)` + `FunctionsDurableClientProvider`) instead of bootstrapping the real Durable runtime and execution engine.
-- Fake durable external events currently support the narrow **wait-then-raise** path only. Pre-raised/buffered events and richer event-history semantics are not implemented yet.
 
 ## 🔵 Future Enhancements
 
 ### 1. Durable Functions
 - Decide whether to keep the current fake-backed model as the primary durable testing story or add a separate real-runtime track later
-- Support richer durable APIs on the fake path (buffered external events, termination/suspend/resume, management payload helpers beyond the current status-query flow)
+- Support richer durable APIs on the fake path (termination/suspend/resume, management payload helpers beyond the current status-query flow, richer event-history semantics)
 
 ### 2. Output Bindings
 Currently focused on trigger (input) invocations. Need to support surfacing output binding data to tests:

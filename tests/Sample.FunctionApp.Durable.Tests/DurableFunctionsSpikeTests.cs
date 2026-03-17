@@ -205,6 +205,39 @@ public sealed class DurableFunctionsSpikeTests
     }
 
     [Fact]
+    public async Task DurableClientProvider_CompletesFakeOrchestration_AfterBufferedExternalEvent()
+    {
+        await using var testHost = await CreateHostAsync();
+
+        var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
+        var durableClient = durableClientProvider.GetClient();
+
+        var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunGreetingAwaitEventOrchestration),
+            "martin");
+
+        await durableClient.WaitForInstanceStartAsync(instanceId, getInputsAndOutputs: true);
+
+        await durableClient.RaiseEventAsync(
+            instanceId,
+            "greeting-suffix",
+            new GreetingSuffixEvent("from buffered event"));
+
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(
+            instanceId,
+            getInputsAndOutputs: true);
+
+        var completedStatus = metadata.ReadCustomStatusAs<GreetingProgressStatus>();
+
+        Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
+        Assert.Equal("Hello, martin! (from buffered event)", metadata.ReadOutputAs<string>());
+        Assert.NotNull(completedStatus);
+        Assert.Equal("completed-after-event", completedStatus!.Phase);
+        Assert.Equal("martin", completedStatus.Name);
+        Assert.Equal("Hello, martin! (from buffered event)", completedStatus.Message);
+    }
+
+    [Fact]
     public async Task TestHost_InvokeActivityAsync_CompletesFakeActivity_WithExpectedOutput()
     {
         await using var testHost = await CreateHostAsync();
