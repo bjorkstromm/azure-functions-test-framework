@@ -33,6 +33,14 @@ internal sealed class FakeDurableOrchestrationRunner
         return await RunOrchestrationCoreAsync(orchestratorName, instanceId, input, cancellationToken).ConfigureAwait(false);
     }
 
+    internal Task<object?> InvokeActivityAsync(
+        string activityName,
+        object? input,
+        CancellationToken cancellationToken = default)
+    {
+        return InvokeActivityAsync(new TaskName(activityName), input, cancellationToken);
+    }
+
     private async Task<object?> InvokeActivityAsync(
         TaskName activityName,
         object? input,

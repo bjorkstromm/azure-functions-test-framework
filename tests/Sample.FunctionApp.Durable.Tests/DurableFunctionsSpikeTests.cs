@@ -22,6 +22,7 @@ public sealed class DurableFunctionsSpikeTests
         var parentOrchestrator = Assert.Contains(nameof(DurableGreetingFunctions.RunGreetingParentOrchestration), functions);
         var childOrchestrator = Assert.Contains(nameof(DurableGreetingFunctions.RunGreetingChildOrchestration), functions);
         var activity = Assert.Contains(nameof(DurableGreetingFunctions.CreateGreeting), functions);
+        var injectedActivity = Assert.Contains(nameof(InjectedGreetingActivityFunctions.CreateGreetingWithService), functions);
 
         Assert.True(starter.HasBindingType("httpTrigger"));
         Assert.True(starter.HasBindingType("durableClient"));
@@ -31,6 +32,7 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("orchestrationTrigger", parentOrchestrator.GetDurableTriggerType());
         Assert.Equal("orchestrationTrigger", childOrchestrator.GetDurableTriggerType());
         Assert.Equal("activityTrigger", activity.GetDurableTriggerType());
+        Assert.Equal("activityTrigger", injectedActivity.GetDurableTriggerType());
     }
 
     [Fact]
@@ -97,6 +99,30 @@ public sealed class DurableFunctionsSpikeTests
 
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin! (from parent)", metadata.ReadOutputAs<string>());
+    }
+
+    [Fact]
+    public async Task TestHost_InvokeActivityAsync_CompletesFakeActivity_WithExpectedOutput()
+    {
+        await using var testHost = await CreateHostAsync();
+
+        var result = await testHost.InvokeActivityAsync<string>(
+            nameof(DurableGreetingFunctions.CreateGreeting),
+            "martin");
+
+        Assert.Equal("Hello, martin!", result);
+    }
+
+    [Fact]
+    public async Task TestHost_InvokeActivityAsync_ResolvesServices_ForInstanceActivity()
+    {
+        await using var testHost = await CreateHostAsync();
+
+        var result = await testHost.InvokeActivityAsync<string>(
+            nameof(InjectedGreetingActivityFunctions.CreateGreetingWithService),
+            "martin");
+
+        Assert.Equal("Hello, martin! (from service)", result);
     }
 
     private Task<IFunctionsTestHost> CreateHostAsync()
