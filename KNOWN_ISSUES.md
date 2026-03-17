@@ -94,11 +94,10 @@
 - Support richer durable APIs on the fake path (termination/suspend/resume, management payload helpers beyond the current status-query flow, richer event-history semantics)
 
 ### 2. Output Bindings
-Currently focused on trigger (input) invocations. Need to support surfacing output binding data to tests:
-- Queue output bindings
+Current support now includes trigger invocation return values and queue output bindings through `FunctionInvocationResult`. Remaining gaps:
 - Blob output bindings
 - Table output bindings
-- Return value bindings
+- Additional typed/HTTP management helpers for more complex output payloads
 
 ### 3. Middleware Scenarios
 - Authorization middleware

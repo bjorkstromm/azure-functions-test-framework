@@ -88,4 +88,46 @@ public class TriggerFunctionsTests : IAsyncLifetime
         Assert.Single(processed);
         Assert.Equal(body, processed[0]);
     }
+
+    [Fact]
+    public async Task InvokeQueueAsync_CapturesPlainReturnValue()
+    {
+        var messageText = "Hello return value!";
+        var message = QueuesModelFactory.QueueMessage(
+            messageId: Guid.NewGuid().ToString(),
+            popReceipt: "pop-receipt",
+            messageText: messageText,
+            dequeueCount: 1);
+
+        var result = await _testHost!.InvokeQueueAsync("ReturnQueueMessageValue", message);
+
+        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
+        Assert.Equal($"return:{messageText}", result.ReadReturnValueAs<string>());
+        Assert.Empty(result.OutputData);
+    }
+
+    [Fact]
+    public async Task InvokeQueueAsync_CapturesOutputBindingData()
+    {
+        var messageText = "Hello output binding!";
+        var message = QueuesModelFactory.QueueMessage(
+            messageId: Guid.NewGuid().ToString(),
+            popReceipt: "pop-receipt",
+            messageText: messageText,
+            dequeueCount: 1);
+
+        var result = await _testHost!.InvokeQueueAsync("CreateQueueOutputMessages", message);
+
+        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
+        Assert.Null(result.ReturnValue);
+
+        var outputBinding = Assert.Single(result.OutputData);
+        var messages = result.ReadOutputAs<string[]>(outputBinding.Key);
+
+        Assert.Equal("Messages", outputBinding.Key);
+        Assert.NotNull(messages);
+        Assert.Equal(
+            [$"output:{messageText}", $"output:{messageText}:copy"],
+            messages!);
+    }
 }

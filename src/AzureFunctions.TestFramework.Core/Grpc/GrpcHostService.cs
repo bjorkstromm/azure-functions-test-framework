@@ -4,6 +4,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
 using System.Text.Json;
+using Google.Protobuf;
 
 namespace AzureFunctions.TestFramework.Core.Grpc;
 
@@ -400,12 +401,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         _logger.LogDebug("Timer invocation {InvocationId} for '{FunctionName}' {Result}",
             invocationId, functionName, success ? "succeeded" : "failed");
 
-        return new FunctionInvocationResult
-        {
-            InvocationId = invocationId,
-            Success = success,
-            Error = success ? null : invResponse?.Result?.Exception?.Message
-        };
+        return CreateInvocationResult(invocationId, invResponse);
     }
 
     /// <summary>
@@ -472,12 +468,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         _logger.LogDebug("Service Bus invocation {InvocationId} for '{FunctionName}' {Result}",
             invocationId, functionName, success ? "succeeded" : "failed");
 
-        return new FunctionInvocationResult
-        {
-            InvocationId = invocationId,
-            Success = success,
-            Error = success ? null : invResponse?.Result?.Exception?.Message
-        };
+        return CreateInvocationResult(invocationId, invResponse);
     }
 
     /// <summary>
@@ -530,12 +521,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         _logger.LogDebug("Queue invocation {InvocationId} for '{FunctionName}' {Result}",
             invocationId, functionName, success ? "succeeded" : "failed");
 
-        return new FunctionInvocationResult
-        {
-            InvocationId = invocationId,
-            Success = success,
-            Error = success ? null : invResponse?.Result?.Exception?.Message
-        };
+        return CreateInvocationResult(invocationId, invResponse);
     }
 
     /// <summary>
@@ -601,12 +587,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         _logger.LogDebug("Blob invocation {InvocationId} for '{FunctionName}' {Result}",
             invocationId, functionName, success ? "succeeded" : "failed");
 
-        return new FunctionInvocationResult
-        {
-            InvocationId = invocationId,
-            Success = success,
-            Error = success ? null : invResponse?.Result?.Exception?.Message
-        };
+        return CreateInvocationResult(invocationId, invResponse);
     }
 
     /// <summary>
@@ -659,11 +640,84 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         _logger.LogDebug("Event Grid invocation {InvocationId} for '{FunctionName}' {Result}",
             invocationId, functionName, success ? "succeeded" : "failed");
 
+        return CreateInvocationResult(invocationId, invResponse);
+    }
+
+    private static FunctionInvocationResult CreateInvocationResult(
+        string invocationId,
+        InvocationResponse? invocationResponse)
+    {
+        var success = invocationResponse?.Result?.Status == StatusResult.Types.Status.Success;
+        var logs = invocationResponse?.Result?.Logs.Select(log => log.Message).ToList() ?? [];
+
+        Dictionary<string, object> outputData = new(StringComparer.OrdinalIgnoreCase);
+        if (invocationResponse != null)
+        {
+            foreach (var output in invocationResponse.OutputData)
+            {
+                outputData[output.Name] = ConvertTypedData(output.Data);
+            }
+        }
+
         return new FunctionInvocationResult
         {
             InvocationId = invocationId,
             Success = success,
-            Error = success ? null : invResponse?.Result?.Exception?.Message
+            Error = success ? null : invocationResponse?.Result?.Exception?.Message,
+            ReturnValue = invocationResponse is null ? null : ConvertTypedData(invocationResponse.ReturnValue),
+            OutputData = outputData,
+            Logs = logs
+        };
+    }
+
+    private static object? ConvertTypedData(TypedData? data)
+    {
+        if (data == null)
+        {
+            return null;
+        }
+
+        return data.DataCase switch
+        {
+            TypedData.DataOneofCase.None => null,
+            TypedData.DataOneofCase.String => data.String,
+            TypedData.DataOneofCase.Json => ParseJsonValue(data.Json),
+            TypedData.DataOneofCase.Bytes => data.Bytes.ToByteArray(),
+            TypedData.DataOneofCase.Stream => data.Stream.ToByteArray(),
+            TypedData.DataOneofCase.Int => data.Int,
+            TypedData.DataOneofCase.Double => data.Double,
+            TypedData.DataOneofCase.CollectionString => data.CollectionString.String.ToArray(),
+            TypedData.DataOneofCase.CollectionBytes => data.CollectionBytes.Bytes.Select(static b => b.ToByteArray()).ToArray(),
+            TypedData.DataOneofCase.CollectionDouble => data.CollectionDouble.Double.ToArray(),
+            TypedData.DataOneofCase.CollectionSint64 => data.CollectionSint64.Sint64.ToArray(),
+            TypedData.DataOneofCase.ModelBindingData => ConvertModelBindingData(data.ModelBindingData),
+            TypedData.DataOneofCase.CollectionModelBindingData => data.CollectionModelBindingData.ModelBindingData
+                .Select(ConvertModelBindingData)
+                .ToArray(),
+            TypedData.DataOneofCase.Http => data.Http,
+            _ => null
+        };
+    }
+
+    private static object? ParseJsonValue(string json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+        {
+            return null;
+        }
+
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.Clone();
+    }
+
+    private static object ConvertModelBindingData(ModelBindingData data)
+    {
+        return new
+        {
+            data.Version,
+            Source = data.Source,
+            ContentType = data.ContentType,
+            Content = data.Content.ToByteArray()
         };
     }
 
