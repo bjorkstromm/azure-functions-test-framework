@@ -8,6 +8,7 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    environment: nuget
     permissions:
       id-token: write  # Required for NuGet Trusted Publishing (OIDC token)
 
