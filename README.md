@@ -8,13 +8,13 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ### Current status
 
-- **Worker SDK 2.x sample**: Fully functional for the current **.NET 9** sample app and test suites
+- **Worker SDK 2.x sample**: Fully functional for the current **.NET 10** sample app and test suites
 - **Core host (`AzureFunctions.TestFramework.Core`)**: Full CRUD HTTP invocations, function metadata discovery, `Services`, `ConfigureSetting`, `ConfigureEnvironmentVariable`, and non-HTTP result/output capture via `FunctionInvocationResult`
 - **Trigger packages**: Timer, Queue, Service Bus, Blob, and Event Grid trigger invocation helpers are implemented and covered by sample/tests
 - **ASP.NET Core package (`AzureFunctions.TestFramework.Http.AspNetCore`)**: `FunctionsWebApplicationFactory<TProgram>` supports full CRUD, middleware assertions, and `WithWebHostBuilder` service overrides
 - **Durable package (`AzureFunctions.TestFramework.Durable`)**: Fake-backed durable support covers `[DurableClient]`, sub-orchestrators, direct activities, custom status, and buffered external events
 - **Performance / reliability**: Startup is event-driven, direct gRPC route matching is precompiled per host, and WAF teardown uses the explicit async cleanup path
-- **NuGet packaging**: All framework libraries target `net8.0;net9.0;net10.0` and produce NuGet packages with shared README/license/project metadata, Source Link, deterministic release builds, and symbol packages
+- **NuGet packaging**: All framework libraries target `net8.0;net10.0` and produce NuGet packages with shared README/license/project metadata, Source Link, deterministic release builds, and symbol packages
 - **Build health**: The current Release build is clean after filling in the remaining public XML documentation comments in `AzureFunctions.TestFramework.Core`
 - **Current blockers**: None for the active Worker SDK 2.x sample/test suites; see [KNOWN_ISSUES.md](https://github.com/bjorkstromm/azure-functions-test-framework/blob/main/KNOWN_ISSUES.md) for the small set of caveats that remain
 
@@ -74,13 +74,13 @@ The shipping package set is currently:
 # Build solution
 dotnet build --configuration Release
 
-# Worker SDK 2.x gRPC tests (.NET 9)
+# Worker SDK 2.x gRPC tests (.NET 10)
 dotnet test tests/Sample.FunctionApp.Worker.Tests --no-build --configuration Release
 
-# Worker SDK 2.x WAF tests (.NET 9)
+# Worker SDK 2.x WAF tests (.NET 10)
 dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests --no-build --configuration Release
 
-# Durable Functions spike tests (.NET 9)
+# Durable Functions spike tests (.NET 10)
 dotnet test tests/Sample.FunctionApp.Durable.Tests --configuration Release
 
 # Pack NuGet packages locally
@@ -453,24 +453,24 @@ Current spike result:
 
 ```  
 src/
-  AzureFunctions.TestFramework.Core/       # gRPC host, worker hosting, HTTP invocation (net8.0;net9.0;net10.0)
-  AzureFunctions.TestFramework.Http.AspNetCore/ # WebApplicationFactory-based testing (net8.0;net9.0;net10.0)
-  AzureFunctions.TestFramework.Http/       # HTTP-specific functionality (placeholder) (net8.0;net9.0;net10.0)
-  AzureFunctions.TestFramework.Timer/      # TimerTrigger invocation support (net8.0;net9.0;net10.0)
-  AzureFunctions.TestFramework.ServiceBus/ # ServiceBusTrigger invocation support (net8.0;net9.0;net10.0)
-  AzureFunctions.TestFramework.Queue/      # QueueTrigger invocation support (net8.0;net9.0;net10.0)
-  AzureFunctions.TestFramework.Blob/       # BlobTrigger invocation support (net8.0;net9.0;net10.0)
-  AzureFunctions.TestFramework.EventGrid/  # EventGridTrigger invocation support (net8.0;net9.0;net10.0)
-  AzureFunctions.TestFramework.Durable/    # Fake durable support for in-process starter/orchestrator/activity tests (net8.0;net9.0;net10.0)
+  AzureFunctions.TestFramework.Core/       # gRPC host, worker hosting, HTTP invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.Http.AspNetCore/ # WebApplicationFactory-based testing (net8.0;net10.0)
+  AzureFunctions.TestFramework.Http/       # HTTP-specific functionality (placeholder) (net8.0;net10.0)
+  AzureFunctions.TestFramework.Timer/      # TimerTrigger invocation support (net8.0;net10.0)
+  AzureFunctions.TestFramework.ServiceBus/ # ServiceBusTrigger invocation support (net8.0;net10.0)
+  AzureFunctions.TestFramework.Queue/      # QueueTrigger invocation support (net8.0;net10.0)
+  AzureFunctions.TestFramework.Blob/       # BlobTrigger invocation support (net8.0;net10.0)
+  AzureFunctions.TestFramework.EventGrid/  # EventGridTrigger invocation support (net8.0;net10.0)
+  AzureFunctions.TestFramework.Durable/    # Fake durable support for in-process starter/orchestrator/activity tests (net8.0;net10.0)
 
 samples/
-  Sample.FunctionApp.Worker/              # Worker SDK 2.x sample (net9.0, TodoAPI + middleware + configuration endpoint + triggers)
-  Sample.FunctionApp.Durable/             # Durable Functions spike sample (net9.0, HTTP starter + orchestrator + activity)
+  Sample.FunctionApp.Worker/              # Worker SDK 2.x sample (net10.0, TodoAPI + middleware + configuration endpoint + triggers)
+  Sample.FunctionApp.Durable/             # Durable Functions spike sample (net10.0, HTTP starter + orchestrator + activity)
 
 tests/
-  Sample.FunctionApp.Worker.Tests/                 # gRPC-based tests (Worker SDK 2.x / net9.0)
-  Sample.FunctionApp.Worker.WAF.Tests/             # WAF tests (Worker SDK 2.x / net9.0)
-  Sample.FunctionApp.Durable.Tests/                # Durable spike tests (fully in-process / net9.0)
+  Sample.FunctionApp.Worker.Tests/                 # gRPC-based tests (Worker SDK 2.x / net10.0)
+  Sample.FunctionApp.Worker.WAF.Tests/             # WAF tests (Worker SDK 2.x / net10.0)
+  Sample.FunctionApp.Durable.Tests/                # Durable spike tests (fully in-process / net10.0)
 ```
 
 ## Building
@@ -486,13 +486,13 @@ dotnet build
 # All tests
 dotnet test
 
-# Worker SDK 2.x gRPC tests (.NET 9)
+# Worker SDK 2.x gRPC tests (.NET 10)
 dotnet test tests/Sample.FunctionApp.Worker.Tests
 
-# Worker SDK 2.x WebApplicationFactory tests (.NET 9)
+# Worker SDK 2.x WebApplicationFactory tests (.NET 10)
 dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests
 
-# Durable Functions spike tests (.NET 9)
+# Durable Functions spike tests (.NET 10)
 dotnet test tests/Sample.FunctionApp.Durable.Tests
 
 # Single test with detailed logging

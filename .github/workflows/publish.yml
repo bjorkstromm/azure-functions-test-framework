@@ -22,11 +22,6 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Setup .NET 9
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: '9.0.x'
-
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v4
         with:
@@ -39,10 +34,10 @@ jobs:
       - name: Build
         run: dotnet build --no-restore --configuration Release
 
-      - name: Test (Worker SDK 2.x / .NET 9)
+      - name: Test (Worker SDK 2.x / .NET 10)
         run: dotnet test tests/Sample.FunctionApp.Worker.Tests --no-build --configuration Release --verbosity normal
 
-      - name: Test WAF (Worker SDK 2.x / .NET 9)
+      - name: Test WAF (Worker SDK 2.x / .NET 10)
         run: dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests --no-build --configuration Release --verbosity normal
 
       - name: Pack
