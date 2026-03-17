@@ -30,6 +30,16 @@ internal sealed class FakeDurableOrchestrationRunner
         object? input,
         CancellationToken cancellationToken)
     {
+        var result = await RunOrchestrationCoreAsync(orchestratorName, instanceId, input, cancellationToken).ConfigureAwait(false);
+        return result.Output;
+    }
+
+    internal async Task<FakeDurableOrchestrationResult> RunOrchestrationWithDetailsAsync(
+        string orchestratorName,
+        string instanceId,
+        object? input,
+        CancellationToken cancellationToken)
+    {
         return await RunOrchestrationCoreAsync(orchestratorName, instanceId, input, cancellationToken).ConfigureAwait(false);
     }
 
@@ -87,10 +97,10 @@ internal sealed class FakeDurableOrchestrationRunner
             parentInstanceId,
             childInstanceId);
 
-        return result;
+        return result.Output;
     }
 
-    private async Task<object?> RunOrchestrationCoreAsync(
+    private async Task<FakeDurableOrchestrationResult> RunOrchestrationCoreAsync(
         string orchestratorName,
         string instanceId,
         object? input,
@@ -121,7 +131,7 @@ internal sealed class FakeDurableOrchestrationRunner
 
         var result = await InvokeMethodAsync(orchestrator.Method, target, arguments);
         _logger.LogInformation("Completed fake durable orchestrator {OrchestratorName} for instance {InstanceId}", orchestratorName, instanceId);
-        return result;
+        return new FakeDurableOrchestrationResult(result, orchestrationContext.CustomStatus);
     }
 
     private string CreateSubOrchestrationInstanceId(string parentInstanceId, string orchestratorName)
@@ -239,4 +249,6 @@ internal sealed class FakeDurableOrchestrationRunner
         var json = JsonSerializer.Serialize(value);
         return JsonSerializer.Deserialize(json, targetType);
     }
+
+    internal sealed record FakeDurableOrchestrationResult(object? Output, object? CustomStatus);
 }

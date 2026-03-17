@@ -77,4 +77,19 @@ public sealed class DurableOrchestrationStatus
             _ => Output.GetRawText()
         };
     }
+
+    /// <summary>
+    /// Reads the custom status as the requested type when possible.
+    /// </summary>
+    /// <typeparam name="T">The desired custom-status type.</typeparam>
+    /// <returns>The deserialized custom status, or <see langword="default"/> when no custom status exists.</returns>
+    public T? ReadCustomStatusAs<T>()
+    {
+        return CustomStatus.ValueKind switch
+        {
+            JsonValueKind.Null => default,
+            JsonValueKind.Undefined => default,
+            _ => CustomStatus.Deserialize<T>()
+        };
+    }
 }

@@ -78,9 +78,9 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         {
             try
             {
-                var output = await _runner.RunOrchestrationAsync(orchestratorName.Name, instanceId, input, cancellation)
+                var result = await _runner.RunOrchestrationWithDetailsAsync(orchestratorName.Name, instanceId, input, cancellation)
                     .ConfigureAwait(false);
-                state.MarkCompleted(output);
+                state.MarkCompleted(result.Output, result.CustomStatus);
                 _logger.LogInformation("Fake durable instance {InstanceId} completed successfully", instanceId);
             }
             catch (Exception exception)
@@ -135,6 +135,7 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
     private sealed class FakeDurableInstanceState
     {
         private readonly object _syncLock = new();
+        private object? _customStatus;
         private Exception? _exception;
         private object? _output;
 
@@ -163,11 +164,12 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
 
         public OrchestrationRuntimeStatus RuntimeStatus { get; private set; }
 
-        public void MarkCompleted(object? output)
+        public void MarkCompleted(object? output, object? customStatus)
         {
             lock (_syncLock)
             {
                 _output = output;
+                _customStatus = customStatus;
                 RuntimeStatus = OrchestrationRuntimeStatus.Completed;
                 LastUpdatedAt = DateTimeOffset.UtcNow;
             }
@@ -204,7 +206,7 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
                     DataConverter = getInputsAndOutputs ? dataConverter : null,
                     SerializedInput = getInputsAndOutputs ? dataConverter.Serialize(Input) : null,
                     SerializedOutput = getInputsAndOutputs ? dataConverter.Serialize(_output) : null,
-                    SerializedCustomStatus = null,
+                    SerializedCustomStatus = getInputsAndOutputs ? dataConverter.Serialize(_customStatus) : null,
                     FailureDetails = _exception is null ? null : TaskFailureDetails.FromException(_exception)
                 };
             }
