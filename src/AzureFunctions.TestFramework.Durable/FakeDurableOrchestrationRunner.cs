@@ -12,6 +12,7 @@ internal sealed class FakeDurableOrchestrationRunner
     private readonly FakeDurableFunctionCatalog _catalog;
     private readonly ILogger<FakeDurableOrchestrationRunner> _logger;
     private readonly IServiceProvider _serviceProvider;
+    private int _subOrchestrationSequence;
 
     public FakeDurableOrchestrationRunner(
         FakeDurableFunctionCatalog catalog,
@@ -29,30 +30,7 @@ internal sealed class FakeDurableOrchestrationRunner
         object? input,
         CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Running fake durable orchestrator {OrchestratorName} for instance {InstanceId}", orchestratorName, instanceId);
-        var orchestrator = _catalog.GetOrchestrator(orchestratorName);
-
-        await using var scope = _serviceProvider.CreateAsyncScope();
-        var functionContext = new FakeFunctionContext(orchestrator.FunctionName, scope.ServiceProvider);
-        var orchestrationContext = new FakeTaskOrchestrationContext(
-            orchestratorName,
-            instanceId,
-            input,
-            scope.ServiceProvider,
-            InvokeActivityAsync);
-
-        var target = CreateTarget(orchestrator.Method, scope.ServiceProvider);
-        var arguments = BuildArguments(
-            orchestrator.Method,
-            functionContext,
-            cancellationToken,
-            input,
-            orchestrationContext,
-            triggerAttributeType: typeof(OrchestrationTriggerAttribute));
-
-        var result = await InvokeMethodAsync(orchestrator.Method, target, arguments);
-        _logger.LogInformation("Completed fake durable orchestrator {OrchestratorName} for instance {InstanceId}", orchestratorName, instanceId);
-        return result;
+        return await RunOrchestrationCoreAsync(orchestratorName, instanceId, input, cancellationToken).ConfigureAwait(false);
     }
 
     private async Task<object?> InvokeActivityAsync(
@@ -77,6 +55,71 @@ internal sealed class FakeDurableOrchestrationRunner
         var result = await InvokeMethodAsync(activity.Method, target, arguments);
         _logger.LogInformation("Completed fake durable activity {ActivityName}", activityName.Name);
         return result;
+    }
+
+    private async Task<object?> InvokeSubOrchestrationAsync(
+        TaskName orchestratorName,
+        string parentInstanceId,
+        object? input,
+        CancellationToken cancellationToken)
+    {
+        var childInstanceId = CreateSubOrchestrationInstanceId(parentInstanceId, orchestratorName.Name);
+        _logger.LogInformation(
+            "Invoking fake durable sub-orchestrator {OrchestratorName} for parent {ParentInstanceId} as child {ChildInstanceId}",
+            orchestratorName.Name,
+            parentInstanceId,
+            childInstanceId);
+
+        var result = await RunOrchestrationCoreAsync(orchestratorName.Name, childInstanceId, input, cancellationToken)
+            .ConfigureAwait(false);
+
+        _logger.LogInformation(
+            "Completed fake durable sub-orchestrator {OrchestratorName} for parent {ParentInstanceId} as child {ChildInstanceId}",
+            orchestratorName.Name,
+            parentInstanceId,
+            childInstanceId);
+
+        return result;
+    }
+
+    private async Task<object?> RunOrchestrationCoreAsync(
+        string orchestratorName,
+        string instanceId,
+        object? input,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Running fake durable orchestrator {OrchestratorName} for instance {InstanceId}", orchestratorName, instanceId);
+        var orchestrator = _catalog.GetOrchestrator(orchestratorName);
+
+        await using var scope = _serviceProvider.CreateAsyncScope();
+        var functionContext = new FakeFunctionContext(orchestrator.FunctionName, scope.ServiceProvider);
+        var orchestrationContext = new FakeTaskOrchestrationContext(
+            orchestratorName,
+            instanceId,
+            input,
+            scope.ServiceProvider,
+            InvokeActivityAsync,
+            (childName, childInput, childCancellationToken) =>
+                InvokeSubOrchestrationAsync(childName, instanceId, childInput, childCancellationToken));
+
+        var target = CreateTarget(orchestrator.Method, scope.ServiceProvider);
+        var arguments = BuildArguments(
+            orchestrator.Method,
+            functionContext,
+            cancellationToken,
+            input,
+            orchestrationContext,
+            triggerAttributeType: typeof(OrchestrationTriggerAttribute));
+
+        var result = await InvokeMethodAsync(orchestrator.Method, target, arguments);
+        _logger.LogInformation("Completed fake durable orchestrator {OrchestratorName} for instance {InstanceId}", orchestratorName, instanceId);
+        return result;
+    }
+
+    private string CreateSubOrchestrationInstanceId(string parentInstanceId, string orchestratorName)
+    {
+        var sequence = Interlocked.Increment(ref _subOrchestrationSequence);
+        return $"{parentInstanceId}:{orchestratorName}:{sequence}";
     }
 
     private static object? CreateTarget(MethodInfo method, IServiceProvider serviceProvider)

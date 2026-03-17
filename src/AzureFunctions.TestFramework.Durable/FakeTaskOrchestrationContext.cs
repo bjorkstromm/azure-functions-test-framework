@@ -8,6 +8,7 @@ namespace AzureFunctions.TestFramework.Durable;
 internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
 {
     private readonly Func<TaskName, object?, CancellationToken, Task<object?>> _activityDispatcher;
+    private readonly Func<TaskName, object?, CancellationToken, Task<object?>> _subOrchestrationDispatcher;
     private readonly object? _input;
     private readonly IServiceProvider _serviceProvider;
 
@@ -16,13 +17,15 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         string instanceId,
         object? input,
         IServiceProvider serviceProvider,
-        Func<TaskName, object?, CancellationToken, Task<object?>> activityDispatcher)
+        Func<TaskName, object?, CancellationToken, Task<object?>> activityDispatcher,
+        Func<TaskName, object?, CancellationToken, Task<object?>> subOrchestrationDispatcher)
     {
         Name = orchestrationName;
         InstanceId = instanceId;
         _input = input;
         _serviceProvider = serviceProvider;
         _activityDispatcher = activityDispatcher;
+        _subOrchestrationDispatcher = subOrchestrationDispatcher;
     }
 
     public object? ContinueAsNewParameter { get; private set; }
@@ -55,7 +58,13 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         object? input = null,
         TaskOptions? options = null)
     {
-        throw new NotSupportedException("Sub-orchestrations are not supported by the fake durable runner.");
+        return CallSubOrchestratorCoreAsync<TResult>(orchestratorName, input);
+    }
+
+    private async Task<TResult> CallSubOrchestratorCoreAsync<TResult>(TaskName orchestratorName, object? input)
+    {
+        var result = await _subOrchestrationDispatcher(orchestratorName, input, CancellationToken.None).ConfigureAwait(false);
+        return (TResult?)FakeDurableOrchestrationRunner.ConvertValue(result, typeof(TResult))!;
     }
 
     public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true)

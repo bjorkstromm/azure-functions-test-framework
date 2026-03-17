@@ -55,7 +55,7 @@
 - Direct gRPC HTTP dispatch precompiles route templates once per host, and `FunctionsTestHost.CreateHttpClient()` reuses host-local handlers
 - `Sample.FunctionApp.Worker.Tests\SharedFunctionsTestHostFixture.cs` demonstrates an opt-in shared-host pattern for suites that can reset state between tests
 - Durable spike support exists in separate projects: `AzureFunctions.TestFramework.Durable`, `Sample.FunctionApp.Durable`, and `Sample.FunctionApp.Durable.Tests`
-- `Sample.FunctionApp.Durable.Tests` verifies durable metadata discovery, `[DurableClient]` HTTP starter execution, and provider-driven orchestration completion fully in-process
+- `Sample.FunctionApp.Durable.Tests` verifies durable metadata discovery, `[DurableClient]` HTTP starter execution, sub-orchestrator execution, and provider-driven orchestration completion fully in-process
 
 ### FunctionsWebApplicationFactory ✅
 - `GrpcInvocationBridgeStartupFilter` fires an `InvocationRequest` for every incoming HTTP request, unblocking `WorkerRequestServicesMiddleware`
@@ -91,7 +91,7 @@
 
 ### 1. Durable Functions
 - Decide whether to keep the current fake-backed model as the primary durable testing story or add a separate real-runtime track later
-- Support richer durable APIs on the fake path (sub-orchestrations, external events, custom status, management payload helpers)
+- Support richer durable APIs on the fake path (external events, custom status, direct activity test helpers, management payload helpers)
 
 ### 2. Output Bindings
 Currently focused on trigger (input) invocations. Need to support surfacing output binding data to tests:

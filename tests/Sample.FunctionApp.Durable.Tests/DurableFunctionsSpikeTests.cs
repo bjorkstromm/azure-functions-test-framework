@@ -17,12 +17,19 @@ public sealed class DurableFunctionsSpikeTests
         var functions = testHost.Invoker.GetFunctions();
 
         var starter = Assert.Contains(nameof(DurableGreetingFunctions.StartGreetingOrchestration), functions);
+        var subStarter = Assert.Contains(nameof(DurableGreetingFunctions.StartGreetingViaSubOrchestrator), functions);
         var orchestrator = Assert.Contains(nameof(DurableGreetingFunctions.RunGreetingOrchestration), functions);
+        var parentOrchestrator = Assert.Contains(nameof(DurableGreetingFunctions.RunGreetingParentOrchestration), functions);
+        var childOrchestrator = Assert.Contains(nameof(DurableGreetingFunctions.RunGreetingChildOrchestration), functions);
         var activity = Assert.Contains(nameof(DurableGreetingFunctions.CreateGreeting), functions);
 
         Assert.True(starter.HasBindingType("httpTrigger"));
         Assert.True(starter.HasBindingType("durableClient"));
+        Assert.True(subStarter.HasBindingType("httpTrigger"));
+        Assert.True(subStarter.HasBindingType("durableClient"));
         Assert.Equal("orchestrationTrigger", orchestrator.GetDurableTriggerType());
+        Assert.Equal("orchestrationTrigger", parentOrchestrator.GetDurableTriggerType());
+        Assert.Equal("orchestrationTrigger", childOrchestrator.GetDurableTriggerType());
         Assert.Equal("activityTrigger", activity.GetDurableTriggerType());
     }
 
@@ -37,6 +44,19 @@ public sealed class DurableFunctionsSpikeTests
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Hello, martin!", content);
+    }
+
+    [Fact]
+    public async Task HttpStarter_ReturnsOk_ForFakeDurableSubOrchestrationExecution()
+    {
+        await using var testHost = await CreateHostAsync();
+        using var client = testHost.CreateHttpClient();
+
+        using var response = await client.GetAsync("/api/durable/hello/sub/martin");
+        var content = await response.Content.ReadAsStringAsync();
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("Hello, martin! (from parent)", content);
     }
 
     [Fact]
@@ -57,6 +77,26 @@ public sealed class DurableFunctionsSpikeTests
 
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin!", metadata.ReadOutputAs<string>());
+    }
+
+    [Fact]
+    public async Task DurableClientProvider_CompletesFakeSubOrchestration_WithExpectedOutput()
+    {
+        await using var testHost = await CreateHostAsync();
+
+        var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
+        var durableClient = durableClientProvider.GetClient();
+
+        var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunGreetingParentOrchestration),
+            "martin");
+
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(
+            instanceId,
+            getInputsAndOutputs: true);
+
+        Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
+        Assert.Equal("Hello, martin! (from parent)", metadata.ReadOutputAs<string>());
     }
 
     private Task<IFunctionsTestHost> CreateHostAsync()
