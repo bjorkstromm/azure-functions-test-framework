@@ -1,6 +1,7 @@
 using AzureFunctions.TestFramework.Core;
 using Sample.FunctionApp.Worker;
 using System.Net.Http.Json;
+using VerifyXunit;
 using Xunit;
 
 namespace Sample.FunctionApp.Worker.Tests;
@@ -45,7 +46,7 @@ public class CorrelationIdMiddlewareTests : IAsyncLifetime
 
         var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
         Assert.NotNull(payload);
-        Assert.Equal("grpc-correlation-id", payload.CorrelationId);
+        await Verify(payload);
     }
 
     [Fact]
@@ -59,6 +60,6 @@ public class CorrelationIdMiddlewareTests : IAsyncLifetime
 
         var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
         Assert.NotNull(payload);
-        Assert.Null(payload.CorrelationId);
+        await Verify(payload);
     }
 }

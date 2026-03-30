@@ -6,6 +6,7 @@ using AzureFunctions.TestFramework.Queue;
 using AzureFunctions.TestFramework.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
 using Sample.FunctionApp.Worker;
+using VerifyXunit;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -138,9 +139,7 @@ public class TriggerFunctionsTests : IAsyncLifetime
 
         Assert.Equal("Messages", outputBinding.Key);
         Assert.NotNull(messages);
-        Assert.Equal(
-            [$"output:{messageText}", $"output:{messageText}:copy"],
-            messages!);
+        await Verify(messages);
     }
 
     [Fact]
@@ -191,8 +190,6 @@ public class TriggerFunctionsTests : IAsyncLifetime
 
         Assert.Equal("Entity", outputBinding.Key);
         Assert.NotNull(entity);
-        Assert.Equal("captured", entity!.PartitionKey);
-        Assert.Equal($"row-{messageText.Length}", entity.RowKey);
-        Assert.Equal($"table:{messageText}", entity.Payload);
+        await Verify(entity);
     }
 }

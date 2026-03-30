@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Sample.FunctionApp.Worker;
 using System.Net;
 using System.Net.Http.Json;
+using VerifyXunit;
 using Xunit;
 using Xunit.Abstractions;
 
@@ -68,9 +69,7 @@ public class TodoFunctionsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
         Assert.NotNull(todo);
-        Assert.NotEqual(Guid.Empty, todo.Id);
-        Assert.Equal("Test Task", todo.Title);
-        Assert.False(todo.IsCompleted);
+        await Verify(todo);
     }
 
     [Fact]
@@ -112,8 +111,7 @@ public class TodoFunctionsTests : IAsyncLifetime
         // Assert
         response.EnsureSuccessStatusCode();
         var updated = await response.Content.ReadFromJsonAsync<TodoDto>();
-        Assert.Equal("Updated", updated!.Title);
-        Assert.True(updated.IsCompleted);
+        await Verify(updated);
     }
 
     [Fact]

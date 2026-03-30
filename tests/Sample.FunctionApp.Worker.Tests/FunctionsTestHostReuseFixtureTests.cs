@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using Sample.FunctionApp.Worker;
+using VerifyXunit;
 using Xunit;
 
 namespace Sample.FunctionApp.Worker.Tests;
@@ -34,7 +35,7 @@ public sealed class FunctionsTestHostReuseFixtureTests :
 
         var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
         Assert.NotNull(todo);
-        Assert.Equal("Shared host item", todo.Title);
+        await Verify(todo);
     }
 
     [Fact]

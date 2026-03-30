@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sample.FunctionApp.Worker;
 using System.Net.Http.Json;
+using VerifyXunit;
 using Xunit;
 
 namespace Sample.FunctionApp.Worker.Tests;
@@ -38,8 +39,7 @@ public class FunctionsTestHostFeaturesTests
         var todos = await client.GetFromJsonAsync<List<TodoItem>>("/api/todos");
 
         Assert.NotNull(todos);
-        Assert.Single(todos);
-        Assert.Equal("services-seeded-id", todos[0].Id);
+        await Verify(todos);
     }
 
     [Fact]
@@ -72,8 +72,7 @@ public class FunctionsTestHostFeaturesTests
         var todos = await client.GetFromJsonAsync<List<TodoItem>>("/api/todos");
 
         Assert.NotNull(todos);
-        Assert.Single(todos);
-        Assert.Equal("override-seeded-id", todos[0].Id);
+        await Verify(todos);
     }
 
     [Fact]
@@ -96,8 +95,7 @@ public class FunctionsTestHostFeaturesTests
         var payload = await client.GetFromJsonAsync<ConfigurationValueResponse>("/api/config/Demo:Message");
 
         Assert.NotNull(payload);
-        Assert.Equal("Demo:Message", payload.Key);
-        Assert.Equal("configured-value", payload.Value);
+        await Verify(payload);
     }
 
     [Fact]
@@ -124,7 +122,7 @@ public class FunctionsTestHostFeaturesTests
             $"/api/config/{Uri.EscapeDataString(envVarName)}");
 
         Assert.NotNull(payload);
-        Assert.Equal(envVarValue, payload.Value);
+        Assert.Equal(envVarValue, payload!.Value);
     }
 
     private sealed class SeededTodoService : ITodoService

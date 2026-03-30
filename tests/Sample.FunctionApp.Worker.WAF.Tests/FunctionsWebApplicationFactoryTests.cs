@@ -66,7 +66,7 @@ public class FunctionsWebApplicationFactoryTests
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = await createResponse.Content.ReadFromJsonAsync<TodoItem>();
         Assert.NotNull(created);
-        Assert.Equal("WAF Worker Test", created.Title);
+        await Verify(created);
 
         // Act
         var getResponse = await _client!.GetAsync($"/api/todos/{created.Id}");
@@ -105,8 +105,7 @@ public class FunctionsWebApplicationFactoryTests
         response.EnsureSuccessStatusCode();
         var todos = await response.Content.ReadFromJsonAsync<List<TodoItem>>();
         Assert.NotNull(todos);
-        Assert.Single(todos);
-        Assert.Equal("waf-seeded-id", todos[0].Id);
+        await Verify(todos);
     }
 
     [Fact]
@@ -124,7 +123,7 @@ public class FunctionsWebApplicationFactoryTests
 
         var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
         Assert.NotNull(payload);
-        Assert.Equal("waf-correlation-id", payload.CorrelationId);
+        await Verify(payload);
     }
 
     [Fact]
@@ -138,7 +137,7 @@ public class FunctionsWebApplicationFactoryTests
 
         var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
         Assert.NotNull(payload);
-        Assert.Null(payload.CorrelationId);
+        await Verify(payload);
     }
 
     private sealed class SeededTodoService : ITodoService

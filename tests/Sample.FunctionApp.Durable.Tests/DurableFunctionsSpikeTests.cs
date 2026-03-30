@@ -3,6 +3,7 @@ using AzureFunctions.TestFramework.Durable;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
 using System.Net;
+using VerifyXunit;
 using Xunit;
 
 namespace Sample.FunctionApp.Durable.Tests;
@@ -150,9 +151,7 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin!", metadata.ReadOutputAs<string>());
         Assert.NotNull(customStatus);
-        Assert.Equal("completed", customStatus!.Phase);
-        Assert.Equal("martin", customStatus.Name);
-        Assert.Equal("Hello, martin!", customStatus.Message);
+        await Verify(customStatus);
     }
 
     [Fact]
@@ -177,9 +176,7 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("Completed", status.RuntimeStatus);
         Assert.Equal("Hello, martin!", status.ReadOutputAsString());
         Assert.NotNull(customStatus);
-        Assert.Equal("completed", customStatus!.Phase);
-        Assert.Equal("martin", customStatus.Name);
-        Assert.Equal("Hello, martin!", customStatus.Message);
+        await Verify(customStatus);
     }
 
     [Fact]
@@ -203,9 +200,7 @@ public sealed class DurableFunctionsSpikeTests
             status => status?.Phase == "waiting-for-event");
 
         Assert.NotNull(waitingStatus);
-        Assert.Equal("waiting-for-event", waitingStatus!.Phase);
-        Assert.Equal("martin", waitingStatus.Name);
-        Assert.Null(waitingStatus.Message);
+        await Verify(waitingStatus).UseMethodName(nameof(DurableClientProvider_CompletesFakeOrchestration_AfterExternalEvent) + "_waiting");
 
         // Act
         await durableClient.RaiseEventAsync(
@@ -223,9 +218,7 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin! (from event)", metadata.ReadOutputAs<string>());
         Assert.NotNull(completedStatus);
-        Assert.Equal("completed-after-event", completedStatus!.Phase);
-        Assert.Equal("martin", completedStatus.Name);
-        Assert.Equal("Hello, martin! (from event)", completedStatus.Message);
+        await Verify(completedStatus).UseMethodName(nameof(DurableClientProvider_CompletesFakeOrchestration_AfterExternalEvent) + "_completed");
     }
 
     [Fact]
@@ -259,9 +252,7 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin! (from buffered event)", metadata.ReadOutputAs<string>());
         Assert.NotNull(completedStatus);
-        Assert.Equal("completed-after-event", completedStatus!.Phase);
-        Assert.Equal("martin", completedStatus.Name);
-        Assert.Equal("Hello, martin! (from buffered event)", completedStatus.Message);
+        await Verify(completedStatus);
     }
 
     [Fact]

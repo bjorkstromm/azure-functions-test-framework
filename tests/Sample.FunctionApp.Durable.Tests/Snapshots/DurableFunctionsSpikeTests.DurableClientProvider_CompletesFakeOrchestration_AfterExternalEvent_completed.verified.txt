@@ -1,0 +1,5 @@
+﻿{
+  Phase: completed-after-event,
+  Name: martin,
+  Message: Hello, martin! (from event)
+}
