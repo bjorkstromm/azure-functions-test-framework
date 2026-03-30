@@ -39,6 +39,12 @@ jobs:
       - name: Test WAF (Worker SDK 2.x / .NET 10)
         run: dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests --no-build --configuration Release --verbosity normal
 
+      - name: Test NUnit (Worker SDK 2.x / .NET 10)
+        run: dotnet test tests/Sample.FunctionApp.Worker.NUnit.Tests --no-build --configuration Release --verbosity normal
+
+      - name: Test WAF NUnit (Worker SDK 2.x / .NET 10)
+        run: dotnet test tests/Sample.FunctionApp.Worker.WAF.NUnit.Tests --no-build --configuration Release --verbosity normal
+
       - name: Pack
         run: dotnet pack --no-build --configuration Release --output ./artifacts
 

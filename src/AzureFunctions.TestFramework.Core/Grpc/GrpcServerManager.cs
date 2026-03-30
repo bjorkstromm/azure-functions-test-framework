@@ -1,6 +1,8 @@
 using Grpc.AspNetCore.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Hosting.Server;
+using Microsoft.AspNetCore.Hosting.Server.Features;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -46,9 +48,7 @@ public class GrpcServerManager : IAsyncDisposable
     /// </summary>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        _port = FindAvailablePort();
-        
-        _logger.LogInformation("Starting gRPC server on port {Port}", _port);
+        _logger.LogInformation("Starting gRPC server on an ephemeral port");
 
         _grpcHost = Host.CreateDefaultBuilder()
             .ConfigureWebHostDefaults(webBuilder =>
@@ -56,9 +56,9 @@ public class GrpcServerManager : IAsyncDisposable
                 webBuilder
                     .UseKestrel(options =>
                     {
-                        // IMPORTANT: Listen on ALL interfaces (0.0.0.0) not just localhost
-                        // The worker's gRPC client may resolve localhost differently
-                        options.ListenAnyIP(_port, listenOptions =>
+                        // Bind to port 0 so the OS assigns a free port atomically,
+                        // avoiding the TOCTOU race of FindAvailablePort + manual bind.
+                        options.ListenAnyIP(0, listenOptions =>
                         {
                             listenOptions.Protocols = HttpProtocols.Http2;
                         });
@@ -90,6 +90,13 @@ public class GrpcServerManager : IAsyncDisposable
             .Build();
 
         await _grpcHost.StartAsync(cancellationToken);
+
+        // Read the port assigned by the OS (port 0 binding).
+        var server = _grpcHost.Services.GetRequiredService<IServer>();
+        var addressesFeature = server.Features.Get<IServerAddressesFeature>();
+        var address = addressesFeature!.Addresses.First();
+        _port = new Uri(address).Port;
+
         _logger.LogInformation("gRPC server started on port {Port}", _port);
     }
 
@@ -118,15 +125,4 @@ public class GrpcServerManager : IAsyncDisposable
         }
     }
 
-    private static int FindAvailablePort()
-    {
-        using var socket = new System.Net.Sockets.Socket(
-            System.Net.Sockets.AddressFamily.InterNetwork,
-            System.Net.Sockets.SocketType.Stream,
-            System.Net.Sockets.ProtocolType.Tcp);
-        
-        socket.Bind(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0));
-        var port = ((System.Net.IPEndPoint)socket.LocalEndPoint!).Port;
-        return port;
-    }
 }
