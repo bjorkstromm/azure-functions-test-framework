@@ -12,10 +12,13 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task Invoker_GetFunctions_IncludesDurableBindings()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
 
+        // Act
         var functions = testHost.Invoker.GetFunctions();
 
+        // Assert
         var starter = Assert.Contains(nameof(DurableGreetingFunctions.StartGreetingOrchestration), functions);
         var subStarter = Assert.Contains(nameof(DurableGreetingFunctions.StartGreetingViaSubOrchestrator), functions);
         var managementStarter = Assert.Contains(nameof(DurableGreetingFunctions.StartGreetingWithManagementPayload), functions);
@@ -48,12 +51,15 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task HttpStarter_ReturnsOk_ForFakeDurableExecution()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
         using var client = testHost.CreateHttpClient();
 
+        // Act
         using var response = await client.GetAsync("/api/durable/hello/martin");
         var content = await response.Content.ReadAsStringAsync();
 
+        // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Hello, martin!", content);
     }
@@ -61,12 +67,15 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task HttpStarter_ReturnsOk_ForFakeDurableSubOrchestrationExecution()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
         using var client = testHost.CreateHttpClient();
 
+        // Act
         using var response = await client.GetAsync("/api/durable/hello/sub/martin");
         var content = await response.Content.ReadAsStringAsync();
 
+        // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Equal("Hello, martin! (from parent)", content);
     }
@@ -74,11 +83,13 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_WithExpectedOutput()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
 
         var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
         var durableClient = durableClientProvider.GetClient();
 
+        // Act
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(DurableGreetingFunctions.RunGreetingOrchestration),
             "martin");
@@ -87,6 +98,7 @@ public sealed class DurableFunctionsSpikeTests
             instanceId,
             getInputsAndOutputs: true);
 
+        // Assert
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin!", metadata.ReadOutputAs<string>());
     }
@@ -94,11 +106,13 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task DurableClientProvider_CompletesFakeSubOrchestration_WithExpectedOutput()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
 
         var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
         var durableClient = durableClientProvider.GetClient();
 
+        // Act
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(DurableGreetingFunctions.RunGreetingParentOrchestration),
             "martin");
@@ -107,6 +121,7 @@ public sealed class DurableFunctionsSpikeTests
             instanceId,
             getInputsAndOutputs: true);
 
+        // Assert
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin! (from parent)", metadata.ReadOutputAs<string>());
     }
@@ -114,11 +129,13 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_WithCustomStatus()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
 
         var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
         var durableClient = durableClientProvider.GetClient();
 
+        // Act
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(DurableGreetingFunctions.RunGreetingStatusOrchestration),
             "martin");
@@ -129,6 +146,7 @@ public sealed class DurableFunctionsSpikeTests
 
         var customStatus = metadata.ReadCustomStatusAs<GreetingProgressStatus>();
 
+        // Assert
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin!", metadata.ReadOutputAs<string>());
         Assert.NotNull(customStatus);
@@ -140,12 +158,15 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task HttpStarter_ReturnsManagementPayload_AndStatusHelpers_ReadCustomStatus()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
         using var client = testHost.CreateHttpClient();
 
+        // Act
         using var response = await client.GetAsync("/api/durable/manage/martin");
         var payload = await response.ReadDurableHttpManagementPayloadAsync();
 
+        // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(payload);
         Assert.False(string.IsNullOrWhiteSpace(payload!.StatusQueryGetUri));
@@ -164,6 +185,7 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_AfterExternalEvent()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
 
         var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
@@ -185,6 +207,7 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("martin", waitingStatus.Name);
         Assert.Null(waitingStatus.Message);
 
+        // Act
         await durableClient.RaiseEventAsync(
             instanceId,
             "greeting-suffix",
@@ -196,6 +219,7 @@ public sealed class DurableFunctionsSpikeTests
 
         var completedStatus = metadata.ReadCustomStatusAs<GreetingProgressStatus>();
 
+        // Assert
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin! (from event)", metadata.ReadOutputAs<string>());
         Assert.NotNull(completedStatus);
@@ -207,6 +231,7 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_AfterBufferedExternalEvent()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
 
         var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
@@ -218,6 +243,7 @@ public sealed class DurableFunctionsSpikeTests
 
         await durableClient.WaitForInstanceStartAsync(instanceId, getInputsAndOutputs: true);
 
+        // Act
         await durableClient.RaiseEventAsync(
             instanceId,
             "greeting-suffix",
@@ -229,6 +255,7 @@ public sealed class DurableFunctionsSpikeTests
 
         var completedStatus = metadata.ReadCustomStatusAs<GreetingProgressStatus>();
 
+        // Assert
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
         Assert.Equal("Hello, martin! (from buffered event)", metadata.ReadOutputAs<string>());
         Assert.NotNull(completedStatus);
@@ -240,24 +267,30 @@ public sealed class DurableFunctionsSpikeTests
     [Fact]
     public async Task TestHost_InvokeActivityAsync_CompletesFakeActivity_WithExpectedOutput()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
 
+        // Act
         var result = await testHost.InvokeActivityAsync<string>(
             nameof(DurableGreetingFunctions.CreateGreeting),
             "martin");
 
+        // Assert
         Assert.Equal("Hello, martin!", result);
     }
 
     [Fact]
     public async Task TestHost_InvokeActivityAsync_ResolvesServices_ForInstanceActivity()
     {
+        // Arrange
         await using var testHost = await CreateHostAsync();
 
+        // Act
         var result = await testHost.InvokeActivityAsync<string>(
             nameof(InjectedGreetingActivityFunctions.CreateGreetingWithService),
             "martin");
 
+        // Assert
         Assert.Equal("Hello, martin! (from service)", result);
     }
 

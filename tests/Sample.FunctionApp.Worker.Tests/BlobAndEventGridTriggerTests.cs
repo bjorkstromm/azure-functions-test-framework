@@ -50,11 +50,14 @@ public class BlobAndEventGridTriggerTests : IAsyncLifetime
     [Fact]
     public async Task InvokeBlobAsync_WithTextContent_Succeeds()
     {
+        // Arrange
         var content = BinaryData.FromString("Hello from blob!");
         var blobName = "file.txt";
 
+        // Act
         var result = await _testHost!.InvokeBlobAsync("ProcessBlob", content, blobName);
 
+        // Assert
         _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
         Assert.True(result.Success, $"Blob invocation failed: {result.Error}");
 
@@ -66,6 +69,7 @@ public class BlobAndEventGridTriggerTests : IAsyncLifetime
     [Fact]
     public async Task InvokeEventGridAsync_WithEventGridEvent_Succeeds()
     {
+        // Arrange
         var subject = "test/subject";
         var eventGridEvent = new EventGridEvent(
             subject: subject,
@@ -73,8 +77,10 @@ public class BlobAndEventGridTriggerTests : IAsyncLifetime
             dataVersion: "1.0",
             data: BinaryData.FromObjectAsJson(new { message = "Hello from Event Grid!" }));
 
+        // Act
         var result = await _testHost!.InvokeEventGridAsync("ProcessEventGridEvent", eventGridEvent);
 
+        // Assert
         _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
         Assert.True(result.Success, $"Event Grid invocation failed: {result.Error}");
 

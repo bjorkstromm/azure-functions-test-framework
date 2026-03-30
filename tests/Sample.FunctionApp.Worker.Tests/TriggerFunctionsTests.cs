@@ -52,6 +52,7 @@ public class TriggerFunctionsTests : IAsyncLifetime
     [Fact]
     public async Task InvokeQueueAsync_WithTextMessage_Succeeds()
     {
+        // Arrange
         var messageText = "Hello from queue!";
         var message = QueuesModelFactory.QueueMessage(
             messageId: Guid.NewGuid().ToString(),
@@ -59,8 +60,10 @@ public class TriggerFunctionsTests : IAsyncLifetime
             messageText: messageText,
             dequeueCount: 1);
 
+        // Act
         var result = await _testHost!.InvokeQueueAsync("ProcessQueueMessage", message);
 
+        // Assert
         _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
 
@@ -72,6 +75,7 @@ public class TriggerFunctionsTests : IAsyncLifetime
     [Fact]
     public async Task InvokeServiceBusAsync_WithTextBody_Succeeds()
     {
+        // Arrange
         var body = "Hello from Service Bus!";
         var message = new ServiceBusMessage(body)
         {
@@ -79,8 +83,10 @@ public class TriggerFunctionsTests : IAsyncLifetime
             ContentType = "text/plain"
         };
 
+        // Act
         var result = await _testHost!.InvokeServiceBusAsync("ProcessServiceBusMessage", message);
 
+        // Assert
         _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
         Assert.True(result.Success, $"Service Bus invocation failed: {result.Error}");
 
@@ -92,6 +98,7 @@ public class TriggerFunctionsTests : IAsyncLifetime
     [Fact]
     public async Task InvokeQueueAsync_CapturesPlainReturnValue()
     {
+        // Arrange
         var messageText = "Hello return value!";
         var message = QueuesModelFactory.QueueMessage(
             messageId: Guid.NewGuid().ToString(),
@@ -99,8 +106,10 @@ public class TriggerFunctionsTests : IAsyncLifetime
             messageText: messageText,
             dequeueCount: 1);
 
+        // Act
         var result = await _testHost!.InvokeQueueAsync("ReturnQueueMessageValue", message);
 
+        // Assert
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         Assert.Equal($"return:{messageText}", result.ReadReturnValueAs<string>());
         Assert.Empty(result.OutputData);
@@ -109,6 +118,7 @@ public class TriggerFunctionsTests : IAsyncLifetime
     [Fact]
     public async Task InvokeQueueAsync_CapturesOutputBindingData()
     {
+        // Arrange
         var messageText = "Hello output binding!";
         var message = QueuesModelFactory.QueueMessage(
             messageId: Guid.NewGuid().ToString(),
@@ -116,8 +126,10 @@ public class TriggerFunctionsTests : IAsyncLifetime
             messageText: messageText,
             dequeueCount: 1);
 
+        // Act
         var result = await _testHost!.InvokeQueueAsync("CreateQueueOutputMessages", message);
 
+        // Assert
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         Assert.Null(result.ReturnValue);
 
@@ -134,6 +146,7 @@ public class TriggerFunctionsTests : IAsyncLifetime
     [Fact]
     public async Task InvokeQueueAsync_CapturesBlobOutputBindingData()
     {
+        // Arrange
         var messageText = "Hello blob binding!";
         var message = QueuesModelFactory.QueueMessage(
             messageId: Guid.NewGuid().ToString(),
@@ -141,8 +154,10 @@ public class TriggerFunctionsTests : IAsyncLifetime
             messageText: messageText,
             dequeueCount: 1);
 
+        // Act
         var result = await _testHost!.InvokeQueueAsync("CreateBlobOutputDocument", message);
 
+        // Assert
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         Assert.Null(result.ReturnValue);
 
@@ -156,6 +171,7 @@ public class TriggerFunctionsTests : IAsyncLifetime
     [Fact]
     public async Task InvokeQueueAsync_CapturesTableOutputBindingData()
     {
+        // Arrange
         var messageText = "Hello table binding!";
         var message = QueuesModelFactory.QueueMessage(
             messageId: Guid.NewGuid().ToString(),
@@ -163,8 +179,10 @@ public class TriggerFunctionsTests : IAsyncLifetime
             messageText: messageText,
             dequeueCount: 1);
 
+        // Act
         var result = await _testHost!.InvokeQueueAsync("CreateTableOutputEntity", message);
 
+        // Assert
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         Assert.Null(result.ReturnValue);
 

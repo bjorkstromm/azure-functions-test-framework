@@ -37,15 +37,21 @@ public class FunctionsWebApplicationFactoryTests
     [Fact]
     public async Task GetTodos_ReturnsSuccessStatusCode()
     {
+        // Act
         var response = await _client!.GetAsync("/api/todos");
         _output.WriteLine($"Status: {response.StatusCode}");
+
+        // Assert
         response.EnsureSuccessStatusCode();
     }
 
     [Fact]
     public async Task Health_ReturnsHealthyStatus()
     {
+        // Act
         var response = await _client!.GetAsync("/api/health");
+
+        // Assert
         response.EnsureSuccessStatusCode();
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
@@ -53,19 +59,26 @@ public class FunctionsWebApplicationFactoryTests
     [Fact]
     public async Task CreateAndGetTodo_WorksEndToEnd()
     {
+        // Act
         var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "WAF Worker Test" });
+
+        // Assert
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = await createResponse.Content.ReadFromJsonAsync<TodoItem>();
         Assert.NotNull(created);
         Assert.Equal("WAF Worker Test", created.Title);
 
+        // Act
         var getResponse = await _client!.GetAsync($"/api/todos/{created.Id}");
+
+        // Assert
         Assert.Equal(HttpStatusCode.OK, getResponse.StatusCode);
     }
 
     [Fact]
     public async Task WithWebHostBuilder_CanOverrideServices()
     {
+        // Arrange
         var seededTodo = new TodoItem
         {
             Id = "waf-seeded-id",
@@ -84,7 +97,11 @@ public class FunctionsWebApplicationFactoryTests
         });
 
         using var customClient = customFactory.CreateClient();
+
+        // Act
         var response = await customClient.GetAsync("/api/todos");
+
+        // Assert
         response.EnsureSuccessStatusCode();
         var todos = await response.Content.ReadFromJsonAsync<List<TodoItem>>();
         Assert.NotNull(todos);
@@ -95,10 +112,14 @@ public class FunctionsWebApplicationFactoryTests
     [Fact]
     public async Task CorrelationEndpoint_ReturnsHeaderValue_FromMiddleware()
     {
+        // Arrange
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/correlation");
         request.Headers.Add(CorrelationIdMiddleware.HeaderName, "waf-correlation-id");
 
+        // Act
         var response = await _client!.SendAsync(request);
+
+        // Assert
         response.EnsureSuccessStatusCode();
 
         var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
@@ -109,7 +130,10 @@ public class FunctionsWebApplicationFactoryTests
     [Fact]
     public async Task CorrelationEndpoint_ReturnsNull_WhenHeaderMissing()
     {
+        // Act
         var response = await _client!.GetAsync("/api/correlation");
+
+        // Assert
         response.EnsureSuccessStatusCode();
 
         var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();

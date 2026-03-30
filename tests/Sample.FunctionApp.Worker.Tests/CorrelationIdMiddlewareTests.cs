@@ -33,10 +33,14 @@ public class CorrelationIdMiddlewareTests : IAsyncLifetime
     [Fact]
     public async Task CorrelationEndpoint_ReturnsHeaderValue_FromMiddleware()
     {
+        // Arrange
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/correlation");
         request.Headers.Add(CorrelationIdMiddleware.HeaderName, "grpc-correlation-id");
 
+        // Act
         var response = await _client!.SendAsync(request);
+
+        // Assert
         response.EnsureSuccessStatusCode();
 
         var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
@@ -47,7 +51,10 @@ public class CorrelationIdMiddlewareTests : IAsyncLifetime
     [Fact]
     public async Task CorrelationEndpoint_ReturnsNull_WhenHeaderMissing()
     {
+        // Act
         var response = await _client!.GetAsync("/api/correlation");
+
+        // Assert
         response.EnsureSuccessStatusCode();
 
         var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();

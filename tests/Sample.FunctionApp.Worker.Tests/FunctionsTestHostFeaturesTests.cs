@@ -12,6 +12,7 @@ public class FunctionsTestHostFeaturesTests
     [Fact]
     public async Task Services_ReturnsConfiguredSingletonService()
     {
+        // Arrange
         var seededTodo = new TodoItem
         {
             Id = "services-seeded-id",
@@ -27,7 +28,10 @@ public class FunctionsTestHostFeaturesTests
             .ConfigureServices(services => services.AddSingleton<ITodoService>(seededService))
             .BuildAndStartAsync();
 
+        // Act
         var resolvedService = testHost.Services.GetRequiredService<ITodoService>();
+
+        // Assert
         Assert.Same(seededService, resolvedService);
 
         using var client = testHost.CreateHttpClient();
@@ -41,6 +45,7 @@ public class FunctionsTestHostFeaturesTests
     [Fact]
     public async Task WithHostBuilderFactory_ConfigureServices_CanOverrideServices()
     {
+        // Arrange
         var seededTodo = new TodoItem
         {
             Id = "override-seeded-id",
@@ -57,7 +62,10 @@ public class FunctionsTestHostFeaturesTests
             .ConfigureServices(services => services.AddSingleton<ITodoService>(seededService))
             .BuildAndStartAsync();
 
+        // Act
         var resolvedService = testHost.Services.GetRequiredService<ITodoService>();
+
+        // Assert
         Assert.Same(seededService, resolvedService);
 
         using var client = testHost.CreateHttpClient();
@@ -71,13 +79,17 @@ public class FunctionsTestHostFeaturesTests
     [Fact]
     public async Task ConfigureSetting_AddsConfigurationOverride()
     {
+        // Arrange
         await using var testHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .ConfigureSetting("Demo:Message", "configured-value")
             .BuildAndStartAsync();
 
+        // Act
         var configuration = testHost.Services.GetRequiredService<IConfiguration>();
+
+        // Assert
         Assert.Equal("configured-value", configuration["Demo:Message"]);
 
         using var client = testHost.CreateHttpClient();
@@ -91,6 +103,7 @@ public class FunctionsTestHostFeaturesTests
     [Fact]
     public async Task ConfigureEnvironmentVariable_SetsEnvironmentVariableVisibleToFunction()
     {
+        // Arrange
         var envVarName = $"TEST_ENV_{Guid.NewGuid():N}";
         const string envVarValue = "env-var-value";
 
@@ -100,7 +113,10 @@ public class FunctionsTestHostFeaturesTests
             .ConfigureEnvironmentVariable(envVarName, envVarValue)
             .BuildAndStartAsync();
 
+        // Act
         var configuration = testHost.Services.GetRequiredService<IConfiguration>();
+
+        // Assert
         Assert.Equal(envVarValue, configuration[envVarName]);
 
         using var client = testHost.CreateHttpClient();

@@ -26,8 +26,10 @@ public sealed class FunctionsTestHostReuseFixtureTests :
     [Fact]
     public async Task SharedFixture_CanCreateTodo()
     {
+        // Act
         var response = await _fixture.Client.PostAsJsonAsync("/api/todos", new { Title = "Shared host item" });
 
+        // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
         var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
@@ -38,8 +40,10 @@ public sealed class FunctionsTestHostReuseFixtureTests :
     [Fact]
     public async Task SharedFixture_ResetKeepsTestsIsolated()
     {
+        // Act
         var todos = await _fixture.Client.GetFromJsonAsync<List<TodoItem>>("/api/todos");
 
+        // Assert
         Assert.NotNull(todos);
         Assert.Empty(todos);
     }
