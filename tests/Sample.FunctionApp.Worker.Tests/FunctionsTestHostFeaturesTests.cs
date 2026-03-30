@@ -1,15 +1,26 @@
 using AzureFunctions.TestFramework.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Sample.FunctionApp.Worker;
 using System.Net.Http.Json;
 using VerifyXunit;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.Worker.Tests;
 
 public class FunctionsTestHostFeaturesTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public FunctionsTestHostFeaturesTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
+
+    private ILoggerFactory CreateLoggerFactory() =>
+        LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output)));
     [Fact]
     public async Task Services_ReturnsConfiguredSingletonService()
     {
@@ -26,6 +37,7 @@ public class FunctionsTestHostFeaturesTests
 
         await using var testHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithLoggerFactory(CreateLoggerFactory())
             .ConfigureServices(services => services.AddSingleton<ITodoService>(seededService))
             .BuildAndStartAsync();
 
@@ -58,6 +70,7 @@ public class FunctionsTestHostFeaturesTests
 
         await using var testHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .ConfigureServices(services => services.AddSingleton<ITodoService>(seededService))
             .BuildAndStartAsync();
@@ -81,6 +94,7 @@ public class FunctionsTestHostFeaturesTests
         // Arrange
         await using var testHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .ConfigureSetting("Demo:Message", "configured-value")
             .BuildAndStartAsync();
@@ -107,6 +121,7 @@ public class FunctionsTestHostFeaturesTests
 
         await using var testHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .ConfigureEnvironmentVariable(envVarName, envVarValue)
             .BuildAndStartAsync();

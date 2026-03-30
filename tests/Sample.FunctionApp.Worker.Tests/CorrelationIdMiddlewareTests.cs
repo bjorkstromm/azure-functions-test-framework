@@ -1,20 +1,29 @@
 using AzureFunctions.TestFramework.Core;
+using Microsoft.Extensions.Logging;
 using Sample.FunctionApp.Worker;
 using System.Net.Http.Json;
 using VerifyXunit;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.Worker.Tests;
 
 public class CorrelationIdMiddlewareTests : IAsyncLifetime
 {
+    private readonly ITestOutputHelper _output;
     private IFunctionsTestHost? _testHost;
     private HttpClient? _client;
+
+    public CorrelationIdMiddlewareTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
 
     public async Task InitializeAsync()
     {
         _testHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
             .WithHostBuilderFactory(Program.CreateHostBuilder)
             .BuildAndStartAsync();
 

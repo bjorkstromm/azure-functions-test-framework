@@ -2,6 +2,7 @@ using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Timer;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Sample.FunctionApp.Worker;
 using System.Net;
 using System.Net.Http.Json;
@@ -29,6 +30,7 @@ public class TodoFunctionsTests : IAsyncLifetime
     {
         var builder = new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
             .ConfigureServices(services => services.AddSingleton<ITodoService, InMemoryTodoService>());
 
         _testHost = await builder.BuildAndStartAsync();

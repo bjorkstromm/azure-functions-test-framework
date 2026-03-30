@@ -86,6 +86,18 @@ public interface IFunctionsTestHostBuilder
     IFunctionsTestHostBuilder WithHostBuilderFactory(Func<string[], IHostBuilder> factory);
 
     /// <summary>
+    /// Overrides the <see cref="Microsoft.Extensions.Logging.ILoggerFactory"/> used by the test
+    /// host infrastructure (gRPC server, worker host service, etc.).
+    /// <para>
+    /// By default the framework creates a factory that writes to the console.  Supply a custom
+    /// factory here to route framework logs to your test output — for example xUnit's
+    /// <c>ITestOutputHelper</c>, Serilog, or any other <c>ILoggerProvider</c>.
+    /// </para>
+    /// </summary>
+    /// <param name="loggerFactory">The logger factory to use.</param>
+    IFunctionsTestHostBuilder WithLoggerFactory(Microsoft.Extensions.Logging.ILoggerFactory loggerFactory);
+
+    /// <summary>
     /// Builds and returns the configured test host.
     /// </summary>
     IFunctionsTestHost Build();

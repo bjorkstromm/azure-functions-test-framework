@@ -5,6 +5,7 @@ using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Queue;
 using AzureFunctions.TestFramework.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Sample.FunctionApp.Worker;
 using VerifyXunit;
 using Xunit;
@@ -32,6 +33,7 @@ public class TriggerFunctionsTests : IAsyncLifetime
 
         var builder = new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
             .ConfigureServices(services =>
             {
                 services.AddSingleton<ITodoService, InMemoryTodoService>();

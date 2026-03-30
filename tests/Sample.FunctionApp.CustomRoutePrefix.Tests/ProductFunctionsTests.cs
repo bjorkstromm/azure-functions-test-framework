@@ -1,9 +1,11 @@
 using AzureFunctions.TestFramework.Core;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using System.Text;
 using System.Text.Json;
 using VerifyXunit;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.CustomRoutePrefix.Tests;
 
@@ -14,13 +16,20 @@ namespace Sample.FunctionApp.CustomRoutePrefix.Tests;
 /// </summary>
 public class ProductFunctionsTests : IAsyncLifetime
 {
+    private readonly ITestOutputHelper _output;
     private IFunctionsTestHost? _host;
     private HttpClient? _client;
+
+    public ProductFunctionsTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
 
     public async Task InitializeAsync()
     {
         _host = await FunctionsTestHost
             .CreateBuilder<Program>()
+            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .BuildAndStartAsync();
 

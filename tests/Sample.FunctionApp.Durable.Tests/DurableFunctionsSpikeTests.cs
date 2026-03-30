@@ -2,14 +2,22 @@ using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Durable;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using System.Net;
 using VerifyXunit;
 using Xunit;
+using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.Durable.Tests;
 
 public sealed class DurableFunctionsSpikeTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public DurableFunctionsSpikeTests(ITestOutputHelper output)
+    {
+        _output = output;
+    }
     [Fact]
     public async Task Invoker_GetFunctions_IncludesDurableBindings()
     {
@@ -289,6 +297,7 @@ public sealed class DurableFunctionsSpikeTests
     {
         return new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(DurableGreetingFunctions).Assembly)
+            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .ConfigureFakeDurableSupport(typeof(DurableGreetingFunctions).Assembly)
             .BuildAndStartAsync();

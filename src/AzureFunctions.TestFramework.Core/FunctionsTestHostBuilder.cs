@@ -18,6 +18,7 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private readonly Dictionary<string, string> _settings = new();
     private readonly Dictionary<string, string> _environmentVariables = new();
     private Func<string[], IHostBuilder>? _hostBuilderFactory;
+    private ILoggerFactory? _loggerFactory;
 
     /// <summary>
     /// Sets the function application assembly to load into the test host.
@@ -88,6 +89,13 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     }
 
     /// <inheritdoc/>
+    public IFunctionsTestHostBuilder WithLoggerFactory(ILoggerFactory loggerFactory)
+    {
+        _loggerFactory = loggerFactory;
+        return this;
+    }
+
+    /// <inheritdoc/>
     public IFunctionsTestHostBuilder WithHostBuilderFactory(Func<string[], IHostBuilder> factory)
     {
         _hostBuilderFactory = factory;
@@ -116,8 +124,8 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
                 "Functions assembly must be specified. Use WithFunctionsAssembly() or CreateBuilder<TAssembly>()");
         }
 
-        // Create logging
-        var loggerFactory = LoggerFactory.Create(builder =>
+        // Create logging — use the caller-supplied factory or fall back to console.
+        var loggerFactory = _loggerFactory ?? LoggerFactory.Create(builder =>
         {
             builder.SetMinimumLevel(LogLevel.Information);
             builder.AddConsole();
