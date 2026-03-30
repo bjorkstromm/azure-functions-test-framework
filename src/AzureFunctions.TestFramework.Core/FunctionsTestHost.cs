@@ -18,6 +18,7 @@ public class FunctionsTestHost : IFunctionsTestHost
     private readonly GrpcServerManager _grpcServerManager;
     private readonly WorkerHostService _workerHostService;
     private readonly GrpcHostService _grpcHostService;
+    private readonly string _routePrefix;
     private HttpMessageHandler? _cachedHandler;
     private bool _isStarted;
 
@@ -25,12 +26,14 @@ public class FunctionsTestHost : IFunctionsTestHost
         ILogger<FunctionsTestHost> logger,
         GrpcServerManager grpcServerManager,
         WorkerHostService workerHostService,
-        GrpcHostService grpcHostService)
+        GrpcHostService grpcHostService,
+        string routePrefix = "api")
     {
         _logger = logger;
         _grpcServerManager = grpcServerManager;
         _workerHostService = workerHostService;
         _grpcHostService = grpcHostService;
+        _routePrefix = routePrefix.Trim('/');
     }
 
     /// <summary>
@@ -71,10 +74,11 @@ public class FunctionsTestHost : IFunctionsTestHost
         // gRPC-direct mode (ConfigureFunctionsWorkerDefaults): dispatch via InvocationRequest.
         var grpcHandler = _cachedHandler ??= new Client.FunctionsHttpMessageHandler(
             _grpcHostService,
-            _grpcHostService.FunctionRouteMap);
+            _grpcHostService.FunctionRouteMap,
+            _routePrefix);
         return new HttpClient(grpcHandler, disposeHandler: false)
         {
-            BaseAddress = new Uri("http://localhost/api/")
+            BaseAddress = new Uri($"http://localhost/{_routePrefix}/")
         };
     }
 

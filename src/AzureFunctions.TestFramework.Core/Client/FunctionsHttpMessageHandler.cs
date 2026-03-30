@@ -17,20 +17,27 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
     private readonly IReadOnlyDictionary<string, string> _routeToFunctionMap;
     private readonly Dictionary<string, string> _exactRouteMap;
     private readonly List<RoutePatternEntry> _patternRoutes;
+    private readonly string _routePrefix;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="FunctionsHttpMessageHandler"/> class.
     /// </summary>
     /// <param name="grpcHostService">The in-process gRPC host service used to dispatch invocations.</param>
     /// <param name="routeToFunctionMap">The loaded HTTP route map keyed by <c>{METHOD}:{route}</c>.</param>
+    /// <param name="routePrefix">
+    /// The HTTP route prefix configured in <c>host.json</c> (e.g. <c>"api"</c> or <c>"v1"</c>).
+    /// Defaults to <c>"api"</c> when not specified.
+    /// </param>
     public FunctionsHttpMessageHandler(
         GrpcHostService grpcHostService,
-        IReadOnlyDictionary<string, string> routeToFunctionMap)
+        IReadOnlyDictionary<string, string> routeToFunctionMap,
+        string routePrefix = "api")
     {
         _grpcHostService = grpcHostService;
         _requestMapper = new HttpRequestMapper();
         _responseMapper = new HttpResponseMapper();
         _routeToFunctionMap = routeToFunctionMap;
+        _routePrefix = routePrefix.Trim('/');
         _exactRouteMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         _patternRoutes = new List<RoutePatternEntry>();
 
@@ -43,7 +50,8 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
             }
 
             var method = routeKey.Substring(0, colonIdx).ToUpperInvariant();
-            var route = NormalizePath(routeKey.Substring(colonIdx + 1));
+            // Route keys from the function map are bare routes (e.g. "todos/{id}") with no prefix.
+            var route = NormalizePath(routeKey.Substring(colonIdx + 1), string.Empty);
             var routeSegments = route.Split('/', StringSplitOptions.RemoveEmptyEntries);
             var hasParameters = routeSegments.Any(static seg => seg.Length > 2 && seg[0] == '{' && seg[^1] == '}');
 
@@ -185,7 +193,7 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
     private (string? FunctionId, IReadOnlyDictionary<string, string> RouteParams) FindFunctionMatch(
         string httpMethod, string path)
     {
-        var normalizedPath = NormalizePath(path);
+        var normalizedPath = NormalizePath(path, _routePrefix);
         var upperMethod = httpMethod.ToUpperInvariant();
         var pathSegments = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
 
@@ -240,12 +248,16 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
         return (null, System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
     }
 
-    private static string NormalizePath(string path)
+    private static string NormalizePath(string path, string routePrefix)
     {
         var normalizedPath = path.TrimStart('/');
-        if (normalizedPath.StartsWith("api/", StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(routePrefix))
         {
-            normalizedPath = normalizedPath.Substring(4);
+            var prefix = routePrefix.Trim('/') + "/";
+            if (normalizedPath.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                normalizedPath = normalizedPath.Substring(prefix.Length);
+            }
         }
 
         var queryIndex = normalizedPath.IndexOf('?');

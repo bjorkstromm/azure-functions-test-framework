@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using System.Reflection;
+using System.Text.Json;
 
 namespace AzureFunctions.TestFramework.Core;
 
@@ -153,12 +154,41 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
 
         // Create main test host
         var testHostLogger = loggerFactory.CreateLogger<FunctionsTestHost>();
+        var routePrefix = ReadRoutePrefixFromHostJson(_functionsAssembly);
 
         return new FunctionsTestHost(
             testHostLogger,
             grpcServerManager,
             workerHostService,
-            grpcHostService);
+            grpcHostService,
+            routePrefix);
+    }
+
+    private static string ReadRoutePrefixFromHostJson(Assembly functionsAssembly)
+    {
+        var assemblyDir = Path.GetDirectoryName(functionsAssembly.Location);
+        if (assemblyDir == null) return "api";
+
+        var hostJsonPath = Path.Combine(assemblyDir, "host.json");
+        if (!File.Exists(hostJsonPath)) return "api";
+
+        try
+        {
+            using var stream = File.OpenRead(hostJsonPath);
+            using var doc = JsonDocument.Parse(stream);
+            if (doc.RootElement.TryGetProperty("extensions", out var extensions) &&
+                extensions.TryGetProperty("http", out var http) &&
+                http.TryGetProperty("routePrefix", out var prefix))
+            {
+                return prefix.GetString() ?? "api";
+            }
+        }
+        catch
+        {
+            // Ignore parse errors and fall back to the default.
+        }
+
+        return "api";
     }
 
     private static int FindAvailablePort()
