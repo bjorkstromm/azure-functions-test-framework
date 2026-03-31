@@ -49,6 +49,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.WAF.Tests", "tests\Sample.FunctionApp.CustomRoutePrefix.WAF.Tests\Sample.FunctionApp.CustomRoutePrefix.WAF.Tests.csproj", "{3D07D0D2-4122-479D-9696-1C478D5EEFFC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests", "tests\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests.csproj", "{3678F83C-138C-47EC-B81A-8DCFACCFA328}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -299,6 +301,18 @@ Global
 		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Release|x64.Build.0 = Release|Any CPU
 		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Release|x86.ActiveCfg = Release|Any CPU
 		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Release|x86.Build.0 = Release|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Debug|x64.Build.0 = Debug|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Debug|x86.Build.0 = Debug|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Release|x64.ActiveCfg = Release|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Release|x64.Build.0 = Release|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Release|x86.ActiveCfg = Release|Any CPU
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -324,5 +338,6 @@ Global
 		{F7A8B9C0-D1E2-3456-0123-456789ABCDEF} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{3D07D0D2-4122-479D-9696-1C478D5EEFFC} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

@@ -114,5 +114,35 @@ public class ProductFunctions
         return new OkObjectResult(new { status = "healthy", binding = "HttpRequest" });
     }
 
+    /// <summary>
+    /// Returns a product by its <see cref="Guid"/> identifier, using the ASP.NET Core native
+    /// <see cref="HttpRequest"/> as the trigger parameter together with an explicit
+    /// <see cref="FunctionContext"/> and a <see cref="Guid"/> route parameter.
+    /// This mirrors the common real-world signature where callers need the native HTTP context,
+    /// structured logging via <c>FunctionContext</c>, and a strongly-typed route value.
+    /// </summary>
+    [Function("GetProductById")]
+    public async Task<IActionResult> GetProductByIdAsync(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "products/{productId:guid}")] HttpRequest req,
+        FunctionContext functionContext,
+        Guid productId,
+        CancellationToken cancellationToken)
+    {
+        _logger.LogInformation(
+            "GetProductById called for productId={ProductId} invocationId={InvocationId}",
+            productId, functionContext.InvocationId);
+
+        await Task.CompletedTask;
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var product = _productService.GetById(productId.ToString());
+        if (product == null)
+        {
+            return new NotFoundResult();
+        }
+
+        return new OkObjectResult(product);
+    }
+
     private sealed record CreateProductRequest(string Name, decimal Price);
 }

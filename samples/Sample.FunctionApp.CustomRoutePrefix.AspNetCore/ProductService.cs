@@ -45,6 +45,14 @@ public class InMemoryProductService : IProductService
         return product;
     }
 
+    /// <summary>Creates a product with a caller-supplied identifier (useful for seeding test data).</summary>
+    public Product CreateWithId(string id, string name, decimal price)
+    {
+        var product = new Product { Id = id, Name = name, Price = price };
+        lock (_lock) _products.Add(product);
+        return product;
+    }
+
     public bool Delete(string id)
     {
         lock (_lock)

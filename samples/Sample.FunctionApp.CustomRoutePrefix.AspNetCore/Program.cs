@@ -16,6 +16,14 @@ public partial class Program
             .ConfigureFunctionsWebApplication()
             .ConfigureServices(ConfigureServices);
 
+    // Used by FunctionsTestHost (non-WAF / ASP.NET Core integration mode).
+    // Returns a HostBuilder that uses ConfigureFunctionsWebApplication() so the test host
+    // can start a real Kestrel server and forward HTTP requests through the ASP.NET Core pipeline.
+    public static IHostBuilder CreateWorkerHostBuilder(string[] args) =>
+        new HostBuilder()
+            .ConfigureFunctionsWebApplication()
+            .ConfigureServices(ConfigureServices);
+
     private static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<IProductService, InMemoryProductService>();
