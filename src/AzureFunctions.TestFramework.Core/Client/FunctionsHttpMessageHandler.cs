@@ -104,10 +104,12 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                 bindingName: httpBindingName
             );
 
-            // 4. Add route parameters to InputData (binds direct function parameters like "string id")
+            // 4. Add route parameters to InputData (binds direct function parameters like "string id", "Guid id")
             //    and to TriggerMetadata (populates FunctionContext.BindingContext.BindingData["id"]).
             foreach (var (paramName, paramValue) in routeParams)
             {
+                // Write as RpcString; the worker SDK's TypedData converters unwrap to a string
+                // which is then handled by type-specific converters (GuidConverter, etc.).
                 grpcRequest.InvocationRequest.InputData.Add(new ParameterBinding
                 {
                     Name = paramName,
@@ -242,7 +244,11 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                     var seg = pattern.Segments[i];
                     if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}')
                     {
-                        routeParams[seg.Substring(1, seg.Length - 2)] = pathSegments[i];
+                        var paramName = seg.Substring(1, seg.Length - 2);
+                        // Strip route constraint (e.g. "productId:guid" → "productId").
+                        var colonIndex = paramName.IndexOf(':');
+                        if (colonIndex > 0) paramName = paramName.Substring(0, colonIndex);
+                        routeParams[paramName] = pathSegments[i];
                     }
                 }
                 return (pattern.FunctionId, routeParams);

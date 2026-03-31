@@ -123,14 +123,14 @@ public class ProductFunctions
     /// </summary>
     [Function("GetProductById")]
     public async Task<IActionResult> GetProductByIdAsync(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "products/{productId:guid}")] HttpRequest req,
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "products/by-id/{productId:guid}")] HttpRequest req,
         FunctionContext functionContext,
         Guid productId,
         CancellationToken cancellationToken)
     {
         _logger.LogInformation(
-            "GetProductById called for productId={ProductId} invocationId={InvocationId}",
-            productId, functionContext.InvocationId);
+            "GetProductById called for productId={ProductId} invocationId={InvocationId} method={Method}",
+            productId, functionContext.InvocationId, req.Method);
 
         await Task.CompletedTask;
         cancellationToken.ThrowIfCancellationRequested();
@@ -141,7 +141,15 @@ public class ProductFunctions
             return new NotFoundResult();
         }
 
-        return new OkObjectResult(product);
+        // Echo the HTTP method in the response body so tests can prove HttpRequest was non-null.
+        // If req were null, req.Method would throw NullReferenceException → 500, failing the assertion.
+        return new OkObjectResult(new
+        {
+            id = product.Id,
+            name = product.Name,
+            price = product.Price,
+            requestMethod = req.Method
+        });
     }
 
     private sealed record CreateProductRequest(string Name, decimal Price);

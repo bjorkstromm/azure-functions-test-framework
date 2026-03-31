@@ -334,8 +334,10 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             }
         };
 
-        // Add route parameter values to InputData (binds direct function parameters like "string id")
+        // Add route parameter values to InputData (binds direct function parameters like "string id", "Guid id")
         // and to TriggerMetadata (populates FunctionContext.BindingContext.BindingData["id"]).
+        // Values are written as RpcString; the worker SDK's TypedData converters unwrap the string
+        // and pass it to type-specific converters (GuidConverter, etc.) which handle the final parse.
         foreach (var (name, value) in routeParams)
         {
             invocationRequest.InputData.Add(new ParameterBinding
@@ -809,6 +811,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                     if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}')
                     {
                         var paramName = seg.Substring(1, seg.Length - 2);
+                        // Strip route constraint (e.g. "productId:guid" → "productId").
+                        var colonIndex = paramName.IndexOf(':');
+                        if (colonIndex > 0) paramName = paramName.Substring(0, colonIndex);
                         routeParams[paramName] = pathSegments[i];
                     }
                 }

@@ -61,18 +61,26 @@ public class ProductFunctionsTests : IAsyncLifetime
         var product = _productService!.CreateWithId(productId.ToString(), "Widget", 9.99m);
 
         // Act — call the endpoint that uses HttpRequest + FunctionContext + Guid + CancellationToken
-        var response = await _client!.GetAsync($"/v1/products/{productId}");
+        var response = await _client!.GetAsync($"/v1/products/by-id/{productId}");
         _output.WriteLine($"Status: {response.StatusCode}");
-        _output.WriteLine(await response.Content.ReadAsStringAsync());
+        var body = await response.Content.ReadAsStringAsync();
+        _output.WriteLine(body);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
-        var returned = JsonSerializer.Deserialize<Product>(body,
-            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-        Assert.NotNull(returned);
-        Assert.Equal(product.Id, returned!.Id);
-        Assert.Equal("Widget", returned.Name);
+
+        using var doc = JsonDocument.Parse(body);
+        var root = doc.RootElement;
+
+        // requestMethod comes from req.Method inside the function — proves HttpRequest was non-null.
+        // If req were null, req.Method in both the logger and here would throw NullReferenceException,
+        // causing a 500 and failing the status assertion above.
+        var requestMethod = root.GetProperty("requestMethod").GetString();
+        Assert.Equal("GET", requestMethod, ignoreCase: true);
+
+        var returnedId = root.GetProperty("id").GetString();
+        Assert.Equal(product.Id, returnedId);
+        Assert.Equal("Widget", root.GetProperty("name").GetString());
     }
 
     [Fact]
@@ -82,7 +90,7 @@ public class ProductFunctionsTests : IAsyncLifetime
         var unknownId = Guid.NewGuid();
 
         // Act
-        var response = await _client!.GetAsync($"/v1/products/{unknownId}");
+        var response = await _client!.GetAsync($"/v1/products/by-id/{unknownId}");
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // Assert
@@ -93,7 +101,7 @@ public class ProductFunctionsTests : IAsyncLifetime
     public async Task GetProductById_InvalidGuid_ReturnsBadRequest()
     {
         // Act — non-Guid value should fail route constraint matching
-        var response = await _client!.GetAsync("/v1/products/not-a-guid");
+        var response = await _client!.GetAsync("/v1/products/by-id/not-a-guid");
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // ASP.NET Core route constraints reject "not-a-guid" and return 404 (no match) or 400
