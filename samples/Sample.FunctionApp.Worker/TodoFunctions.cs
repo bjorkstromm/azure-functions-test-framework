@@ -85,6 +85,33 @@ public class TodoFunctions
         if (!deleted) return req.CreateResponse(HttpStatusCode.NotFound);
         return req.CreateResponse(HttpStatusCode.NoContent);
     }
+
+    /// <summary>
+    /// Reads the todo ID exclusively from <see cref="Microsoft.Azure.Functions.Worker.FunctionContext.BindingContext"/>
+    /// <c>.BindingData["id"]</c> rather than accepting it as a direct function parameter.
+    /// This endpoint exists to verify that route parameters are present in <c>BindingData</c>.
+    /// </summary>
+    [Function("GetTodoByBindingData")]
+    public async Task<HttpResponseData> GetTodoByBindingData(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos/{id}/binding-data")] HttpRequestData req)
+    {
+        req.FunctionContext.BindingContext.BindingData.TryGetValue("id", out var idValue);
+        var id = idValue as string;
+
+        if (string.IsNullOrEmpty(id))
+        {
+            var bad = req.CreateResponse(HttpStatusCode.BadRequest);
+            await bad.WriteStringAsync("'id' was not found in BindingContext.BindingData");
+            return bad;
+        }
+
+        var todo = await _todoService.GetByIdAsync(id);
+        if (todo == null) return req.CreateResponse(HttpStatusCode.NotFound);
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(todo);
+        return response;
+    }
 }
 
 public class TodoItem

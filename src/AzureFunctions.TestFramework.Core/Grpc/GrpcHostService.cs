@@ -331,8 +331,8 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             }
         };
 
-        // Add route parameter values to InputData so the worker can bind them to function
-        // parameters (e.g. "string id" in GetTodo([HttpTrigger] HttpRequestData req, string id)).
+        // Add route parameter values to InputData (binds direct function parameters like "string id")
+        // and to TriggerMetadata (populates FunctionContext.BindingContext.BindingData["id"]).
         foreach (var (name, value) in routeParams)
         {
             invocationRequest.InputData.Add(new ParameterBinding
@@ -340,6 +340,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 Name = name,
                 Data = new TypedData { String = value }
             });
+            invocationRequest.TriggerMetadata[name] = new TypedData { String = value };
         }
 
         var message = new StreamingMessage

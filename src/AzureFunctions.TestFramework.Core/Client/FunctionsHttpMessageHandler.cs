@@ -101,8 +101,8 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                 queryParams: queryParams
             );
 
-            // 4. Add route parameters to InputData so the worker can bind them to function
-            //    parameters (e.g. "string id" in GetTodo([HttpTrigger] HttpRequestData req, string id)).
+            // 4. Add route parameters to InputData (binds direct function parameters like "string id")
+            //    and to TriggerMetadata (populates FunctionContext.BindingContext.BindingData["id"]).
             foreach (var (paramName, paramValue) in routeParams)
             {
                 grpcRequest.InvocationRequest.InputData.Add(new ParameterBinding
@@ -110,6 +110,7 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                     Name = paramName,
                     Data = new TypedData { String = paramValue }
                 });
+                grpcRequest.InvocationRequest.TriggerMetadata[paramName] = new TypedData { String = paramValue };
             }
 
             foreach (var binding in _grpcHostService.GetSyntheticInputBindings(functionId))

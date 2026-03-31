@@ -140,6 +140,23 @@ public class FunctionsWebApplicationFactoryTests
         await Verify(payload);
     }
 
+    [Fact]
+    public async Task GetTodoByBindingData_ReturnsTodo_WhenRouteParamInBindingData()
+    {
+        // Arrange
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "WAF Binding Data Test" });
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoItem>();
+
+        // Act — endpoint reads id exclusively from BindingContext.BindingData, not from a direct parameter
+        var response = await _client!.GetAsync($"/api/todos/{created!.Id}/binding-data");
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var todo = await response.Content.ReadFromJsonAsync<TodoItem>();
+        Assert.Equal(created.Id, todo!.Id);
+        Assert.Equal("WAF Binding Data Test", todo.Title);
+    }
+
     private sealed class SeededTodoService : ITodoService
     {
         private readonly List<TodoItem> _todos;
