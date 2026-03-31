@@ -54,6 +54,30 @@ public class ProductFunctionsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Ping_DefaultRoute_ReturnsOk_WithHttpRequestAndFunctionContextBound()
+    {
+        // Act — call the endpoint that uses the DEFAULT route (function name "Ping", no Route= param)
+        // This verifies that functions without explicit Route= still have HttpRequest + FunctionContext bound.
+        var response = await _client!.GetAsync("/v1/Ping");
+        _output.WriteLine($"Status: {response.StatusCode}");
+        var body = await response.Content.ReadAsStringAsync();
+        _output.WriteLine(body);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        using var doc = JsonDocument.Parse(body);
+        var root = doc.RootElement;
+
+        // method comes from req.Method — proves HttpRequest was non-null.
+        var method = root.GetProperty("method").GetString();
+        Assert.Equal("GET", method, ignoreCase: true);
+
+        // pong presence proves FunctionContext.InvocationId was accessible (logged without throwing).
+        Assert.True(root.GetProperty("pong").GetBoolean());
+    }
+
+    [Fact]
     public async Task GetProductById_ReturnsOk_WithHttpRequestAndFunctionContextBound()
     {
         // Arrange — create a product whose ID is a Guid

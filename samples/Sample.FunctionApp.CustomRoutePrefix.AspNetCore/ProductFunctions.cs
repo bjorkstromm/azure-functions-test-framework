@@ -152,5 +152,20 @@ public class ProductFunctions
         });
     }
 
+    /// <summary>
+    /// Returns a simple ping response using the default route (no explicit <c>Route = </c> on
+    /// <see cref="HttpTriggerAttribute"/>).  The route defaults to the function name
+    /// (<c>Ping</c>) so the endpoint is reachable at <c>{prefix}/Ping</c>.
+    /// This covers the real-world case where users omit the Route parameter.
+    /// </summary>
+    [Function("Ping")]
+    public IActionResult Ping(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get")] HttpRequest req,
+        FunctionContext functionContext)
+    {
+        _logger.LogInformation("Ping called, invocationId={InvocationId}", functionContext.InvocationId);
+        return new OkObjectResult(new { pong = true, method = req.Method });
+    }
+
     private sealed record CreateProductRequest(string Name, decimal Price);
 }

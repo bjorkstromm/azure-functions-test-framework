@@ -967,13 +967,18 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                             {
                                 var triggerType = typeProp.GetString() ?? string.Empty;
 
-                                if (triggerType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase) &&
-                                    root.TryGetProperty("route", out var routeProp))
+                                if (triggerType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    var route = routeProp.GetString();
+                                    // When Route is not explicitly set on [HttpTrigger], the source-generated
+                                    // binding JSON omits the "route" property or sets it to null.
+                                    // Azure Functions defaults the route to the function name in that case.
+                                    var route = root.TryGetProperty("route", out var routeProp)
+                                        ? routeProp.GetString()
+                                        : null;
+
                                     if (string.IsNullOrEmpty(route))
                                     {
-                                        continue;
+                                        route = functionMetadata.Name;
                                     }
 
                                     // Store the actual HTTP trigger binding parameter name so callers can
