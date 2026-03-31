@@ -1,4 +1,4 @@
-
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
@@ -44,6 +44,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker.NUnit.Tests", "tests\Sample.FunctionApp.Worker.NUnit.Tests\Sample.FunctionApp.Worker.NUnit.Tests.csproj", "{E6F7A8B9-C0D1-2345-F012-3456789ABCDE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker.WAF.NUnit.Tests", "tests\Sample.FunctionApp.Worker.WAF.NUnit.Tests\Sample.FunctionApp.Worker.WAF.NUnit.Tests.csproj", "{F7A8B9C0-D1E2-3456-0123-456789ABCDEF}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.AspNetCore", "samples\Sample.FunctionApp.CustomRoutePrefix.AspNetCore\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.csproj", "{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.WAF.Tests", "tests\Sample.FunctionApp.CustomRoutePrefix.WAF.Tests\Sample.FunctionApp.CustomRoutePrefix.WAF.Tests.csproj", "{3D07D0D2-4122-479D-9696-1C478D5EEFFC}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -271,6 +275,30 @@ Global
 		{F7A8B9C0-D1E2-3456-0123-456789ABCDEF}.Release|x64.Build.0 = Release|Any CPU
 		{F7A8B9C0-D1E2-3456-0123-456789ABCDEF}.Release|x86.ActiveCfg = Release|Any CPU
 		{F7A8B9C0-D1E2-3456-0123-456789ABCDEF}.Release|x86.Build.0 = Release|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Debug|x64.Build.0 = Debug|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Debug|x86.Build.0 = Debug|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Release|x64.ActiveCfg = Release|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Release|x64.Build.0 = Release|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Release|x86.ActiveCfg = Release|Any CPU
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}.Release|x86.Build.0 = Release|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Debug|x64.Build.0 = Debug|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Debug|x86.Build.0 = Debug|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Release|x64.ActiveCfg = Release|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Release|x64.Build.0 = Release|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Release|x86.ActiveCfg = Release|Any CPU
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -294,5 +322,7 @@ Global
 		{D5E6F7A8-B9C0-1234-EFAB-C012345678DE} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{E6F7A8B9-C0D1-2345-F012-3456789ABCDE} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{F7A8B9C0-D1E2-3456-0123-456789ABCDEF} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
+		{3D07D0D2-4122-479D-9696-1C478D5EEFFC} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal
