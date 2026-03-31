@@ -18,7 +18,8 @@ public class HttpRequestMapper
         string url,
         Dictionary<string, string>? headers = null,
         string? body = null,
-        Dictionary<string, string>? queryParams = null)
+        Dictionary<string, string>? queryParams = null,
+        string bindingName = "req")
     {
         var invocationId = Guid.NewGuid().ToString();
         
@@ -69,10 +70,10 @@ public class HttpRequestMapper
             }
         };
 
-        // Add HTTP trigger input
+        // Add HTTP trigger input using the actual binding parameter name from function metadata.
         request.InvocationRequest.InputData.Add(new ParameterBinding
         {
-            Name = "req",
+            Name = bindingName,
             Data = new TypedData
             {
                 Http = httpRequest

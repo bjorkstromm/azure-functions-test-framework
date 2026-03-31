@@ -120,4 +120,17 @@ public class ProductFunctionsTests
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
+
+    [Fact]
+    public async Task HealthWithHttpRequest_ReturnsOk_WhenUsingAspNetCoreHttpRequest()
+    {
+        // Act — this function uses HttpRequest (ASP.NET Core native) not HttpRequestData
+        var response = await _client!.GetAsync("/v1/health-http-request");
+
+        // Assert — verifies HttpRequest binding works through ConfigureFunctionsWebApplication
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Contains("healthy", body);
+        Assert.Contains("HttpRequest", body);
+    }
 }

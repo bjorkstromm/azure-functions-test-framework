@@ -91,14 +91,17 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                 return CreateNotFoundResponse($"No function found for route: {method} {path}");
             }
 
-            // 3. Create gRPC InvocationRequest
+            // 3. Create gRPC InvocationRequest using the actual HTTP trigger binding parameter name
+            //    from function metadata (e.g. "request" rather than the conventional "req").
+            var httpBindingName = _grpcHostService.GetHttpTriggerBindingName(functionId);
             var grpcRequest = _requestMapper.CreateInvocationRequest(
                 functionId: functionId,
                 method: method,
                 url: path,
                 headers: headers,
                 body: body,
-                queryParams: queryParams
+                queryParams: queryParams,
+                bindingName: httpBindingName
             );
 
             // 4. Add route parameters to InputData (binds direct function parameters like "string id")

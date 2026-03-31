@@ -47,6 +47,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     // Key: function ID; Value: synthetic input bindings that should be added by the test host.
     private readonly Dictionary<string, List<ParameterBinding>> _syntheticInputBindingsByFunctionId
         = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function ID; Value: the HTTP trigger binding parameter name (e.g. "req", "request").
+    private readonly Dictionary<string, string> _httpBindingNameByFunctionId
+        = new(StringComparer.OrdinalIgnoreCase);
     // Key: function name (case-insensitive); Value: IFunctionMetadata
     private readonly Dictionary<string, IFunctionMetadata> _functionMetadataMap
         = new(StringComparer.OrdinalIgnoreCase);
@@ -731,6 +734,14 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         => FindFunctionMatch(httpMethod, requestPath, routePrefix).FunctionId;
 
     /// <summary>
+    /// Returns the HTTP trigger binding parameter name (e.g. <c>"req"</c> or <c>"request"</c>)
+    /// for the given function ID, as declared in the function's source-generated metadata.
+    /// Falls back to <c>"req"</c> if the function is not known or has no httpTrigger binding.
+    /// </summary>
+    internal string GetHttpTriggerBindingName(string functionId)
+        => _httpBindingNameByFunctionId.TryGetValue(functionId, out var name) ? name : "req";
+
+    /// <summary>
     /// Matches an incoming HTTP method + request path against the loaded function route map.
     /// Returns the function ID and a dictionary of extracted route parameter values (e.g.
     /// <c>{"id": "abc123"}</c> for a route pattern <c>todos/{id}</c>).
@@ -946,6 +957,13 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                                     {
                                         continue;
                                     }
+
+                                    // Store the actual HTTP trigger binding parameter name so callers can
+                                    // use it in InputData (instead of the hardcoded default "req").
+                                    var httpBindingName = root.TryGetProperty("name", out var httpNameProp)
+                                        ? httpNameProp.GetString() ?? "req"
+                                        : "req";
+                                    _httpBindingNameByFunctionId[functionMetadata.FunctionId] = httpBindingName;
 
                                     // Extract accepted HTTP methods; default to all if not specified
                                     var methods = new List<string>();

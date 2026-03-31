@@ -87,7 +87,52 @@ public class TodoFunctions
     }
 
     /// <summary>
-    /// Reads the todo ID exclusively from <see cref="Microsoft.Azure.Functions.Worker.FunctionContext.BindingContext"/>
+    /// Same as <see cref="GetTodo"/> but uses <c>request</c> instead of <c>req</c> as the HTTP
+    /// trigger parameter name.  This verifies that the framework reads the actual binding name from
+    /// function metadata rather than hardcoding "req".
+    /// </summary>
+    [Function("GetTodoAlt")]
+    public async Task<HttpResponseData> GetTodoAlt(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos/{id}/alt")] HttpRequestData request,
+        string id)
+    {
+        var todo = await _todoService.GetByIdAsync(id);
+        if (todo == null) return request.CreateResponse(HttpStatusCode.NotFound);
+
+        var response = request.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(todo);
+        return response;
+    }
+
+    /// <summary>
+    /// Reads a todo by accessing <see cref="FunctionContext"/> as a direct function parameter
+    /// (rather than via <c>req.FunctionContext</c>).  This verifies that <see cref="FunctionContext"/>
+    /// is correctly injected by the worker runtime in the test framework.
+    /// </summary>
+    [Function("GetTodoWithContext")]
+    public async Task<HttpResponseData> GetTodoWithContext(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos/{id}/with-context")] HttpRequestData req,
+        string id,
+        FunctionContext context)
+    {
+        // Verify FunctionContext was injected
+        if (context == null)
+        {
+            var bad = req.CreateResponse(HttpStatusCode.InternalServerError);
+            await bad.WriteStringAsync("FunctionContext was null");
+            return bad;
+        }
+
+        var todo = await _todoService.GetByIdAsync(id);
+        if (todo == null) return req.CreateResponse(HttpStatusCode.NotFound);
+
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        await response.WriteAsJsonAsync(todo);
+        return response;
+    }
+
+    /// <summary>
+    /// Reads the todo ID exclusively from <see cref="FunctionContext.BindingContext"/>
     /// <c>.BindingData["id"]</c> rather than accepting it as a direct function parameter.
     /// This endpoint exists to verify that route parameters are present in <c>BindingData</c>.
     /// </summary>

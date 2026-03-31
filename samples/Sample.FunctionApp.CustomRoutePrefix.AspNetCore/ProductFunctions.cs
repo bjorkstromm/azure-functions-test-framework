@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
@@ -97,5 +99,20 @@ public class ProductFunctions
         var deleted = _productService.Delete(id);
         return req.CreateResponse(deleted ? HttpStatusCode.NoContent : HttpStatusCode.NotFound);
     }
+
+    /// <summary>
+    /// Returns a simple health response using <see cref="Microsoft.AspNetCore.Http.HttpRequest"/> as
+    /// the trigger parameter type.  This verifies that ASP.NET Core native <c>HttpRequest</c>
+    /// binding works correctly through the <c>ConfigureFunctionsWebApplication</c> integration.
+    /// </summary>
+    [Function("HealthWithHttpRequest")]
+    public async Task<IActionResult> HealthWithHttpRequest(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health-http-request")] HttpRequest httpRequest)
+    {
+        _logger.LogInformation("HealthWithHttpRequest called, method={Method}", httpRequest.Method);
+        await Task.CompletedTask;
+        return new OkObjectResult(new { status = "healthy", binding = "HttpRequest" });
+    }
+
     private sealed record CreateProductRequest(string Name, decimal Price);
 }

@@ -151,6 +151,40 @@ public class TodoFunctionsTests : IAsyncLifetime
     }
 
     [Fact]
+    public async Task GetTodoAlt_ReturnsTodo_WhenHttpTriggerParamNameIsNotReq()
+    {
+        // Arrange — GetTodoAlt uses 'request' (not 'req') as the HttpRequestData parameter name
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Alt Binding Test" });
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
+
+        // Act
+        var response = await _client!.GetAsync($"/api/todos/{created!.Id}/alt");
+
+        // Assert — verifies framework uses actual binding name from metadata, not hardcoded "req"
+        response.EnsureSuccessStatusCode();
+        var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
+        Assert.Equal(created.Id, todo!.Id);
+        Assert.Equal("Alt Binding Test", todo.Title);
+    }
+
+    [Fact]
+    public async Task GetTodoWithContext_ReturnsTodo_WhenFunctionContextInjectedAsParameter()
+    {
+        // Arrange — GetTodoWithContext takes FunctionContext as a direct function parameter
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Context Test" });
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
+
+        // Act
+        var response = await _client!.GetAsync($"/api/todos/{created!.Id}/with-context");
+
+        // Assert — FunctionContext must be non-null; function returns 500 otherwise
+        response.EnsureSuccessStatusCode();
+        var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
+        Assert.Equal(created.Id, todo!.Id);
+        Assert.Equal("Context Test", todo.Title);
+    }
+
+    [Fact]
     public async Task Health_ReturnsOk()
     {
         // Act
