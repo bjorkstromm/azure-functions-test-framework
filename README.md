@@ -69,6 +69,23 @@ The shipping package set is currently:
 - `AzureFunctions.TestFramework.EventGrid` — `InvokeEventGridAsync(...)` for both `EventGridEvent` and `CloudEvent`
 - `AzureFunctions.TestFramework.Durable` — fake-backed durable helpers including `ConfigureFakeDurableSupport(...)`, durable client/provider helpers, status helpers, and direct activity invocation
 
+## Project setup requirements
+
+### ASP.NET Core shared framework reference
+
+If your function app uses `ConfigureFunctionsWebApplication()` (i.e., it references `Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore`), it must declare a framework reference to `Microsoft.AspNetCore.App`:
+
+```xml
+<!-- YourFunctionApp.csproj -->
+<ItemGroup>
+  <FrameworkReference Include="Microsoft.AspNetCore.App" />
+</ItemGroup>
+```
+
+This is the standard requirement for Azure Functions apps that use ASP.NET Core integration. The test framework libraries (`AzureFunctions.TestFramework.Core`, `AzureFunctions.TestFramework.Http.AspNetCore`) also declare this framework reference so that ASP.NET Core types are always resolved from the **shared runtime** in both the function app and the test framework. Without consistent framework resolution, `HttpContextConverter` cannot read `HttpRequest` from `FunctionContext` — the `as HttpContext` cast silently returns `null` due to a type identity mismatch between two physical copies of ASP.NET Core assemblies.
+
+> ℹ️ You do **not** need to add `FrameworkReference` to your test project manually; it is propagated through the test framework's NuGet package metadata.
+
 ## Common commands
 
 ```bash

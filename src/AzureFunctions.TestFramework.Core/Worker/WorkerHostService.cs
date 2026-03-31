@@ -113,11 +113,24 @@ public class WorkerHostService : IWorkerHost
             await _workerHost.StartAsync(cancellationToken);
 
             // Auto-detect ASP.NET Core integration mode: if an IServer is registered in the
-            // worker's DI container, the factory used ConfigureFunctionsWebApplication() and
-            // the worker has a live HTTP server listening on the allocated HTTP port.
-            if (_workerHost.Services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>() != null)
+            // worker's DI container, the factory used ConfigureFunctionsWebApplication().
+            // Read the ACTUAL port from Kestrel because ConfigureFunctionsWebApplication()
+            // calls UseUrls(HttpUriProvider.HttpUriString) with its own random port, which
+            // overrides ASPNETCORE_URLS and configuration-based URLs.
+            var server = _workerHost.Services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
+            if (server != null)
             {
-                _httpPort = _allocatedHttpPort;
+                var addressFeature = server.Features
+                    .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>();
+                if (addressFeature?.Addresses is { Count: > 0 } addresses)
+                {
+                    var uri = new Uri(addresses.First());
+                    _httpPort = uri.Port;
+                }
+                else
+                {
+                    _httpPort = _allocatedHttpPort;
+                }
                 _logger.LogInformation(
                     "ASP.NET Core integration detected; worker HTTP server on port {HttpPort}", _httpPort);
             }
@@ -277,8 +290,9 @@ public class WorkerHostService : IWorkerHost
                     }
                 });
             }
+
         }
-        
+
         // IMPORTANT: Add our configuration AFTER ConfigureFunctionsWorkerDefaults
         // so our values override any defaults from environment variables
         hostBuilder.ConfigureAppConfiguration((context, config) =>

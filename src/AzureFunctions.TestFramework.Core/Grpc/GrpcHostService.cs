@@ -348,6 +348,19 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             invocationRequest.TriggerMetadata[name] = new TypedData { String = value };
         }
 
+        // The real Azure Functions host always includes a ParameterBinding for the HTTP trigger
+        // binding (e.g. "req") with an empty RpcHttp payload. Without this entry the worker's
+        // FunctionsHttpProxyingMiddleware.IsHttpTriggerFunction check (which inspects InputBindings)
+        // may fail, causing IHttpCoordinator coordination to be skipped and HttpContext to be
+        // omitted from FunctionContext.Items — leaving HttpRequest and FunctionContext null inside
+        // the function body when using ConfigureFunctionsWebApplication().
+        var httpBindingName = GetHttpTriggerBindingName(functionId);
+        invocationRequest.InputData.Add(new ParameterBinding
+        {
+            Name = httpBindingName,
+            Data = new TypedData { Http = new RpcHttp() }
+        });
+
         var message = new StreamingMessage
         {
             // Use invocationId as RequestId so the InvocationResponse can be matched.
