@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Converters;
+using Microsoft.Azure.Functions.Worker.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -310,6 +312,14 @@ public class WorkerHostService : IWorkerHost
         //      FunctionContext and unblock.
         // When ConfigureFunctionsWorkerDefaults() is used, no IApplicationBuilder pipeline
         // exists so these filters are registered but never invoked — they are no-ops.
+        //
+        // Also register a fallback FunctionContext input converter (see FunctionContextInputConverter
+        // below).  The Worker SDK's built-in FunctionContextConverter lives inside the isolated
+        // AssemblyLoadContext used for .azurefunctions extension loading.  Its typeof(FunctionContext)
+        // is a different runtime type handle than the one the function assembly (loaded in the default
+        // ALC) uses, so the SDK converter's type equality check fails and it returns Unhandled().
+        // Our converter (compiled against the default ALC's Worker.Core) performs the same check
+        // correctly and is tried next, returning Success(context.FunctionContext).
         var grpcHostService = _grpcHostService;
         var routePrefix = _routePrefix;
         hostBuilder.ConfigureServices(services =>
@@ -321,6 +331,7 @@ public class WorkerHostService : IWorkerHost
                     sp.GetRequiredService<GrpcHostService>(),
                     sp.GetRequiredService<ILogger<GrpcInvocationBridgeStartupFilter>>(),
                     routePrefix));
+            services.AddSingleton<IInputConverter, FunctionContextInputConverter>();
         });
 
         // Discover and invoke IAutoConfigureStartup implementations from the functions assembly.
@@ -501,5 +512,38 @@ public class WorkerHostService : IWorkerHost
 
                 next(app);
             };
+    }
+
+    /// <summary>
+    /// Fallback <see cref="IInputConverter"/> for <see cref="FunctionContext"/> parameters.
+    /// </summary>
+    /// <remarks>
+    /// The Worker SDK's built-in <c>FunctionContextConverter</c> is compiled into the assembly
+    /// loaded inside the isolated <c>AssemblyLoadContext</c> that the SDK creates for the
+    /// <c>.azurefunctions</c> extension bundle.  In that context its <c>typeof(FunctionContext)</c>
+    /// is a <em>different runtime type-handle</em> from the one the function assembly (loaded in
+    /// the default ALC) uses — even though <c>Assembly.FullName</c> strings are identical.
+    /// The SDK converter therefore returns <c>Unhandled()</c> for <c>FunctionContext</c>
+    /// parameters, leaving them null.
+    /// <para>
+    /// This converter is registered from the test framework's own assembly, which lives in the
+    /// default ALC.  Its <c>typeof(FunctionContext)</c> matches <c>context.TargetType</c> for
+    /// any function that was also compiled against the default-ALC copy of Worker.Core, so the
+    /// binding succeeds correctly.
+    /// </para>
+    /// </remarks>
+    private sealed class FunctionContextInputConverter : IInputConverter
+    {
+        /// <inheritdoc/>
+        public ValueTask<ConversionResult> ConvertAsync(ConverterContext context)
+        {
+            if (context.TargetType == typeof(FunctionContext) && context.FunctionContext is not null)
+            {
+                return new ValueTask<ConversionResult>(
+                    ConversionResult.Success(context.FunctionContext));
+            }
+
+            return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
+        }
     }
 }
