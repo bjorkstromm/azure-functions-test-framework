@@ -1,6 +1,0 @@
-<Project>
-  <!-- In-repo test projects reference Core via ProjectReference so the build/ targets in the
-       NuGet package are not auto-imported. Import them explicitly here so the same ALC filtering
-       behaviour is exercised during development. NuGet consumers get this automatically. -->
-  <Import Project="$(MSBuildThisFileDirectory)..\src\AzureFunctions.TestFramework.Core\build\AzureFunctions.TestFramework.Core.targets" />
-</Project>
