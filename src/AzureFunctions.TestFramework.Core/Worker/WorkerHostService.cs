@@ -313,8 +313,15 @@ public class WorkerHostService : IWorkerHost
         // exists so these filters are registered but never invoked — they are no-ops.
         var grpcHostService = _grpcHostService;
         var routePrefix = _routePrefix;
+        var logger = _logger;
         hostBuilder.ConfigureServices(services =>
         {
+            // Replace the SDK's DefaultMethodInfoLocator to prevent LoadFromAssemblyPath
+            // from being called during FunctionLoadRequest processing.  This eliminates
+            // the root cause of assembly dual-loading in in-process hosting.
+            // Uses AddSingleton (not TryAdd) so it wins over the SDK's TryAddSingleton.
+            InProcessMethodInfoLocator.TryRegister(services, logger);
+
             services.AddSingleton(grpcHostService);
             services.AddTransient<IStartupFilter, InvocationIdStartupFilter>();
             services.AddSingleton<IStartupFilter>(sp =>
@@ -325,17 +332,18 @@ public class WorkerHostService : IWorkerHost
 
             // In-process hosting can cause HttpContext type-identity mismatches between
             // the test runner's assembly load context and the worker's Kestrel pipeline.
-            // Register TestHttpRequestConverter at index 0 so it runs before the SDK's
-            // HttpContextConverter and resolves HttpRequest via reflection, bypassing the
-            // 'requestContext is HttpContext' check that fails when assemblies are loaded
-            // from different contexts.  PostConfigure runs after all Configure callbacks
-            // (including UseAspNetCoreIntegration which inserts HttpContextConverter at 0),
-            // so this converter ends up at index 0 and HttpContextConverter shifts to 1.
-            services.PostConfigure<WorkerOptions>(options =>
+            // These converters remain as defense-in-depth even with InProcessMethodInfoLocator:
+            // if any other SDK code path loads assemblies from a different path, these
+            // ensure FunctionContext and HttpRequest still bind correctly.
+            // Set AFTF_SKIP_FALLBACK_CONVERTERS=1 to disable and rely solely on InProcessMethodInfoLocator.
+            if (!string.Equals(Environment.GetEnvironmentVariable("AFTF_SKIP_FALLBACK_CONVERTERS"), "1", StringComparison.Ordinal))
             {
-                options.InputConverters.RegisterAt<TestHttpRequestConverter>(0);
-                options.InputConverters.RegisterAt<TestFunctionContextConverter>(0);
-            });
+                services.PostConfigure<WorkerOptions>(options =>
+                {
+                    options.InputConverters.Register<TestHttpRequestConverter>();
+                    options.InputConverters.Register<TestFunctionContextConverter>();
+                });
+            }
         });
 
         // Discover and invoke IAutoConfigureStartup implementations from the functions assembly.
