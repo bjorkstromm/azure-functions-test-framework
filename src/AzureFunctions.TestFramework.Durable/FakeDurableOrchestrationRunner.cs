@@ -10,6 +10,7 @@ namespace AzureFunctions.TestFramework.Durable;
 internal sealed class FakeDurableOrchestrationRunner
 {
     private readonly FakeDurableFunctionCatalog _catalog;
+    private readonly FakeDurableEntityRunner? _entityRunner;
     private readonly FakeDurableExternalEventHub _externalEventHub;
     private readonly ILogger<FakeDurableOrchestrationRunner> _logger;
     private readonly IServiceProvider _serviceProvider;
@@ -19,12 +20,14 @@ internal sealed class FakeDurableOrchestrationRunner
         FakeDurableFunctionCatalog catalog,
         FakeDurableExternalEventHub externalEventHub,
         IServiceProvider serviceProvider,
-        ILogger<FakeDurableOrchestrationRunner> logger)
+        ILogger<FakeDurableOrchestrationRunner> logger,
+        FakeDurableEntityRunner? entityRunner = null)
     {
         _catalog = catalog;
         _externalEventHub = externalEventHub;
         _serviceProvider = serviceProvider;
         _logger = logger;
+        _entityRunner = entityRunner;
     }
 
     public async Task<object?> RunOrchestrationAsync(
@@ -132,7 +135,8 @@ internal sealed class FakeDurableOrchestrationRunner
                 InvokeSubOrchestrationAsync(childName, instanceId, childInput, childCancellationToken),
             (waitingInstanceId, eventName, eventCancellationToken) =>
                 _externalEventHub.WaitForEventAsync(waitingInstanceId, eventName, eventCancellationToken),
-            customStatusSink);
+            customStatusSink,
+            _entityRunner);
 
         var target = CreateTarget(orchestrator.Method, scope.ServiceProvider);
         var arguments = BuildArguments(

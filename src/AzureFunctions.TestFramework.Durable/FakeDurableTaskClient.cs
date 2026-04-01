@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
+using Microsoft.DurableTask.Client.Entities;
 using Microsoft.DurableTask.Converters;
 using Microsoft.Extensions.Logging;
 
@@ -17,13 +18,17 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
     public FakeDurableTaskClient(
         FakeDurableOrchestrationRunner runner,
         FakeDurableExternalEventHub externalEventHub,
+        FakeDurableEntityClient entityClient,
         ILogger<FakeDurableTaskClient> logger)
         : base("FAKE")
     {
         _runner = runner;
         _externalEventHub = externalEventHub;
+        Entities = entityClient;
         _logger = logger;
     }
+
+    public override DurableEntityClient Entities { get; }
 
     public override ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
