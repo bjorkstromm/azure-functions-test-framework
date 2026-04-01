@@ -1,0 +1,16 @@
+{
+  "version": "2.0",
+  "extensions": {
+    "http": {
+      "routePrefix": "v1"
+    }
+  },
+  "logging": {
+    "applicationInsights": {
+      "samplingSettings": {
+        "isEnabled": true,
+        "maxTelemetryItemsPerSecond": 20
+      }
+    }
+  }
+}

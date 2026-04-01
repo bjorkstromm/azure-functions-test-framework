@@ -31,4 +31,12 @@
     <Protobuf Include="Protos\FunctionRpc.proto" GrpcServices="Server" />
   </ItemGroup>
 
+  <!-- Ship the MSBuild targets file in the NuGet build/ folder so consuming projects
+       automatically filter .azurefunctions at build time. -->
+  <ItemGroup>
+    <None Include="build\AzureFunctions.TestFramework.Core.targets"
+          Pack="true"
+          PackagePath="build\" />
+  </ItemGroup>
+
 </Project>

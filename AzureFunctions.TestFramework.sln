@@ -51,6 +51,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests", "tests\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests.csproj", "{3678F83C-138C-47EC-B81A-8DCFACCFA328}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.AspNetCore.DifferentSdk", "samples\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.DifferentSdk\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.DifferentSdk.csproj", "{1C42C304-95C8-4213-8836-B7EBA95499B4}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Sample.FunctionApp.CustomRoutePrefix.AspNetCore.DifferentSdk.Tests", "Sample.FunctionApp.CustomRoutePrefix.AspNetCore.DifferentSdk.Tests", "{4C8D2BBC-E656-5E52-EEE5-79E84987CC7A}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests", "tests\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.DifferentSdk.Tests\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests.csproj", "{6BFC1A68-4FF6-4F55-892E-556158056904}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -313,6 +319,30 @@ Global
 		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Release|x64.Build.0 = Release|Any CPU
 		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Release|x86.ActiveCfg = Release|Any CPU
 		{3678F83C-138C-47EC-B81A-8DCFACCFA328}.Release|x86.Build.0 = Release|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Debug|x64.Build.0 = Debug|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Debug|x86.Build.0 = Debug|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Release|x64.ActiveCfg = Release|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Release|x64.Build.0 = Release|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Release|x86.ActiveCfg = Release|Any CPU
+		{1C42C304-95C8-4213-8836-B7EBA95499B4}.Release|x86.Build.0 = Release|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Debug|x64.Build.0 = Debug|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Debug|x86.Build.0 = Debug|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Release|x64.ActiveCfg = Release|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Release|x64.Build.0 = Release|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Release|x86.ActiveCfg = Release|Any CPU
+		{6BFC1A68-4FF6-4F55-892E-556158056904}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -339,5 +369,8 @@ Global
 		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{3D07D0D2-4122-479D-9696-1C478D5EEFFC} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 		{3678F83C-138C-47EC-B81A-8DCFACCFA328} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{1C42C304-95C8-4213-8836-B7EBA95499B4} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
+		{4C8D2BBC-E656-5E52-EEE5-79E84987CC7A} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{6BFC1A68-4FF6-4F55-892E-556158056904} = {4C8D2BBC-E656-5E52-EEE5-79E84987CC7A}
 	EndGlobalSection
 EndGlobal
