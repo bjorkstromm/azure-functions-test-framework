@@ -6,7 +6,7 @@ using Microsoft.Extensions.Logging;
 
 namespace AzureFunctions.TestFramework.Durable;
 
-internal sealed class FakeDurableEntityRunner
+internal sealed class FakeDurableEntityRunner : IDisposable
 {
     private readonly FakeDurableFunctionCatalog _catalog;
     private readonly ConcurrentDictionary<EntityInstanceId, FakeEntityInstanceState> _entities = new();
@@ -21,6 +21,14 @@ internal sealed class FakeDurableEntityRunner
         _catalog = catalog;
         _serviceProvider = serviceProvider;
         _logger = logger;
+    }
+
+    public void Dispose()
+    {
+        foreach (var instance in _entities.Values)
+        {
+            instance.Dispose();
+        }
     }
 
     /// <summary>Signals an entity (fire-and-forget) and awaits serial execution.</summary>
@@ -86,7 +94,7 @@ internal sealed class FakeDurableEntityRunner
         var entityType = _catalog.GetEntityType(entityId.Name);
 
         await using var scope = _serviceProvider.CreateAsyncScope();
-        var context = new FakeTaskEntityContext(entityId, this);
+        var context = new FakeTaskEntityContext(entityId, this, _logger);
         var operation = new FakeTaskEntityOperation(operationName, input, context, instance.EntityState);
 
         var entity = (ITaskEntity)ActivatorUtilities.GetServiceOrCreateInstance(scope.ServiceProvider, entityType);
@@ -97,10 +105,12 @@ internal sealed class FakeDurableEntityRunner
         return result;
     }
 
-    private sealed class FakeEntityInstanceState
+    private sealed class FakeEntityInstanceState : IDisposable
     {
         public FakeTaskEntityState EntityState { get; } = new FakeTaskEntityState();
         public DateTimeOffset LastModifiedTime { get; set; } = DateTimeOffset.UtcNow;
         public SemaphoreSlim Semaphore { get; } = new SemaphoreSlim(1, 1);
+
+        public void Dispose() => Semaphore.Dispose();
     }
 }
