@@ -34,7 +34,12 @@ public sealed class FakeDurableTaskClientInputConverter : IInputConverter
     /// <returns>The conversion result for the requested input binding.</returns>
     public ValueTask<ConversionResult> ConvertAsync(ConverterContext context)
     {
-        if (!context.TargetType.IsAssignableFrom(typeof(FakeDurableTaskClient)))
+        // Use FullName-based comparison as defense-in-depth against ALC type-identity mismatches
+        // (same pattern as TestFunctionContextConverter). When the functions assembly is loaded
+        // twice, typeof(DurableTaskClient) from the test runner's ALC may differ from the one
+        // in context.TargetType, causing IsAssignableFrom to return false despite identical types.
+        if (!context.TargetType.IsAssignableFrom(typeof(FakeDurableTaskClient))
+            && context.TargetType.FullName != typeof(DurableTaskClient).FullName)
         {
             return ValueTask.FromResult(ConversionResult.Unhandled());
         }
