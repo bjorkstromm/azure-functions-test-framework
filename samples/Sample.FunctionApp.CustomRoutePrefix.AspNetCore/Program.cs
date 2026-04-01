@@ -10,16 +10,11 @@ await Program.CreateHostBuilder(args).Build().RunAsync();
 // can locate and call it to build the host with a TestServer instead of Kestrel.
 public partial class Program
 {
-    // Used by FunctionsWebApplicationFactory (WAF / ASP.NET Core integration mode).
+    // Used by FunctionsTestHostBuilder.WithHostBuilderFactory for ASP.NET Core / Kestrel mode testing.
+    // Uses ConfigureFunctionsWebApplication() so the worker starts a real Kestrel server and the
+    // full ASP.NET Core middleware pipeline (HttpRequest, FunctionContext, Guid route params, etc.)
+    // is exercised end-to-end.
     public static IHostBuilder CreateHostBuilder(string[] args) =>
-        new HostBuilder()
-            .ConfigureFunctionsWebApplication()
-            .ConfigureServices(ConfigureServices);
-
-    // Used by FunctionsTestHost (non-WAF / ASP.NET Core integration mode).
-    // Returns a HostBuilder that uses ConfigureFunctionsWebApplication() so the test host
-    // can start a real Kestrel server and forward HTTP requests through the ASP.NET Core pipeline.
-    public static IHostBuilder CreateWorkerHostBuilder(string[] args) =>
         new HostBuilder()
             .ConfigureFunctionsWebApplication()
             .ConfigureServices(ConfigureServices);
