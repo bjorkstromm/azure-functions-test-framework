@@ -4,109 +4,61 @@ Thank you for your interest in contributing! This document provides guidelines a
 
 ## Current Status
 
-**This framework is in early development.** The core infrastructure is complete, but there's a critical blocker preventing function invocation. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for details.
-
-## Priority: Function Loading/Discovery
-
-**The #1 priority is solving the function loading issue.** All other work is blocked on this.
-
-### The Problem
-Functions aren't being discovered by the Azure Functions Worker, causing all invocations to fail with 500 errors.
-
-**Symptoms**:
-- Worker connects to gRPC server successfully ✅
-- FunctionsMetadataRequest returns 0 functions ❌
-- HTTP requests return 500 Internal Server Error ❌
-
-**What We Need**:
-- Understanding of how dotnet-isolated worker discovers functions
-- How function metadata is generated at build time
-- Whether Sample.FunctionApp needs special build configuration
-- Alternative discovery mechanisms if metadata generation doesn't work
-
-### Where to Start
-1. Read [KNOWN_ISSUES.md](KNOWN_ISSUES.md) - Current blocker details
-2. Read [.github/copilot-instructions.md](.github/copilot-instructions.md) - Architecture overview
-3. Check Azure Functions Worker SDK source: https://github.com/Azure/azure-functions-dotnet-worker
-   - Look at `Microsoft.Azure.Functions.Worker.Sdk.targets`
-   - Check `DefaultFunctionMetadataProvider` implementation
-4. Compare Sample.FunctionApp with a working Azure Functions project
-
-### Testing Your Changes
-```bash
-# Build solution
-dotnet build
-
-# Run integration tests
-dotnet test tests/Sample.FunctionApp.Tests
-
-# Run single test with detailed logging
-dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
-
-# Check if metadata files are generated
-Get-ChildItem samples/Sample.FunctionApp/bin/Debug/net8.0 -Recurse -Filter "*.json"
-```
+This framework is in **preview (pre-1.0)**. The core infrastructure, all trigger packages, and the durable support package are fully functional. See [README.md](README.md) for the full capability matrix.
 
 ## Development Setup
 
 ### Prerequisites
-- .NET 8 SDK or later
+- .NET 8 SDK and .NET 10 SDK
 - Visual Studio 2022 / VS Code / Rider
 - Basic understanding of:
   - Azure Functions (dotnet-isolated model)
   - gRPC and Protocol Buffers
-  - ASP.NET Core (helpful for understanding design goals)
+  - ASP.NET Core (for WebApplicationFactory-based testing)
 
 ### Building
 ```bash
-# Clone the repository
-git clone https://github.com/YOUR-USERNAME/azure-functions-test-framework
+git clone https://github.com/bjorkstromm/azure-functions-test-framework
 cd azure-functions-test-framework
-
-# Restore and build
 dotnet restore
 dotnet build
+```
 
-# Run tests
+### Running Tests
+```bash
+# All tests
 dotnet test
+
+# Specific test suites
+dotnet test tests/Sample.FunctionApp.Worker.Tests          # xUnit — gRPC
+dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests      # xUnit — WAF
+dotnet test tests/Sample.FunctionApp.Worker.NUnit.Tests    # NUnit — gRPC
+dotnet test tests/Sample.FunctionApp.Worker.WAF.NUnit.Tests # NUnit — WAF
+dotnet test tests/Sample.FunctionApp.Durable.Tests         # Durable Functions
+dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.Tests # Custom route prefix
+
+# Single test with detailed logging
+dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
 ```
 
-## Project Structure
-```
-src/
-  AzureFunctions.TestFramework.Core/    # Main framework package
-    ├── Grpc/                            # gRPC server implementation
-    ├── Worker/                          # In-process worker hosting  
-    ├── Http/                            # HTTP request/response mapping
-    ├── Client/                          # Custom HttpMessageHandler
-    └── Protos/                          # Protocol Buffer definitions
-    
-  AzureFunctions.TestFramework.Http/    # HTTP-specific functionality
-  
-samples/
-  Sample.FunctionApp/                   # Example Azure Functions app
-  
-tests/
-  Sample.FunctionApp.Tests/             # Integration tests
-```
+## Architecture Overview
 
-## Key Files
+For a detailed architecture walkthrough, see [.github/copilot-instructions.md](.github/copilot-instructions.md). Key design decisions (ALC isolation, FrameworkReference, durable converter interception) are documented in README.md under "Architecture & Design Decisions".
 
-### Core Framework
-- `src/AzureFunctions.TestFramework.Core/FunctionsTestHost.cs` - Main orchestrator
-- `src/AzureFunctions.TestFramework.Core/FunctionsTestHostBuilder.cs` - Fluent builder API
-- `src/AzureFunctions.TestFramework.Core/Grpc/GrpcHostService.cs` - gRPC protocol handler
-- `src/AzureFunctions.TestFramework.Core/Worker/WorkerHostService.cs` - Worker lifecycle management
+### Key Files
 
-### Critical for Function Loading
-- `src/AzureFunctions.TestFramework.Core/Grpc/GrpcHostService.cs:HandleStartStreamAsync()` - Where function loading happens
-- `samples/Sample.FunctionApp/Sample.FunctionApp.csproj` - Build configuration
+- `src/AzureFunctions.TestFramework.Core/FunctionsTestHost.cs` — Main orchestrator
+- `src/AzureFunctions.TestFramework.Core/FunctionsTestHostBuilder.cs` — Fluent builder API
+- `src/AzureFunctions.TestFramework.Core/Grpc/GrpcHostService.cs` — gRPC protocol handler + route matching
+- `src/AzureFunctions.TestFramework.Core/Worker/WorkerHostService.cs` — Worker lifecycle management
+- `src/AzureFunctions.TestFramework.Core/Worker/InProcessMethodInfoLocator.cs` — ALC isolation fix
+- `src/AzureFunctions.TestFramework.Http.AspNetCore/FunctionsWebApplicationFactory.cs` — WAF integration
 
 ## Coding Guidelines
 
 ### Code Style
 - Use nullable reference types (`#nullable enable`)
-- Add XML documentation for public APIs
+- Add XML documentation for public APIs (the build enforces `TreatWarningsAsErrors=true`)
 - Follow existing patterns (e.g., async/await, ILogger usage)
 - Use meaningful variable names
 
@@ -122,6 +74,10 @@ _ = Task.Run(async () => {
     var response = await SendMessageAsync(request);
 }, cancellationToken);
 ```
+
+### NuGet / Versioning
+- Package versions are managed centrally via `Directory.Packages.props` — add new versions there, not inline
+- Semantic versioning is driven by MinVer from git tags (`v*.*.*`)
 
 ### Testing
 - Add unit tests for new functionality
@@ -162,38 +118,22 @@ _ = Task.Run(async () => {
 
 **Example**:
 ```
-feat: implement function metadata discovery via reflection
+feat: add Cosmos DB trigger invocation support
 
-- Add DefaultFunctionMetadataProvider integration
-- Use reflection to discover functions at runtime
-- Remove dependency on .functions.json files
+- Add AzureFunctions.TestFramework.CosmosDb package
+- Implement InvokeCosmosDbAsync extension method
+- Add sample function and integration tests
 
-Fixes #1
+Fixes #42
 ```
 
 ## Getting Help
 
-### Questions About Architecture
-- Read [.github/copilot-instructions.md](.github/copilot-instructions.md)
+- Read [README.md](README.md) for capabilities and usage examples
+- Read [.github/copilot-instructions.md](.github/copilot-instructions.md) for detailed architecture
+- Check [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for active caveats
 - Check Azure Functions Worker SDK docs: https://learn.microsoft.com/en-us/azure/azure-functions/dotnet-isolated-process-guide
-
-### Questions About the Blocker
-- Read [KNOWN_ISSUES.md](KNOWN_ISSUES.md) for detailed analysis
-- Check existing GitHub Issues for related discussions
 - Ask questions in a new GitHub Issue with the `question` label
-
-### Debugging Tips
-```bash
-# Enable detailed gRPC logging
-dotnet test --logger "console;verbosity=detailed" 2>&1 | Select-String -Pattern "Grpc"
-
-# Check function metadata files
-Get-ChildItem samples/Sample.FunctionApp/bin/Debug/net8.0 -Recurse
-
-# Compare with working func.exe project
-cd samples/Sample.FunctionApp
-func start  # See what func.exe generates
-```
 
 ## License
 By contributing, you agree that your contributions will be licensed under the MIT License.

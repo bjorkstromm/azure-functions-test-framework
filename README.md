@@ -4,47 +4,26 @@
 
 An integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience.
 
-## ⚠️ Project Status: Early Development
+## Project Status: Preview (pre-1.0)
 
-### Current status
+All testing approaches — gRPC-based `FunctionsTestHost`, ASP.NET Core `FunctionsWebApplicationFactory`, and non-HTTP trigger invocation — are **fully functional** for the Worker SDK 2.x (.NET 10) samples and test suites. No active blockers.
 
-- **Worker SDK 2.x sample**: Fully functional for the current **.NET 10** sample app and test suites
-- **Core host (`AzureFunctions.TestFramework.Core`)**: Full CRUD HTTP invocations, function metadata discovery, `Services`, `ConfigureSetting`, `ConfigureEnvironmentVariable`, and non-HTTP result/output capture via `FunctionInvocationResult`
-- **Trigger packages**: Timer, Queue, Service Bus, Blob, and Event Grid trigger invocation helpers are implemented and covered by sample/tests
-- **ASP.NET Core package (`AzureFunctions.TestFramework.Http.AspNetCore`)**: `FunctionsWebApplicationFactory<TProgram>` supports full CRUD, middleware assertions, and `WithWebHostBuilder` service overrides
-- **Durable package (`AzureFunctions.TestFramework.Durable`)**: Fake-backed durable support covers `[DurableClient]`, sub-orchestrators, direct activities, custom status, and buffered external events
-- **Performance / reliability**: Startup is event-driven, direct gRPC route matching is precompiled per host, and WAF teardown uses the explicit async cleanup path
-- **NuGet packaging**: All framework libraries target `net8.0;net10.0` and produce NuGet packages with shared README/license/project metadata, Source Link, deterministic release builds, symbol packages, and central package management via `Directory.Packages.props`
-- **Build health**: The current Release build is clean and the repo now enforces `TreatWarningsAsErrors=true`
-- **Current blockers**: None for the active Worker SDK 2.x sample/test suites; see [KNOWN_ISSUES.md](https://github.com/bjorkstromm/azure-functions-test-framework/blob/main/KNOWN_ISSUES.md) for the small set of caveats that remain
+### Capabilities
 
-### What Works ✅
-- gRPC server starts and accepts connections
-- Azure Functions Worker runs in-process using HostBuilder
-- Worker connects successfully to gRPC server and loads all functions
-- Bidirectional gRPC streaming functional
-- HTTP client API (`FunctionsTestHostBuilder` + `CreateHttpClient()`) functional for all HTTP methods (GET, POST, PUT, DELETE)
-- `FunctionsWebApplicationFactory<TProgram>` functional for all HTTP methods via ASP.NET Core `TestServer`
-- Route matching with `{param}` placeholder support in both approaches
-- `WithWebHostBuilder` DI service overrides work end-to-end
-- CI workflow runs on pull requests and pushes to main
-- Tests run in parallel (xUnit `parallelizeTestCollections`) and in isolation (per-test host via `IAsyncLifetime` for gRPC tests; shared async-aware WAF fixture + per-test `InMemoryTodoService.Reset()` for WAF tests)
-- gRPC EventStream shuts down gracefully on test teardown (no connection-abort errors, no Kestrel 5 s shutdown wait)
-- **TimerTrigger invocations** via `AzureFunctions.TestFramework.Timer` package (`InvokeTimerAsync` extension method)
-- **ServiceBus trigger invocations** via `AzureFunctions.TestFramework.ServiceBus` package (`InvokeServiceBusAsync` extension method)
-- **Queue trigger invocations** via `AzureFunctions.TestFramework.Queue` package (`InvokeQueueAsync` extension method)
-- **Blob trigger invocations** via `AzureFunctions.TestFramework.Blob` package (`InvokeBlobAsync` extension method)
-- **Event Grid trigger invocations** via `AzureFunctions.TestFramework.EventGrid` package (`InvokeEventGridAsync` extension method, supports both `EventGridEvent` and `CloudEvent` schemas)
-- **Function metadata discovery** via `IFunctionInvoker.GetFunctions()` — returns `IReadOnlyDictionary<string, IFunctionMetadata>` with name, function ID, entry point, script file, and raw binding JSON
-- **Non-HTTP invocation result capture** — `FunctionInvocationResult` now surfaces plain return values and output-binding payloads from trigger invocations, with typed helpers via `ReadReturnValueAs<T>()` and `ReadOutputAs<T>(bindingName)`; the current sample/tests cover queue, blob, and table outputs
-- **`WithHostBuilderFactory`** — non-WAF gRPC tests can reuse the app's own `Program.CreateWorkerHostBuilder` or `Program.CreateHostBuilder`, automatically inheriting all registered services without re-registering them in each test. Both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` are supported.
-- **`HttpRequest + FunctionContext + Guid + CancellationToken` in `ConfigureFunctionsWebApplication + FunctionsTestHost`** — the full parameter combination used in real-world functions (native ASP.NET Core `HttpRequest`, `FunctionContext` for structured DI, strongly-typed Guid route params, and `CancellationToken`) works end-to-end through `FunctionsTestHost` when `ConfigureFunctionsWebApplication()` is in use; `InProcessMethodInfoLocator` prevents assembly dual-loading at the root, with `FullName`-based fallback converters as defense-in-depth
-- **`FunctionsTestHost.Services`** — access the worker's configured service provider after startup to resolve singletons and inspect test state directly
-- **Configuration overrides** — `FunctionsTestHostBuilder.ConfigureSetting(key, value)` overlays test-specific configuration values into the worker host
-- **Environment variable overrides** — `FunctionsTestHostBuilder.ConfigureEnvironmentVariable(name, value)` sets process-level environment variables before the worker starts, so functions can read them via `IConfiguration` or `Environment.GetEnvironmentVariable`
-- **Middleware sample + testing** — `Sample.FunctionApp.Worker` registers a `CorrelationIdMiddleware` that copies `x-correlation-id` into `FunctionContext.Items`, and both Worker test projects assert it through `/api/correlation`
-- **Performance improvements** — startup waits now use worker connection/function-load signals instead of fixed delays, direct gRPC route matching is precompiled per host, `CreateHttpClient()` reuses host-local handlers, and WAF test shutdown no longer falls back to the slow base `WithWebHostBuilder` clone path
-- **Durable Functions spike** — `AzureFunctions.TestFramework.Durable` provides fake-backed durable test services (`ConfigureFakeDurableSupport(...)`, native `[DurableClient]` binding support, `FunctionsDurableClientProvider`, `InvokeActivityAsync(...)`, fake orchestration runner/client/context types with sub-orchestrator, custom-status, and external-event buffering support), `Sample.FunctionApp.Durable` isolates a minimal starter/orchestrator/activity app, and `Sample.FunctionApp.Durable.Tests` verifies metadata discovery, `[DurableClient]` starter execution, direct activity invocation, sub-orchestrator execution, custom-status visibility, buffered/existing external-event resume, and provider-driven orchestration completion fully in-process. `[DurableClient] DurableTaskClient` resolution works in both gRPC-direct (`ConfigureFunctionsWorkerDefaults`) and ASP.NET Core (`ConfigureFunctionsWebApplication`) paths via DI-based converter interception.
+| Area | Status |
+|------|--------|
+| **HTTP invocation** (GET / POST / PUT / DELETE) | ✅ Both gRPC and WAF paths |
+| **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid) | ✅ Extension methods + result capture |
+| **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events) | ✅ Fake-backed in-process |
+| **ASP.NET Core integration** (`ConfigureFunctionsWebApplication`) | ✅ Full parameter binding incl. `HttpRequest`, `FunctionContext`, typed route params, `CancellationToken` |
+| **`WithWebHostBuilder` / `WithHostBuilderFactory`** | ✅ DI overrides, inherited app services |
+| **Custom route prefixes** | ✅ Auto-detected from `host.json` |
+| **Middleware testing** | ✅ End-to-end through both paths |
+| **Output binding capture** | ✅ `ReadReturnValueAs<T>()`, `ReadOutputAs<T>(bindingName)` |
+| **Service access / configuration overrides** | ✅ `Services`, `ConfigureSetting`, `ConfigureEnvironmentVariable` |
+| **Metadata discovery** | ✅ `IFunctionInvoker.GetFunctions()` |
+| **NuGet packaging** | ✅ `net8.0;net10.0`, Source Link, symbol packages, central package management |
+| **CI** | ✅ xUnit + NUnit, push + PR |
 
 ## Goals
 
@@ -92,14 +71,20 @@ This is the standard requirement for Azure Functions apps that use ASP.NET Core 
 # Build solution
 dotnet build --configuration Release
 
-# Worker SDK 2.x gRPC tests (.NET 10)
+# Run all tests
+dotnet test --configuration Release
+
+# Worker SDK 2.x gRPC tests (xUnit)
 dotnet test tests/Sample.FunctionApp.Worker.Tests --no-build --configuration Release
 
-# Worker SDK 2.x WAF tests (.NET 10)
+# Worker SDK 2.x WAF tests (xUnit)
 dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests --no-build --configuration Release
 
-# Durable Functions spike tests (.NET 10)
-dotnet test tests/Sample.FunctionApp.Durable.Tests --configuration Release
+# Durable Functions tests
+dotnet test tests/Sample.FunctionApp.Durable.Tests --no-build --configuration Release
+
+# Custom route prefix tests
+dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.Tests --no-build --configuration Release
 
 # Pack NuGet packages locally
 dotnet pack --configuration Release --output ./artifacts
@@ -447,50 +432,99 @@ public class EventGridFunctionTests : IAsyncLifetime
 }
 ```
 
-### 7. Durable Functions spike
+### 7. Durable Functions
 
-There is now a separate durable-only spike track:
+The `AzureFunctions.TestFramework.Durable` package provides fake-backed durable support for in-process integration testing. No real Durable Task runtime is needed.
 
-- `src\AzureFunctions.TestFramework.Durable` — fake durable registration + runner/client/context helpers for in-process starter/orchestrator/activity testing
-- `samples\Sample.FunctionApp.Durable` — isolated-worker durable sample with an HTTP starter, orchestrator, and activity
-- `tests\Sample.FunctionApp.Durable.Tests` — fully in-process spike tests
+**Why fake-backed?** The real Durable Task execution engine relies on external storage (Azure Storage / Netherite / MSSQL) and the Durable Task Framework host, neither of which runs inside the test framework's in-process worker. Instead, `ConfigureFakeDurableSupport(...)` registers a `FakeDurableTaskClient` and companion types that intercept `[DurableClient]` binding resolution at the DI level, letting starter functions, orchestrators, activities, and sub-orchestrators execute fully in-process.
 
-Current spike result:
+**Setup:**
+```csharp
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyDurableFunction).Assembly)
+    .ConfigureFakeDurableSupport(provider =>
+    {
+        // Register orchestration runners
+        provider.AddOrchestration<string>("MyOrchestrator", ctx => MyOrchestratorFunction.RunAsync(ctx));
+    })
+    .BuildAndStartAsync();
+```
 
-- function metadata discovery **works**
-- fake orchestration scheduling and activity execution **work fully in-process**
-- Azure-style `[DurableClient] DurableTaskClient` injection works under `FunctionsTestHost`
-- direct activity invocation works through `IFunctionsTestHost.InvokeActivityAsync<TResult>(...)`
-- fake sub-orchestrator execution works under `TaskOrchestrationContext.CallSubOrchestratorAsync<TResult>()`
-- fake orchestration custom status flows through `SetCustomStatus(...)`, `OrchestrationMetadata.ReadCustomStatusAs<T>()`, and the durable HTTP status helpers
-- fake orchestration external events work through `TaskOrchestrationContext.WaitForExternalEvent<T>()` and `DurableTaskClient.RaiseEventAsync(...)`, including both wait-then-raise and buffered raise-before-wait flows
-- tests can resolve `FunctionsDurableClientProvider` from `FunctionsTestHost.Services` and assert completed orchestration output
-- the sample's HTTP starters now return JSON/plain response bodies that the direct gRPC path maps correctly under `FunctionsTestHost`
-- the HTTP response mapper now falls back to plain invocation return values when an HTTP-trigger function does not return `HttpResponseData`
-- the host synthesizes the Durable binding payload expected by the official Durable converter and preloads the extension's internal client-provider cache with the fake client
+**Coverage:**
+- `[DurableClient] DurableTaskClient` injection (both gRPC-direct and ASP.NET Core paths)
+- Direct activity invocation via `IFunctionsTestHost.InvokeActivityAsync<TResult>(...)`
+- Fake orchestration scheduling and activity execution
+- Sub-orchestrator execution via `TaskOrchestrationContext.CallSubOrchestratorAsync<TResult>()`
+- Custom status via `SetCustomStatus(...)` and `OrchestrationMetadata.ReadCustomStatusAs<T>()`
+- External events: both wait-then-raise and buffered raise-before-wait flows
+- `FunctionsDurableClientProvider` resolution from `FunctionsTestHost.Services`
+
+## Architecture & Design Decisions
+
+This section explains *why* certain non-obvious implementation choices were made.
+
+### Assembly Load Context (ALC) isolation prevention
+
+**Problem:** The Worker SDK's `DefaultMethodInfoLocator.GetMethod()` calls `AssemblyLoadContext.Default.LoadFromAssemblyPath()` during `FunctionLoadRequest` processing. When the worker runs in-process (same process as the test runner), this can load a **second copy** of the same assembly, creating two distinct `RuntimeTypeHandle` values for the same type name. The SDK's built-in converters use `context.TargetType == typeof(T)` checks that silently fail, leaving trigger parameters (`FunctionContext`, `HttpRequest`) null.
+
+**Solution (three layers):**
+
+1. **Root fix — `InProcessMethodInfoLocator`:** Replaces the SDK's internal `IMethodInfoLocator` via `DispatchProxy` (the interface is internal). Searches `AppDomain.CurrentDomain.GetAssemblies()` for already-loaded assemblies instead of calling `LoadFromAssemblyPath`. Registered with `AddSingleton` (not `TryAdd`) so it wins over the SDK's `TryAddSingleton`.
+2. **Defense-in-depth — `TestFunctionContextConverter` + `TestHttpRequestConverter`:** Registered at converter index 0 via `PostConfigure<WorkerOptions>`. These compare types by `FullName` strings (immune to dual-load) and use reflection to access properties (bypassing `is T` casts).
+3. **Build-time — `<FrameworkReference Include="Microsoft.AspNetCore.App" />`:** Declared in both `Core` and `Http.AspNetCore` csproj files so ASP.NET Core types always resolve from the shared runtime, not from NuGet packages. Without this, two physical copies of `Microsoft.AspNetCore.Http.Abstractions.dll` load and `HttpContextConverter.GetHttpContext()` returns null.
+
+### Function ID resolution
+
+`GeneratedFunctionMetadataProvider` computes a stable hash for each function (`Name` + `ScriptFile` + `EntryPoint`). `GrpcHostService` stores the **hash-based** `FunctionId` from `FunctionMetadataResponse` — not the GUID from `FunctionLoadRequest` — because the worker's internal `_functionMap` uses the hash. Sending the wrong ID causes "function not found" at invocation time.
+
+### GrpcWorker.StopAsync() is a no-op
+
+The Azure Functions worker SDK's `GrpcWorker.StopAsync()` returns `Task.CompletedTask` immediately — it does **not** close the gRPC channel. This matters in two places:
+
+- **WAF disposal:** `FunctionsWebApplicationFactory.Dispose` calls `_grpcHostService.SignalShutdownAsync()` after `base.Dispose()` but before `_grpcServerManager.StopAsync()`. This gracefully ends the EventStream so Kestrel can stop instantly (no 5 s `ShutdownTimeout` wait).
+- **`WithWebHostBuilder`:** `GrpcAwareHost` wraps the derived factory's host, cancels that EventStream, and waits for it to finish before calling `_inner.Dispose()` — preventing `ObjectDisposedException`.
+
+### Durable converter interception
+
+When using `ConfigureFunctionsWebApplication()`, the ASP.NET Core middleware path does not send synthetic durable binding data in `InputData` (unlike the gRPC-direct path). The real `DurableTaskClientConverter` receives null/empty `context.Source`, returns `ConversionResult.Failed()`, and `[ConverterFallbackBehavior(Disallow)]` on `DurableClientAttribute` blocks fallback. The framework fixes this by registering `FakeDurableTaskClientInputConverter` in DI **as the service for the real `DurableTaskClientConverter` type**, so `ActivatorUtilities.GetServiceOrCreateInstance` returns our fake converter instead of creating the real one.
+
+### IAutoConfigureStartup scanning
+
+The functions assembly contains source-generated classes (`FunctionMetadataProviderAutoStartup`, `FunctionExecutorAutoStartup`) implementing `IAutoConfigureStartup`. Both `WorkerHostService` and `FunctionsWebApplicationFactory.CreateHost` scan for and invoke these to register `GeneratedFunctionMetadataProvider` and `DirectFunctionExecutor`, overriding the defaults that would require a `functions.metadata` file on disk.
+
+### Custom route prefix auto-detection
+
+`FunctionsTestHostBuilder.Build()` reads `extensions.http.routePrefix` from the functions assembly's `host.json`. The prefix is used by `FunctionsHttpMessageHandler` (to strip it when matching routes) and by `FunctionsTestHost` (to set `HttpClient.BaseAddress`). This makes custom route prefixes work transparently.
 
 ## Project Structure
 
 ```  
 src/
-  AzureFunctions.TestFramework.Core/       # gRPC host, worker hosting, HTTP invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.Core/         # gRPC host, worker hosting, HTTP invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.Http.AspNetCore/ # WebApplicationFactory-based testing (net8.0;net10.0)
-  AzureFunctions.TestFramework.Http/       # HTTP-specific functionality (placeholder) (net8.0;net10.0)
-  AzureFunctions.TestFramework.Timer/      # TimerTrigger invocation support (net8.0;net10.0)
-  AzureFunctions.TestFramework.ServiceBus/ # ServiceBusTrigger invocation support (net8.0;net10.0)
-  AzureFunctions.TestFramework.Queue/      # QueueTrigger invocation support (net8.0;net10.0)
-  AzureFunctions.TestFramework.Blob/       # BlobTrigger invocation support (net8.0;net10.0)
-  AzureFunctions.TestFramework.EventGrid/  # EventGridTrigger invocation support (net8.0;net10.0)
-  AzureFunctions.TestFramework.Durable/    # Fake durable support for in-process starter/orchestrator/activity tests (net8.0;net10.0)
+  AzureFunctions.TestFramework.Http/         # HTTP-specific functionality placeholder (net8.0;net10.0)
+  AzureFunctions.TestFramework.Timer/        # TimerTrigger invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.Queue/        # QueueTrigger invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.ServiceBus/   # ServiceBusTrigger invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.Blob/         # BlobTrigger invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.EventGrid/    # EventGridTrigger invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.Durable/      # Fake durable support (net8.0;net10.0)
 
 samples/
-  Sample.FunctionApp.Worker/              # Worker SDK 2.x sample (net10.0, TodoAPI + middleware + configuration endpoint + triggers)
-  Sample.FunctionApp.Durable/             # Durable Functions spike sample (net10.0, HTTP starter + orchestrator + activity)
+  Sample.FunctionApp.Worker/                 # Worker SDK 2.x (net10.0) — TodoAPI, middleware, triggers
+  Sample.FunctionApp.Durable/               # Durable Functions sample — HTTP starter + orchestrator + activity
+  Sample.FunctionApp.CustomRoutePrefix/      # Custom route prefix with ConfigureFunctionsWorkerDefaults()
+  Sample.FunctionApp.CustomRoutePrefix.AspNetCore/ # Custom route prefix with ConfigureFunctionsWebApplication()
 
 tests/
-  Sample.FunctionApp.Worker.Tests/                 # gRPC-based tests (Worker SDK 2.x / net10.0)
-  Sample.FunctionApp.Worker.WAF.Tests/             # WAF tests (Worker SDK 2.x / net10.0)
-  Sample.FunctionApp.Durable.Tests/                # Durable spike tests (fully in-process / net10.0)
+  Sample.FunctionApp.Worker.Tests/           # xUnit — gRPC-based (Worker SDK 2.x)
+  Sample.FunctionApp.Worker.WAF.Tests/       # xUnit — WAF-based (Worker SDK 2.x)
+  Sample.FunctionApp.Worker.NUnit.Tests/     # NUnit — gRPC-based (Worker SDK 2.x)
+  Sample.FunctionApp.Worker.WAF.NUnit.Tests/ # NUnit — WAF-based (Worker SDK 2.x)
+  Sample.FunctionApp.Durable.Tests/          # xUnit — Durable Functions (fully in-process)
+  Sample.FunctionApp.CustomRoutePrefix.Tests/ # xUnit — custom prefix via gRPC (WorkerDefaults)
+  Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/ # xUnit — custom prefix via gRPC (AspNetCore)
+  Sample.FunctionApp.CustomRoutePrefix.WAF.Tests/ # xUnit — custom prefix via WAF
 ```
 
 ## Building
@@ -506,14 +540,23 @@ dotnet build
 # All tests
 dotnet test
 
-# Worker SDK 2.x gRPC tests (.NET 10)
+# Worker SDK 2.x gRPC tests (xUnit)
 dotnet test tests/Sample.FunctionApp.Worker.Tests
 
-# Worker SDK 2.x WebApplicationFactory tests (.NET 10)
+# Worker SDK 2.x WAF tests (xUnit)
 dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests
 
-# Durable Functions spike tests (.NET 10)
+# NUnit variants
+dotnet test tests/Sample.FunctionApp.Worker.NUnit.Tests
+dotnet test tests/Sample.FunctionApp.Worker.WAF.NUnit.Tests
+
+# Durable Functions tests
 dotnet test tests/Sample.FunctionApp.Durable.Tests
+
+# Custom route prefix tests
+dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.Tests
+dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests
+dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.WAF.Tests
 
 # Single test with detailed logging
 dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
@@ -521,7 +564,7 @@ dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=det
 
 ## Known Issues
 
-Existing HTTP/timer/queue/service-bus/blob/event-grid paths have no current blockers. The durable spike also runs fully in-process now with starter/orchestrator/activity/sub-orchestrator coverage and direct activity helpers. See the latest status notes in [KNOWN_ISSUES.md](https://github.com/bjorkstromm/azure-functions-test-framework/blob/main/KNOWN_ISSUES.md).
+See [KNOWN_ISSUES.md](https://github.com/bjorkstromm/azure-functions-test-framework/blob/main/KNOWN_ISSUES.md) for active caveats.
 
 ## References
 
