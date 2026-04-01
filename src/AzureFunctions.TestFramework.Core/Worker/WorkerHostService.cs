@@ -313,24 +313,13 @@ public class WorkerHostService : IWorkerHost
         // When ConfigureFunctionsWorkerDefaults() is used, no IApplicationBuilder pipeline
         // exists so these filters are registered but never invoked — they are no-ops.
         //
-        // Also register fallback input converters for FunctionContext and ASP.NET Core HTTP types
-        // (see FunctionContextInputConverter, HttpContextInputConverter below).
-        //
-        // FunctionContextConverter lives inside the isolated AssemblyLoadContext used for
-        // .azurefunctions extension loading.  Its typeof(FunctionContext) is a different runtime
-        // type handle than the one the function assembly (loaded in the default ALC) uses, so the
-        // SDK converter's type equality check fails and it returns Unhandled().  Our converter
-        // (compiled against the default ALC's Worker.Core) performs the same check correctly.
-        //
-        // HttpContext/HttpRequest/HttpResponse are set on FunctionContext.Items["HttpRequestContext"]
-        // by DefaultHttpCoordinator once WorkerRequestServicesMiddleware has paired the HTTP request
-        // with the FunctionContext.  In some real-world project layouts this coordination can be
-        // bypassed or race, leaving the Items entry null when parameter binding runs.  Our fallback
-        // converters retrieve the HttpContext via IHttpContextAccessor, which is populated early in
-        // the ASP.NET Core pipeline and flows through the request's async context — making it
-        // available regardless of coordinator timing.  They return Unhandled() when IHttpContextAccessor
-        // is not registered (e.g. ConfigureFunctionsWorkerDefaults path), so they are safe no-ops
-        // in that case.
+        // Also register a fallback FunctionContext input converter (see FunctionContextInputConverter
+        // below).  The Worker SDK's built-in FunctionContextConverter lives inside the isolated
+        // AssemblyLoadContext used for .azurefunctions extension loading.  Its typeof(FunctionContext)
+        // is a different runtime type handle than the one the function assembly (loaded in the default
+        // ALC) uses, so the SDK converter's type equality check fails and it returns Unhandled().
+        // Our converter (compiled against the default ALC's Worker.Core) performs the same check
+        // correctly and is tried next, returning Success(context.FunctionContext).
         var grpcHostService = _grpcHostService;
         var routePrefix = _routePrefix;
         hostBuilder.ConfigureServices(services =>
@@ -343,7 +332,6 @@ public class WorkerHostService : IWorkerHost
                     sp.GetRequiredService<ILogger<GrpcInvocationBridgeStartupFilter>>(),
                     routePrefix));
             services.AddSingleton<IInputConverter, FunctionContextInputConverter>();
-            services.AddSingleton<IInputConverter, HttpContextInputConverter>();
         });
 
         // Discover and invoke IAutoConfigureStartup implementations from the functions assembly.
@@ -556,54 +544,6 @@ public class WorkerHostService : IWorkerHost
             }
 
             return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
-        }
-    }
-
-    /// <summary>
-    /// Fallback <see cref="IInputConverter"/> for <see cref="HttpContext"/>,
-    /// <see cref="HttpRequest"/>, and <see cref="HttpResponse"/> parameters.
-    /// </summary>
-    /// <remarks>
-    /// The SDK's <c>HttpContextConverter</c> retrieves the <see cref="HttpContext"/> from
-    /// <c>FunctionContext.Items["HttpRequestContext"]</c>, which is populated by
-    /// <c>DefaultHttpCoordinator</c> once <c>WorkerRequestServicesMiddleware</c> has paired the
-    /// inbound HTTP request with the <c>FunctionContext</c>.  In some real-world project layouts
-    /// this coordinator handshake can fail or race, leaving the Items entry null when parameter
-    /// binding runs, causing all three parameter types to stay null.
-    /// <para>
-    /// This fallback retrieves the <see cref="HttpContext"/> via <see cref="IHttpContextAccessor"/>,
-    /// which ASP.NET Core populates at the very start of each request and which flows through the
-    /// entire async context chain — making it available regardless of coordinator timing.
-    /// It returns <c>Unhandled()</c> when <see cref="IHttpContextAccessor"/> is not registered
-    /// (e.g. <c>ConfigureFunctionsWorkerDefaults</c> path) so it is a safe no-op in that case.
-    /// </para>
-    /// </remarks>
-    private sealed class HttpContextInputConverter : IInputConverter
-    {
-        /// <inheritdoc/>
-        public ValueTask<ConversionResult> ConvertAsync(ConverterContext context)
-        {
-            var targetType = context.TargetType;
-            if (targetType != typeof(HttpContext) &&
-                targetType != typeof(HttpRequest) &&
-                targetType != typeof(HttpResponse))
-            {
-                return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
-            }
-
-            var httpContext = context.FunctionContext.InstanceServices
-                .GetService<IHttpContextAccessor>()?.HttpContext;
-
-            if (httpContext is null)
-            {
-                return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
-            }
-
-            object result = targetType == typeof(HttpRequest) ? httpContext.Request
-                : targetType == typeof(HttpResponse) ? httpContext.Response
-                : (object)httpContext;
-
-            return new ValueTask<ConversionResult>(ConversionResult.Success(result));
         }
     }
 }
