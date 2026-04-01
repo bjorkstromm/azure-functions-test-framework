@@ -35,6 +35,8 @@ public static class FunctionsTestHostBuilderDurableExtensions
 
             services.TryAddSingleton(new FakeDurableFunctionCatalog(functionsAssembly));
             services.TryAddSingleton<FakeDurableExternalEventHub>();
+            services.TryAddSingleton<FakeDurableEntityRunner>();
+            services.TryAddSingleton<FakeDurableEntityClient>();
             services.TryAddSingleton<FakeDurableOrchestrationRunner>();
             services.TryAddSingleton<FakeDurableTaskClient>();
             services.TryAddSingleton<DurableTaskClient>(provider => provider.GetRequiredService<FakeDurableTaskClient>());

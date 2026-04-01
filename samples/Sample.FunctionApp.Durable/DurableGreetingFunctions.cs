@@ -183,6 +183,16 @@ public class DurableGreetingFunctions
         using var document = JsonDocument.Parse(json);
         return document.RootElement.Clone();
     }
+
+    [Function(nameof(RunCounterOrchestration))]
+    public async Task<int> RunCounterOrchestration(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
+    {
+        var entityId = new Microsoft.DurableTask.Entities.EntityInstanceId(nameof(Counter), context.InstanceId);
+        await context.Entities.CallEntityAsync(entityId, "add", 10);
+        await context.Entities.CallEntityAsync(entityId, "add", 5);
+        return await context.Entities.CallEntityAsync<int>(entityId, "get");
+    }
 }
 
 public sealed record GreetingProgressStatus(

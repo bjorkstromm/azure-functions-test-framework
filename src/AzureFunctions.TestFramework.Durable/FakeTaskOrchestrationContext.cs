@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.DurableTask;
+using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -22,7 +23,8 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         Func<TaskName, object?, CancellationToken, Task<object?>> activityDispatcher,
         Func<TaskName, object?, CancellationToken, Task<object?>> subOrchestrationDispatcher,
         Func<string, string, CancellationToken, Task<object?>> externalEventDispatcher,
-        Action<object?>? customStatusSink = null)
+        Action<object?>? customStatusSink = null,
+        FakeDurableEntityRunner? entityRunner = null)
     {
         Name = orchestrationName;
         InstanceId = instanceId;
@@ -32,6 +34,9 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         _subOrchestrationDispatcher = subOrchestrationDispatcher;
         _externalEventDispatcher = externalEventDispatcher;
         _customStatusSink = customStatusSink;
+        Entities = entityRunner is not null
+            ? new FakeTaskOrchestrationEntityFeature(entityRunner)
+            : base.Entities;
     }
 
     public object? ContinueAsNewParameter { get; private set; }
@@ -39,6 +44,8 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
     public object? CustomStatus { get; private set; }
 
     public override DateTime CurrentUtcDateTime => DateTime.UtcNow;
+
+    public override TaskOrchestrationEntityFeature Entities { get; }
 
     public override string InstanceId { get; }
 
@@ -117,5 +124,4 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         var payload = await _externalEventDispatcher(InstanceId, eventName, cancellationToken).ConfigureAwait(false);
         return (T?)FakeDurableOrchestrationRunner.ConvertValue(payload, typeof(T))!;
     }
-
 }
