@@ -140,6 +140,34 @@ public class FunctionsTestHostFeaturesTests
         Assert.Equal(envVarValue, payload!.Value);
     }
 
+    [Fact]
+    public async Task InProcessMethodInfoLocator_PreventsAssemblyDualLoading()
+    {
+        // Arrange & Act: start a host and let functions load
+        await using var testHost = await new FunctionsTestHostBuilder()
+            .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithLoggerFactory(CreateLoggerFactory())
+            .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
+            .BuildAndStartAsync();
+
+        // Assert: no assembly name appears more than once in the AppDomain
+        // (excluding dynamic, resource, and test-runner assemblies).
+        var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+            .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
+            .Where(a => !(a.GetName().Name?.StartsWith("xunit", StringComparison.OrdinalIgnoreCase) ?? false))
+            .GroupBy(a => a.GetName().Name)
+            .Where(g => g.Count() > 1)
+            .Select(g => new { Name = g.Key, Count = g.Count(), Paths = g.Select(a => a.Location).ToList() })
+            .ToList();
+
+        foreach (var dup in loadedAssemblies)
+        {
+            _output.WriteLine($"DUPLICATE: {dup.Name} loaded {dup.Count}x from: {string.Join(", ", dup.Paths)}");
+        }
+
+        Assert.Empty(loadedAssemblies);
+    }
+
     private sealed class SeededTodoService : ITodoService
     {
         private readonly List<TodoItem> _todos;

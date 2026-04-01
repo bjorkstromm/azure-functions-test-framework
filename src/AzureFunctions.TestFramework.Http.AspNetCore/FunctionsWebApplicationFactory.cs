@@ -1,5 +1,6 @@
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Core.Grpc;
+using AzureFunctions.TestFramework.Core.Worker;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -172,6 +173,15 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
                 ["AzureWebJobsScriptRoot"] = functionAppDirectory,
                 ["FUNCTIONS_WORKER_DIRECTORY"] = functionAppDirectory
             });
+        });
+
+        // Replace the SDK's DefaultMethodInfoLocator to prevent LoadFromAssemblyPath
+        // from being called during FunctionLoadRequest processing.  This eliminates
+        // the root cause of assembly dual-loading in in-process hosting.
+        builder.ConfigureServices(services =>
+        {
+            using var logFactory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Debug));
+            InProcessMethodInfoLocator.TryRegister(services, logFactory.CreateLogger("WAF"));
         });
 
         // Invoke IAutoConfigureStartup implementations from the functions assembly.

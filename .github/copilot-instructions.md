@@ -85,6 +85,15 @@ Uses Azure Functions RPC protocol from `azure-functions-language-worker-protobuf
 ### IAutoConfigureStartup (Critical)
 The functions assembly contains source-generated classes (`FunctionMetadataProviderAutoStartup`, `FunctionExecutorAutoStartup`) implementing `IAutoConfigureStartup`. Both the `WorkerHostService` and `FunctionsWebApplicationFactory.CreateHost` scan for and invoke these to register `GeneratedFunctionMetadataProvider` and `DirectFunctionExecutor`, overriding the defaults that would require a `functions.metadata` file.
 
+### ALC (Assembly Load Context) Isolation Prevention
+The Worker SDK's `DefaultMethodInfoLocator.GetMethod()` calls `AssemblyLoadContext.Default.LoadFromAssemblyPath()` during `FunctionLoadRequest` processing. In-process hosting (test runner + worker in same process) can cause the same assembly to be loaded twice, breaking type-identity checks (`typeof(T) ==`, `obj is T`). The framework prevents this at three layers:
+
+1. **Root fix: `InProcessMethodInfoLocator`** — Replaces the SDK's internal `IMethodInfoLocator` via `DispatchProxy` (since the interface is internal). Searches `AppDomain.CurrentDomain.GetAssemblies()` for already-loaded assemblies instead of calling `LoadFromAssemblyPath`. Registered with `AddSingleton` (not `TryAdd`) so it wins over the SDK's `TryAddSingleton`. Falls back to `LoadFromAssemblyPath` only if the assembly isn't already loaded.
+
+2. **Defense-in-depth: `TestFunctionContextConverter` + `TestHttpRequestConverter`** — Registered at converter index 0 via `PostConfigure<WorkerOptions>`, these compare by `FullName` strings (immune to dual-load) and use reflection to access properties (bypassing `is T` casts).
+
+3. **Build-time: `<FrameworkReference Include="Microsoft.AspNetCore.App" />`** — Ensures ASP.NET Core types resolve from the shared framework, not from NuGet packages.
+
 ### Function ID Resolution
 `GeneratedFunctionMetadataProvider` computes a stable hash for each function (`Name` + `ScriptFile` + `EntryPoint`). `GrpcHostService` stores the hash-based `FunctionId` from `FunctionMetadataResponse` in `_functionRouteToId` (not the GUID from `FunctionLoadRequest`), so `SendInvocationRequestAsync` sends the correct ID that matches the worker's internal `_functionMap`.
 
@@ -130,7 +139,11 @@ src/
     │   ├── GrpcServerManager.cs       # Kestrel server lifecycle
     │   └── GrpcLoggingInterceptor.cs  # Logging middleware
     ├── Worker/
-    │   └── WorkerHostService.cs       # In-process worker hosting
+    │   ├── WorkerHostService.cs             # In-process worker hosting
+    │   ├── InProcessMethodInfoLocator.cs    # DispatchProxy-based IMethodInfoLocator replacement
+    │   └── Converters/
+    │       ├── TestFunctionContextConverter.cs  # ALC defense-in-depth
+    │       └── TestHttpRequestConverter.cs      # ALC defense-in-depth
     ├── Http/
     │   ├── HttpRequestMapper.cs       # HTTP → gRPC conversion
     │   └── HttpResponseMapper.cs      # gRPC → HTTP conversion
