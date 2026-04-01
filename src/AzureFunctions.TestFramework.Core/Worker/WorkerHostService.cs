@@ -9,10 +9,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Collections.Concurrent;
 using System.Net;
 using System.Reflection;
-using System.Security.Cryptography;
 
 namespace AzureFunctions.TestFramework.Core.Worker;
 
@@ -23,13 +21,6 @@ namespace AzureFunctions.TestFramework.Core.Worker;
 /// </summary>
 public class WorkerHostService : IWorkerHost
 {
-    // Keyed by the functions app output directory; value is the FUNCTIONS_APPLICATION_DIRECTORY
-    // to use (either the original directory or a filtered copy — see GetOrCreateFilteredExtensionRoot).
-    // Uses Lazy<string> so the (potentially slow) file-copy factory runs at most once per key even
-    // when multiple test hosts start concurrently for the same function app.
-    private static readonly ConcurrentDictionary<string, Lazy<string>> _filteredExtensionRoots =
-        new(StringComparer.OrdinalIgnoreCase);
-
     private readonly ILogger<WorkerHostService> _logger;
     private readonly int _grpcPort;
     private readonly Assembly _functionsAssembly;
@@ -235,17 +226,7 @@ public class WorkerHostService : IWorkerHost
         Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated");
         Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", $"{Environment.Version.Major}.0");
         Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", "Development");
-        // Point FUNCTIONS_APPLICATION_DIRECTORY at a filtered copy of the functions app directory.
-        // The filtered copy's .azurefunctions subfolder omits any DLL that is already present in
-        // the main output directory.  When the Worker SDK's isolated AssemblyLoadContext cannot
-        // find such a DLL in its probe path, it falls back to the default ALC — ensuring a single
-        // runtime type handle for every shared type (FunctionContext, ServiceBusMessage,
-        // QueueMessage, BlobClient, etc.).  Extension-specific DLLs that are only in
-        // .azurefunctions are kept so converters and middleware (e.g. DefaultHttpCoordinator) still
-        // load correctly.
-        Environment.SetEnvironmentVariable(
-            "FUNCTIONS_APPLICATION_DIRECTORY",
-            GetOrCreateFilteredExtensionRoot(functionAppDirectory));
+        Environment.SetEnvironmentVariable("FUNCTIONS_APPLICATION_DIRECTORY", functionAppDirectory);
         // Pre-configure the ASP.NET Core server URL so that when ConfigureFunctionsWebApplication()
         // is used the worker's Kestrel server listens on the allocated HTTP port.
         // Ignored when ConfigureFunctionsWorkerDefaults() is used (no Kestrel is started).
@@ -543,81 +524,6 @@ public class WorkerHostService : IWorkerHost
 
                 next(app);
             };
-    }
-
-    /// <summary>
-    /// Creates a filtered copy of the <c>.azurefunctions</c> extension bundle for the given
-    /// functions app directory, omitting any DLL that already exists in the main output directory.
-    /// </summary>
-    /// <remarks>
-    /// The Worker SDK loads <c>.azurefunctions</c> into an isolated
-    /// <see cref="System.Runtime.Loader.AssemblyLoadContext"/>.  Any DLL present in <em>both</em>
-    /// the main output and <c>.azurefunctions</c> is loaded twice — once per ALC — producing two
-    /// separate runtime type handles for the same type.  This causes parameter-binding failures
-    /// whenever a converter checks type identity (e.g.
-    /// <c>context.TargetType == typeof(ServiceBusMessage)</c>).
-    /// <para>
-    /// By omitting shared DLLs from the filtered copy the isolated ALC's <c>Load()</c> returns
-    /// <see langword="null"/> for them, and the runtime falls back to the default ALC's already-
-    /// loaded copy.  Extension-only DLLs (e.g. <c>Microsoft.Azure.Functions.Worker.Extensions.dll</c>,
-    /// <c>Microsoft.Azure.WebJobs.Extensions.*.dll</c>) that do not exist in the main output are
-    /// retained so that converters and middleware (e.g. <c>DefaultHttpCoordinator</c>) still
-    /// register correctly.
-    /// </para>
-    /// </remarks>
-    private static string GetOrCreateFilteredExtensionRoot(string functionAppDirectory)
-    {
-        var lazy = _filteredExtensionRoots.GetOrAdd(
-            functionAppDirectory,
-            static dir => new Lazy<string>(() => CreateFilteredExtensionRoot(dir)));
-        return lazy.Value;
-    }
-
-    private static string CreateFilteredExtensionRoot(string dir)
-    {
-        var azFuncSource = Path.Combine(dir, ".azurefunctions");
-        if (!Directory.Exists(azFuncSource))
-            return dir;
-
-        // Build a lookup of DLL names present in the main output directory.
-        var mainOutputDlls = new HashSet<string>(
-            Directory.GetFiles(dir, "*.dll").Select(Path.GetFileName)!,
-            StringComparer.OrdinalIgnoreCase);
-
-        // Find which .azurefunctions DLLs would need to be filtered.
-        var dllsToFilter = Directory.GetFiles(azFuncSource, "*.dll")
-            .Select(Path.GetFileName)!
-            .Where(n => mainOutputDlls.Contains(n!))
-            .ToList();
-
-        // Nothing to filter — use the real directory so FUNCTIONS_APPLICATION_DIRECTORY
-        // still points at the correct root (host.json, etc. remain accessible).
-        if (dllsToFilter.Count == 0)
-            return dir;
-
-        // Derive a stable temp-dir name from the source path so the same filtered copy is
-        // reused across test runs in the same session (avoids repeated file-copy work).
-        var pathBytes = System.Text.Encoding.UTF8.GetBytes(dir);
-        var hashHex = Convert.ToHexString(SHA256.HashData(pathBytes))[..12];
-        var tempRoot = Path.Combine(Path.GetTempPath(), $"az-func-test-ext-{hashHex}");
-        var tempAzFunc = Path.Combine(tempRoot, ".azurefunctions");
-
-        Directory.CreateDirectory(tempAzFunc);
-
-        foreach (var srcFile in Directory.GetFiles(azFuncSource))
-        {
-            var fileName = Path.GetFileName(srcFile);
-            var isDll = fileName.EndsWith(".dll", StringComparison.OrdinalIgnoreCase);
-
-            // Skip DLLs that are already in the main output — the isolated ALC will fall
-            // back to the default ALC's copy, keeping type handles identical.
-            if (isDll && mainOutputDlls.Contains(fileName))
-                continue;
-
-            File.Copy(srcFile, Path.Combine(tempAzFunc, fileName), overwrite: true);
-        }
-
-        return tempRoot;
     }
 
     /// <summary>
