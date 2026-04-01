@@ -929,9 +929,20 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 var functions = metadataResponse.FunctionMetadataResponse.FunctionMetadataResults;
                 _logger.LogInformation("Received {Count} function(s) from worker", functions.Count);
 
+                var functionAppDirectory = Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory;
+
                 // Send FunctionLoadRequest for each function and build the route map
                 foreach (var functionMetadata in functions)
                 {
+                    // Resolve relative ScriptFile to an absolute path so the worker can load the
+                    // assembly regardless of where FUNCTIONS_APPLICATION_DIRECTORY points.
+                    if (!string.IsNullOrEmpty(functionMetadata.ScriptFile) &&
+                        !Path.IsPathRooted(functionMetadata.ScriptFile))
+                    {
+                        functionMetadata.ScriptFile = Path.GetFullPath(
+                            Path.Combine(functionAppDirectory, functionMetadata.ScriptFile));
+                    }
+
                     var loadRequest = new StreamingMessage
                     {
                         RequestId = Guid.NewGuid().ToString(),
