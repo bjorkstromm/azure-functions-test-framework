@@ -47,6 +47,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     // Key: function ID; Value: synthetic input bindings that should be added by the test host.
     private readonly Dictionary<string, List<ParameterBinding>> _syntheticInputBindingsByFunctionId
         = new(StringComparer.OrdinalIgnoreCase);
+    // Key: function ID; Value: the HTTP trigger binding parameter name (e.g. "req", "request").
+    private readonly Dictionary<string, string> _httpBindingNameByFunctionId
+        = new(StringComparer.OrdinalIgnoreCase);
     // Key: function name (case-insensitive); Value: IFunctionMetadata
     private readonly Dictionary<string, IFunctionMetadata> _functionMetadataMap
         = new(StringComparer.OrdinalIgnoreCase);
@@ -331,8 +334,10 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             }
         };
 
-        // Add route parameter values to InputData so the worker can bind them to function
-        // parameters (e.g. "string id" in GetTodo([HttpTrigger] HttpRequestData req, string id)).
+        // Add route parameter values to InputData (binds direct function parameters like "string id", "Guid id")
+        // and to TriggerMetadata (populates FunctionContext.BindingContext.BindingData["id"]).
+        // Values are written as RpcString; the worker SDK's TypedData converters unwrap the string
+        // and pass it to type-specific converters (GuidConverter, etc.) which handle the final parse.
         foreach (var (name, value) in routeParams)
         {
             invocationRequest.InputData.Add(new ParameterBinding
@@ -340,7 +345,21 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 Name = name,
                 Data = new TypedData { String = value }
             });
+            invocationRequest.TriggerMetadata[name] = new TypedData { String = value };
         }
+
+        // The real Azure Functions host always includes a ParameterBinding for the HTTP trigger
+        // binding (e.g. "req") with an empty RpcHttp payload. Without this entry the worker's
+        // FunctionsHttpProxyingMiddleware.IsHttpTriggerFunction check (which inspects InputBindings)
+        // may fail, causing IHttpCoordinator coordination to be skipped and HttpContext to be
+        // omitted from FunctionContext.Items — leaving HttpRequest and FunctionContext null inside
+        // the function body when using ConfigureFunctionsWebApplication().
+        var httpBindingName = GetHttpTriggerBindingName(functionId);
+        invocationRequest.InputData.Add(new ParameterBinding
+        {
+            Name = httpBindingName,
+            Data = new TypedData { Http = new RpcHttp() }
+        });
 
         var message = new StreamingMessage
         {
@@ -730,6 +749,14 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         => FindFunctionMatch(httpMethod, requestPath, routePrefix).FunctionId;
 
     /// <summary>
+    /// Returns the HTTP trigger binding parameter name (e.g. <c>"req"</c> or <c>"request"</c>)
+    /// for the given function ID, as declared in the function's source-generated metadata.
+    /// Falls back to <c>"req"</c> if the function is not known or has no httpTrigger binding.
+    /// </summary>
+    internal string GetHttpTriggerBindingName(string functionId)
+        => _httpBindingNameByFunctionId.TryGetValue(functionId, out var name) ? name : "req";
+
+    /// <summary>
     /// Matches an incoming HTTP method + request path against the loaded function route map.
     /// Returns the function ID and a dictionary of extracted route parameter values (e.g.
     /// <c>{"id": "abc123"}</c> for a route pattern <c>todos/{id}</c>).
@@ -797,6 +824,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                     if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}')
                     {
                         var paramName = seg.Substring(1, seg.Length - 2);
+                        // Strip route constraint (e.g. "productId:guid" → "productId").
+                        var colonIndex = paramName.IndexOf(':');
+                        if (colonIndex > 0) paramName = paramName.Substring(0, colonIndex);
                         routeParams[paramName] = pathSegments[i];
                     }
                 }
@@ -937,14 +967,26 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                             {
                                 var triggerType = typeProp.GetString() ?? string.Empty;
 
-                                if (triggerType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase) &&
-                                    root.TryGetProperty("route", out var routeProp))
+                                if (triggerType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase))
                                 {
-                                    var route = routeProp.GetString();
+                                    // When Route is not explicitly set on [HttpTrigger], the source-generated
+                                    // binding JSON omits the "route" property or sets it to null.
+                                    // Azure Functions defaults the route to the function name in that case.
+                                    var route = root.TryGetProperty("route", out var routeProp)
+                                        ? routeProp.GetString()
+                                        : null;
+
                                     if (string.IsNullOrEmpty(route))
                                     {
-                                        continue;
+                                        route = functionMetadata.Name;
                                     }
+
+                                    // Store the actual HTTP trigger binding parameter name so callers can
+                                    // use it in InputData (instead of the hardcoded default "req").
+                                    var httpBindingName = root.TryGetProperty("name", out var httpNameProp)
+                                        ? httpNameProp.GetString() ?? "req"
+                                        : "req";
+                                    _httpBindingNameByFunctionId[functionMetadata.FunctionId] = httpBindingName;
 
                                     // Extract accepted HTTP methods; default to all if not specified
                                     var methods = new List<string>();

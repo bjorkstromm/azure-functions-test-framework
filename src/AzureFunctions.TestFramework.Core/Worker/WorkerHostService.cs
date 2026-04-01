@@ -1,4 +1,5 @@
 using AzureFunctions.TestFramework.Core.Grpc;
+using AzureFunctions.TestFramework.Core.Worker.Converters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -26,6 +27,7 @@ public class WorkerHostService : IWorkerHost
     private readonly GrpcHostService _grpcHostService;
     private readonly IReadOnlyDictionary<string, string> _settings;
     private readonly IReadOnlyDictionary<string, string> _environmentVariables;
+    private readonly string _routePrefix;
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = new();
     private IHost? _workerHost;
     private bool _isInitialized;
@@ -54,6 +56,8 @@ public class WorkerHostService : IWorkerHost
     /// <param name="hostBuilderFactory">Optional factory for creating the worker host builder.</param>
     /// <param name="settings">Optional configuration overrides for the worker host.</param>
     /// <param name="environmentVariables">Optional environment variables to set before startup.</param>
+    /// <param name="routePrefix">The HTTP route prefix from host.json (default "api"). Forwarded to
+    /// <see cref="GrpcInvocationBridgeStartupFilter"/> so it can match incoming paths correctly.</param>
     public WorkerHostService(
         ILogger<WorkerHostService> logger,
         int grpcPort,
@@ -61,7 +65,8 @@ public class WorkerHostService : IWorkerHost
         GrpcHostService grpcHostService,
         Func<string[], IHostBuilder>? hostBuilderFactory = null,
         IReadOnlyDictionary<string, string>? settings = null,
-        IReadOnlyDictionary<string, string>? environmentVariables = null)
+        IReadOnlyDictionary<string, string>? environmentVariables = null,
+        string routePrefix = "api")
     {
         _logger = logger;
         _grpcPort = grpcPort;
@@ -70,6 +75,7 @@ public class WorkerHostService : IWorkerHost
         _hostBuilderFactory = hostBuilderFactory;
         _settings = settings ?? new Dictionary<string, string>();
         _environmentVariables = environmentVariables ?? new Dictionary<string, string>();
+        _routePrefix = routePrefix;
         _allocatedHttpPort = FindAvailablePort();
     }
 
@@ -108,11 +114,24 @@ public class WorkerHostService : IWorkerHost
             await _workerHost.StartAsync(cancellationToken);
 
             // Auto-detect ASP.NET Core integration mode: if an IServer is registered in the
-            // worker's DI container, the factory used ConfigureFunctionsWebApplication() and
-            // the worker has a live HTTP server listening on the allocated HTTP port.
-            if (_workerHost.Services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>() != null)
+            // worker's DI container, the factory used ConfigureFunctionsWebApplication().
+            // Read the ACTUAL port from Kestrel because ConfigureFunctionsWebApplication()
+            // calls UseUrls(HttpUriProvider.HttpUriString) with its own random port, which
+            // overrides ASPNETCORE_URLS and configuration-based URLs.
+            var server = _workerHost.Services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
+            if (server != null)
             {
-                _httpPort = _allocatedHttpPort;
+                var addressFeature = server.Features
+                    .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>();
+                if (addressFeature?.Addresses is { Count: > 0 } addresses)
+                {
+                    var uri = new Uri(addresses.First());
+                    _httpPort = uri.Port;
+                }
+                else
+                {
+                    _httpPort = _allocatedHttpPort;
+                }
                 _logger.LogInformation(
                     "ASP.NET Core integration detected; worker HTTP server on port {HttpPort}", _httpPort);
             }
@@ -272,8 +291,9 @@ public class WorkerHostService : IWorkerHost
                     }
                 });
             }
+
         }
-        
+
         // IMPORTANT: Add our configuration AFTER ConfigureFunctionsWorkerDefaults
         // so our values override any defaults from environment variables
         hostBuilder.ConfigureAppConfiguration((context, config) =>
@@ -292,11 +312,30 @@ public class WorkerHostService : IWorkerHost
         // When ConfigureFunctionsWorkerDefaults() is used, no IApplicationBuilder pipeline
         // exists so these filters are registered but never invoked — they are no-ops.
         var grpcHostService = _grpcHostService;
+        var routePrefix = _routePrefix;
         hostBuilder.ConfigureServices(services =>
         {
             services.AddSingleton(grpcHostService);
             services.AddTransient<IStartupFilter, InvocationIdStartupFilter>();
-            services.AddTransient<IStartupFilter, GrpcInvocationBridgeStartupFilter>();
+            services.AddSingleton<IStartupFilter>(sp =>
+                new GrpcInvocationBridgeStartupFilter(
+                    sp.GetRequiredService<GrpcHostService>(),
+                    sp.GetRequiredService<ILogger<GrpcInvocationBridgeStartupFilter>>(),
+                    routePrefix));
+
+            // In-process hosting can cause HttpContext type-identity mismatches between
+            // the test runner's assembly load context and the worker's Kestrel pipeline.
+            // Register TestHttpRequestConverter at index 0 so it runs before the SDK's
+            // HttpContextConverter and resolves HttpRequest via reflection, bypassing the
+            // 'requestContext is HttpContext' check that fails when assemblies are loaded
+            // from different contexts.  PostConfigure runs after all Configure callbacks
+            // (including UseAspNetCoreIntegration which inserts HttpContextConverter at 0),
+            // so this converter ends up at index 0 and HttpContextConverter shifts to 1.
+            services.PostConfigure<WorkerOptions>(options =>
+            {
+                options.InputConverters.RegisterAt<TestHttpRequestConverter>(0);
+                options.InputConverters.RegisterAt<TestFunctionContextConverter>(0);
+            });
         });
 
         // Discover and invoke IAutoConfigureStartup implementations from the functions assembly.
@@ -416,13 +455,16 @@ public class WorkerHostService : IWorkerHost
         private const string InvocationIdHeader = "x-ms-invocation-id";
         private readonly GrpcHostService _grpcHostService;
         private readonly ILogger<GrpcInvocationBridgeStartupFilter> _logger;
+        private readonly string _routePrefix;
 
         public GrpcInvocationBridgeStartupFilter(
             GrpcHostService grpcHostService,
-            ILogger<GrpcInvocationBridgeStartupFilter> logger)
+            ILogger<GrpcInvocationBridgeStartupFilter> logger,
+            string routePrefix = "api")
         {
             _grpcHostService = grpcHostService;
             _logger = logger;
+            _routePrefix = routePrefix;
         }
 
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
@@ -430,35 +472,43 @@ public class WorkerHostService : IWorkerHost
             {
                 var grpc = _grpcHostService;
                 var logger = _logger;
+                var routePrefix = _routePrefix;
 
                 app.Use(async (context, nextMiddleware) =>
                 {
-                    if (context.Request.Headers.TryGetValue(
+                    if (!context.Request.Headers.TryGetValue(
                             InvocationIdHeader, out var invocationIdValues))
                     {
-                        var invocationId = invocationIdValues.ToString();
-                        if (!string.IsNullOrEmpty(invocationId))
-                        {
-                            var method = context.Request.Method;
-                            var path = context.Request.Path.Value ?? string.Empty;
+                        await nextMiddleware(context);
+                        return;
+                    }
 
-                            // Fire-and-forget: send InvocationRequest so the worker's
-                            // FunctionsHttpProxyingMiddleware calls SetFunctionContextAsync,
-                            // which in turn unblocks WorkerRequestServicesMiddleware.
-                            _ = Task.Run(async () =>
-                            {
-                                try
-                                {
-                                    await grpc.SendInvocationRequestAsync(invocationId, method, path);
-                                }
-                                catch (Exception ex)
-                                {
-                                    logger.LogWarning(ex,
-                                        "Failed to send InvocationRequest for {InvocationId} {Method} {Path}",
-                                        invocationId, method, path);
-                                }
-                            });
-                        }
+                    var invocationId = invocationIdValues.ToString();
+                    if (string.IsNullOrEmpty(invocationId))
+                    {
+                        await nextMiddleware(context);
+                        return;
+                    }
+
+                    var method = context.Request.Method;
+                    var path = context.Request.Path.Value ?? string.Empty;
+
+                    // Send the InvocationRequest first and wait for it to be written to the
+                    // gRPC stream. The worker picks it up (loopback TCP, sub-millisecond) and
+                    // calls FunctionsHttpProxyingMiddleware.SetFunctionContextAsync, which
+                    // unblocks WorkerRequestServicesMiddleware's 5-second wait for
+                    // FunctionContextValueSource. Running the pipeline after ensures
+                    // FunctionContextValueSource is already set when SetHttpContextAsync is
+                    // called, so there is no race condition.
+                    try
+                    {
+                        await grpc.SendInvocationRequestAsync(invocationId, method, path, routePrefix);
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.LogWarning(ex,
+                            "Failed to send InvocationRequest for {InvocationId} {Method} {Path}",
+                            invocationId, method, path);
                     }
 
                     await nextMiddleware(context);

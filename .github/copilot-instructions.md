@@ -7,7 +7,7 @@
 ## Project Overview
 This is an integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience. It runs Azure Functions in-process without func.exe, communicating via the worker's gRPC endpoints.
 
-**Current Status**: Both testing approaches are **fully functional** for the current **Worker SDK 2.x (.NET 10)** sample. The gRPC-based `FunctionsTestHost` supports full CRUD, TimerTrigger, QueueTrigger, ServiceBusTrigger, middleware assertions, `Services`, and `ConfigureSetting()`. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE, middleware assertions, and `WithWebHostBuilder` service overrides. Startup/readiness is event-driven and the direct gRPC path precompiles route matching per host. All framework libraries target `net8.0;net10.0`. Tests run in parallel and in isolation. No known blockers.
+**Current Status**: Both testing approaches are **fully functional** for the current **Worker SDK 2.x (.NET 10)** sample. The gRPC-based `FunctionsTestHost` supports full CRUD, TimerTrigger, QueueTrigger, ServiceBusTrigger, middleware assertions, `Services`, and `ConfigureSetting()`. `FunctionsWebApplicationFactory` supports full CRUD including POST/PUT/DELETE, middleware assertions, and `WithWebHostBuilder` service overrides. Startup/readiness is event-driven and the direct gRPC path precompiles route matching per host. All framework libraries target `net8.0;net10.0` and declare `<FrameworkReference Include="Microsoft.AspNetCore.App" />` to prevent ASP.NET Core type-identity issues in real-world projects. Tests run in parallel and in isolation. No known blockers.
 
 ## Architecture
 
@@ -16,9 +16,9 @@ This is an integration testing framework for Azure Functions (dotnet-isolated) t
    - `FunctionsTestHost`: Orchestrates worker startup and gRPC communication
    - `GrpcHostService`: Implements Azure Functions host gRPC protocol (bidirectional streaming)
      - `FindFunctionId(method, path, routePrefix)`: Route matching with `{param}` support
-     - `SendInvocationRequestAsync(invocationId, method, path)`: Fires InvocationRequest to worker
+     - `SendInvocationRequestAsync(invocationId, method, path)`: Fires InvocationRequest to worker; always includes an empty `RpcHttp` `ParameterBinding` for the HTTP trigger binding name (e.g. `"req"`) so `FunctionsHttpProxyingMiddleware.IsHttpTriggerFunction` correctly identifies the function and `IHttpCoordinator` coordination runs — without it `FunctionContext.Items["HttpRequestContext"]` is never populated
    - `GrpcServerManager`: Manages Kestrel-based gRPC server lifecycle
-   - `WorkerHostService`: Starts Azure Functions Worker using HostBuilder (in-process)
+   - `WorkerHostService`: Starts Azure Functions Worker using HostBuilder (in-process); after startup reads the actual Kestrel port from `IServerAddressesFeature` (because `ConfigureFunctionsWebApplication()` calls `UseUrls()` internally and overrides pre-configured URLs)
    - `FunctionsHttpMessageHandler`: Custom HttpMessageHandler for intercepting HTTP requests
    - `HttpRequestMapper`/`HttpResponseMapper`: Convert between HTTP and gRPC messages
 

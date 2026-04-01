@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace AzureFunctions.TestFramework.Http.AspNetCore;
 
@@ -45,6 +46,7 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     private readonly GrpcHostService _grpcHostService;
     private readonly ILoggerFactory _loggerFactory;
     private readonly Action<IWebHostBuilder>? _additionalWebHostConfiguration;
+    private readonly string _routePrefix;
     private readonly object _disposeLock = new();
     private bool _primaryHostCreated;
     private Task? _disposeTask;
@@ -75,6 +77,8 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
             _loggerFactory.CreateLogger<GrpcServerManager>(),
             _grpcHostService);
 
+        _routePrefix = ReadRoutePrefixFromHostJson(typeof(TProgram).Assembly);
+
         // Start the gRPC server eagerly so the port is known before the host is built.
         _grpcServerManager.StartAsync().GetAwaiter().GetResult();
     }
@@ -101,6 +105,7 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         var grpcHostService = _grpcHostService;
+        var routePrefix = _routePrefix;
 
         builder.ConfigureServices(services =>
         {
@@ -119,7 +124,7 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
             // GrpcInvocationBridgeStartupFilter sends an InvocationRequest to the worker for
             // every incoming HTTP request.  The worker's IHttpCoordinator then unblocks the
             // WorkerRequestServicesMiddleware that is waiting for a matching FunctionContext.
-            services.AddTransient<IStartupFilter, GrpcInvocationBridgeStartupFilter>();
+            services.AddTransient<IStartupFilter>(_ => new GrpcInvocationBridgeStartupFilter(grpcHostService, routePrefix));
         });
 
         _additionalWebHostConfiguration?.Invoke(builder);
@@ -285,6 +290,33 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
         };
     }
 
+    private static string ReadRoutePrefixFromHostJson(System.Reflection.Assembly functionsAssembly)
+    {
+        var assemblyDir = Path.GetDirectoryName(functionsAssembly.Location);
+        if (assemblyDir == null) return "api";
+
+        var hostJsonPath = Path.Combine(assemblyDir, "host.json");
+        if (!File.Exists(hostJsonPath)) return "api";
+
+        try
+        {
+            using var stream = File.OpenRead(hostJsonPath);
+            using var doc = JsonDocument.Parse(stream);
+            if (doc.RootElement.TryGetProperty("extensions", out var extensions) &&
+                extensions.TryGetProperty("http", out var http) &&
+                http.TryGetProperty("routePrefix", out var prefix))
+            {
+                return prefix.GetString() ?? "api";
+            }
+        }
+        catch
+        {
+            // Ignore parse errors and fall back to the default.
+        }
+
+        return "api";
+    }
+
     /// <summary>
     /// Startup filter that injects a synthetic <c>x-ms-invocation-id</c> header into every
     /// incoming request that does not already carry one.  The Azure Functions host normally
@@ -325,16 +357,19 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
     private sealed class GrpcInvocationBridgeStartupFilter : IStartupFilter
     {
         private readonly GrpcHostService _grpcHostService;
+        private readonly string _routePrefix;
 
-        public GrpcInvocationBridgeStartupFilter(GrpcHostService grpcHostService)
+        public GrpcInvocationBridgeStartupFilter(GrpcHostService grpcHostService, string routePrefix)
         {
             _grpcHostService = grpcHostService;
+            _routePrefix = routePrefix;
         }
 
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
             app =>
             {
                 var grpc = _grpcHostService;
+                var routePrefix = _routePrefix;
 
                 app.Use(async (context, nextMiddleware) =>
                 {
@@ -355,7 +390,8 @@ public class FunctionsWebApplicationFactory<TProgram> : WebApplicationFactory<TP
                             _ = Task.Run(() => grpc.SendInvocationRequestAsync(
                                 invocationId,
                                 method,
-                                path));
+                                path,
+                                routePrefix));
                         }
                     }
 

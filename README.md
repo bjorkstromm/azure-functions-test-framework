@@ -38,6 +38,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 - **Function metadata discovery** via `IFunctionInvoker.GetFunctions()` — returns `IReadOnlyDictionary<string, IFunctionMetadata>` with name, function ID, entry point, script file, and raw binding JSON
 - **Non-HTTP invocation result capture** — `FunctionInvocationResult` now surfaces plain return values and output-binding payloads from trigger invocations, with typed helpers via `ReadReturnValueAs<T>()` and `ReadOutputAs<T>(bindingName)`; the current sample/tests cover queue, blob, and table outputs
 - **`WithHostBuilderFactory`** — non-WAF gRPC tests can reuse the app's own `Program.CreateWorkerHostBuilder` or `Program.CreateHostBuilder`, automatically inheriting all registered services without re-registering them in each test. Both `ConfigureFunctionsWorkerDefaults()` and `ConfigureFunctionsWebApplication()` are supported.
+- **`HttpRequest + FunctionContext + Guid + CancellationToken` in `ConfigureFunctionsWebApplication + FunctionsTestHost`** — the full parameter combination used in real-world functions (native ASP.NET Core `HttpRequest`, `FunctionContext` for structured DI, strongly-typed Guid route params, and `CancellationToken`) works end-to-end through `FunctionsTestHost` when `ConfigureFunctionsWebApplication()` is in use; `FullName`-based fallback converters handle ALC type-identity mismatches that can occur in real-world projects
 - **`FunctionsTestHost.Services`** — access the worker's configured service provider after startup to resolve singletons and inspect test state directly
 - **Configuration overrides** — `FunctionsTestHostBuilder.ConfigureSetting(key, value)` overlays test-specific configuration values into the worker host
 - **Environment variable overrides** — `FunctionsTestHostBuilder.ConfigureEnvironmentVariable(name, value)` sets process-level environment variables before the worker starts, so functions can read them via `IConfiguration` or `Environment.GetEnvironmentVariable`
@@ -67,6 +68,23 @@ The shipping package set is currently:
 - `AzureFunctions.TestFramework.Blob` — `InvokeBlobAsync(...)`
 - `AzureFunctions.TestFramework.EventGrid` — `InvokeEventGridAsync(...)` for both `EventGridEvent` and `CloudEvent`
 - `AzureFunctions.TestFramework.Durable` — fake-backed durable helpers including `ConfigureFakeDurableSupport(...)`, durable client/provider helpers, status helpers, and direct activity invocation
+
+## Project setup requirements
+
+### ASP.NET Core shared framework reference
+
+If your function app uses `ConfigureFunctionsWebApplication()` (i.e., it references `Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore`), it must declare a framework reference to `Microsoft.AspNetCore.App`:
+
+```xml
+<!-- YourFunctionApp.csproj -->
+<ItemGroup>
+  <FrameworkReference Include="Microsoft.AspNetCore.App" />
+</ItemGroup>
+```
+
+This is the standard requirement for Azure Functions apps that use ASP.NET Core integration. The test framework libraries (`AzureFunctions.TestFramework.Core`, `AzureFunctions.TestFramework.Http.AspNetCore`) also declare this framework reference so that ASP.NET Core types are always resolved from the **shared runtime** in both the function app and the test framework. Without consistent framework resolution, `HttpContextConverter` cannot read `HttpRequest` from `FunctionContext` — the `as HttpContext` cast silently returns `null` due to a type identity mismatch between two physical copies of ASP.NET Core assemblies.
+
+> ℹ️ You do **not** need to add `FrameworkReference` to your test project manually; it is propagated through the test framework's NuGet package metadata.
 
 ## Common commands
 
@@ -138,23 +156,25 @@ _testHost = await new FunctionsTestHostBuilder()
     .BuildAndStartAsync();
 ```
 
-**Option C — Use `Program.CreateHostBuilder`** (inherit all app services automatically, `ConfigureFunctionsWebApplication()` ASP.NET Core integration mode):
+**Option C — Use `Program.CreateWorkerHostBuilder`** (inherit all app services automatically, `ConfigureFunctionsWebApplication()` ASP.NET Core integration mode):
 
 ```csharp
-// Program.cs — the standard CreateHostBuilder uses ConfigureFunctionsWebApplication()
+// Program.cs — expose a dedicated builder for FunctionsTestHost use
 public partial class Program
 {
-    public static IHostBuilder CreateHostBuilder(string[] args) =>
+    public static IHostBuilder CreateWorkerHostBuilder(string[] args) =>
         new HostBuilder()
             .ConfigureFunctionsWebApplication()
             .ConfigureServices(ConfigureServices);
 }
 
 // Test — framework auto-detects ASP.NET Core mode and routes HTTP requests
-// to the worker's Kestrel server instead of dispatching over gRPC directly
+// to the worker's Kestrel server instead of dispatching over gRPC directly.
+// Functions that take HttpRequest, FunctionContext, Guid route params, and
+// CancellationToken all work correctly in this mode.
 _testHost = await new FunctionsTestHostBuilder()
     .WithFunctionsAssembly(typeof(MyFunctions).Assembly)
-    .WithHostBuilderFactory(Program.CreateHostBuilder)
+    .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
     .BuildAndStartAsync();
 ```
 

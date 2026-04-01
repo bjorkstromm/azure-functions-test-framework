@@ -10,6 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" />
     <PackageReference Include="Grpc.Tools">
       <PrivateAssets>all</PrivateAssets>

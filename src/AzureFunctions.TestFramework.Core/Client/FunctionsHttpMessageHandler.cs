@@ -91,25 +91,31 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                 return CreateNotFoundResponse($"No function found for route: {method} {path}");
             }
 
-            // 3. Create gRPC InvocationRequest
+            // 3. Create gRPC InvocationRequest using the actual HTTP trigger binding parameter name
+            //    from function metadata (e.g. "request" rather than the conventional "req").
+            var httpBindingName = _grpcHostService.GetHttpTriggerBindingName(functionId);
             var grpcRequest = _requestMapper.CreateInvocationRequest(
                 functionId: functionId,
                 method: method,
                 url: path,
                 headers: headers,
                 body: body,
-                queryParams: queryParams
+                queryParams: queryParams,
+                bindingName: httpBindingName
             );
 
-            // 4. Add route parameters to InputData so the worker can bind them to function
-            //    parameters (e.g. "string id" in GetTodo([HttpTrigger] HttpRequestData req, string id)).
+            // 4. Add route parameters to InputData (binds direct function parameters like "string id", "Guid id")
+            //    and to TriggerMetadata (populates FunctionContext.BindingContext.BindingData["id"]).
             foreach (var (paramName, paramValue) in routeParams)
             {
+                // Write as RpcString; the worker SDK's TypedData converters unwrap to a string
+                // which is then handled by type-specific converters (GuidConverter, etc.).
                 grpcRequest.InvocationRequest.InputData.Add(new ParameterBinding
                 {
                     Name = paramName,
                     Data = new TypedData { String = paramValue }
                 });
+                grpcRequest.InvocationRequest.TriggerMetadata[paramName] = new TypedData { String = paramValue };
             }
 
             foreach (var binding in _grpcHostService.GetSyntheticInputBindings(functionId))
@@ -238,7 +244,11 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                     var seg = pattern.Segments[i];
                     if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}')
                     {
-                        routeParams[seg.Substring(1, seg.Length - 2)] = pathSegments[i];
+                        var paramName = seg.Substring(1, seg.Length - 2);
+                        // Strip route constraint (e.g. "productId:guid" → "productId").
+                        var colonIndex = paramName.IndexOf(':');
+                        if (colonIndex > 0) paramName = paramName.Substring(0, colonIndex);
+                        routeParams[paramName] = pathSegments[i];
                     }
                 }
                 return (pattern.FunctionId, routeParams);
