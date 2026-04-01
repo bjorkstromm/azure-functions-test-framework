@@ -1,4 +1,5 @@
 using AzureFunctions.TestFramework.Core.Grpc;
+using AzureFunctions.TestFramework.Core.Worker.Converters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -321,6 +322,20 @@ public class WorkerHostService : IWorkerHost
                     sp.GetRequiredService<GrpcHostService>(),
                     sp.GetRequiredService<ILogger<GrpcInvocationBridgeStartupFilter>>(),
                     routePrefix));
+
+            // In-process hosting can cause HttpContext type-identity mismatches between
+            // the test runner's assembly load context and the worker's Kestrel pipeline.
+            // Register TestHttpRequestConverter at index 0 so it runs before the SDK's
+            // HttpContextConverter and resolves HttpRequest via reflection, bypassing the
+            // 'requestContext is HttpContext' check that fails when assemblies are loaded
+            // from different contexts.  PostConfigure runs after all Configure callbacks
+            // (including UseAspNetCoreIntegration which inserts HttpContextConverter at 0),
+            // so this converter ends up at index 0 and HttpContextConverter shifts to 1.
+            services.PostConfigure<WorkerOptions>(options =>
+            {
+                options.InputConverters.RegisterAt<TestHttpRequestConverter>(0);
+                options.InputConverters.RegisterAt<TestFunctionContextConverter>(0);
+            });
         });
 
         // Discover and invoke IAutoConfigureStartup implementations from the functions assembly.
