@@ -1,6 +1,7 @@
 # Azure Functions Test Framework
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![NuGet](https://img.shields.io/nuget/v/AzureFunctions.TestFramework.Core.svg)](https://www.nuget.org/packages/AzureFunctions.TestFramework.Core)
 
 An integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience.
 
