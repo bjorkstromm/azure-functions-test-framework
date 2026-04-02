@@ -125,6 +125,14 @@ public class WorkerHostService : IWorkerHost
             // calls UseUrls(HttpUriProvider.HttpUriString) with its own random port, which
             // overrides ASPNETCORE_URLS and configuration-based URLs.
             var server = _workerHost.Services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
+            if (server == null && _hostApplicationBuilderFactory != null)
+            {
+                // FunctionsApplicationBuilder may register IServer in the root container under
+                // a different mechanism. Fall back to discovering the address via the generic host's
+                // IHostedService that manages the Kestrel lifetime.
+                server = TryResolveServerFromGenericHost(_workerHost.Services);
+            }
+
             if (server != null)
             {
                 var addressFeature = server.Features
@@ -140,6 +148,10 @@ public class WorkerHostService : IWorkerHost
                 }
                 _logger.LogInformation(
                     "ASP.NET Core integration detected; worker HTTP server on port {HttpPort}", _httpPort);
+            }
+            else if (_hostApplicationBuilderFactory != null)
+            {
+                _logger.LogDebug("IServer not found in services after FunctionsApplicationBuilder start; running in gRPC mode");
             }
 
             _isInitialized = true;
@@ -188,6 +200,57 @@ public class WorkerHostService : IWorkerHost
             await _workerHost.StopAsync();
             _workerHost.Dispose();
         }
+    }
+
+    /// <summary>
+    /// When using <c>FunctionsApplicationBuilder</c>, the Kestrel <c>IServer</c> may be registered
+    /// in a child container (e.g. inside the generic host's <c>IWebHostBuilder</c>-backed hosted
+    /// service).  This helper attempts to find the server via the <c>IHostedService</c> collection
+    /// so the ASP.NET Core port can be read back after the host has started.
+    /// </summary>
+    private static Microsoft.AspNetCore.Hosting.Server.IServer? TryResolveServerFromGenericHost(
+        IServiceProvider services)
+    {
+        // WebApplication (used by FunctionsApplicationBuilder internally) exposes IServer directly.
+        // Try the root container first; it's usually there for WebApplication/WebApplicationBuilder.
+        var direct = services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
+        if (direct != null) return direct;
+
+        // Walk the IHostedService list — one of them is typically Microsoft.AspNetCore.Hosting.GenericWebHostService
+        // which holds a reference to the inner IWebHost whose service provider has IServer.
+        foreach (var hostedService in services.GetServices<IHostedService>())
+        {
+            // Avoid reflection failures on sealed types.
+            try
+            {
+                var webHostProp = hostedService.GetType()
+                    .GetProperty("Application", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
+                if (webHostProp?.GetValue(hostedService) is IServiceProvider innerSp)
+                {
+                    var innerServer = innerSp.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
+                    if (innerServer != null) return innerServer;
+                }
+
+                var webHostField = hostedService.GetType()
+                    .GetField("_webHost", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+                if (webHostField?.GetValue(hostedService) is { } webHost)
+                {
+                    var servicesProp = webHost.GetType()
+                        .GetProperty("Services", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+                    if (servicesProp?.GetValue(webHost) is IServiceProvider webHostSp)
+                    {
+                        var innerServer = webHostSp.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
+                        if (innerServer != null) return innerServer;
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore reflection failures — best effort.
+            }
+        }
+
+        return null;
     }
 
     private IHost CreateWorkerHost()
@@ -493,10 +556,13 @@ public class WorkerHostService : IWorkerHost
             }
         }
 
-        // Configure logging to suppress noisy framework messages during tests.
+        // Configure logging to suppress noisy framework messages during tests,
+        // but allow AzureFunctions.TestFramework.Core namespace at Information level
+        // so startup filters and gRPC bridge activity is visible.
         appBuilder.Logging.SetMinimumLevel(LogLevel.Warning);
         appBuilder.Logging.AddFilter("Microsoft.Azure.Functions.Worker", LogLevel.Warning);
         appBuilder.Logging.AddFilter("Azure.Core", LogLevel.Warning);
+        appBuilder.Logging.AddFilter("AzureFunctions.TestFramework", LogLevel.Information);
 
         return appBuilder.Build();
     }
@@ -604,6 +670,7 @@ public class WorkerHostService : IWorkerHost
         public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) =>
             app =>
             {
+                _logger.LogInformation("GrpcInvocationBridgeStartupFilter.Configure called — adding bridge middleware");
                 var grpc = _grpcHostService;
                 var logger = _logger;
                 var routePrefix = _routePrefix;
