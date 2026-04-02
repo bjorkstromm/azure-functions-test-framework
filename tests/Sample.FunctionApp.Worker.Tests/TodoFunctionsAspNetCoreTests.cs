@@ -150,6 +150,31 @@ public class TodoFunctionsAspNetCoreTests : IAsyncLifetime
         response.EnsureSuccessStatusCode();
     }
 
+    [Theory]
+    [InlineData("GET", "probe", false)]
+    [InlineData("HEAD", "", false)]
+    [InlineData("OPTIONS", "", false)]
+    [InlineData("PATCH", "PATCH", true)]
+    public async Task HttpVerbsProbe_RoutesVerbAndExposesMethodHeader_InKestrelMode(string method, string expectedBody, bool requestBody)
+    {
+        // Arrange
+        using var request = new HttpRequestMessage(new HttpMethod(method), "/api/http-verbs-probe");
+        if (requestBody)
+        {
+            request.Content = new StringContent(method);
+        }
+
+        // Act
+        var response = await _client!.SendAsync(request);
+
+        // Assert
+        response.EnsureSuccessStatusCode();
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.Equal(expectedBody, body);
+        Assert.True(response.Headers.TryGetValues("X-Probe-Method", out var values));
+        Assert.Equal(method, Assert.Single(values), ignoreCase: true);
+    }
+
     [Fact]
     public async Task GetTodoByBindingData_ReturnsTodo_WhenRouteParamInBindingData()
     {

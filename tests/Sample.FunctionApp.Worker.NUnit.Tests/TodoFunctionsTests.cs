@@ -143,6 +143,29 @@ public class TodoFunctionsTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
     }
 
+    [TestCase("GET", "probe", false)]
+    [TestCase("HEAD", "", false)]
+    [TestCase("OPTIONS", "", false)]
+    [TestCase("PATCH", "PATCH", true)]
+    public async Task HttpVerbsProbe_RoutesVerbAndExposesMethodHeader(string method, string expectedBody, bool requestBody)
+    {
+        // Arrange
+        using var request = new HttpRequestMessage(new HttpMethod(method), "/api/http-verbs-probe");
+        if (requestBody)
+        {
+            request.Content = new StringContent(method);
+        }
+
+        // Act
+        var response = await _client!.SendAsync(request);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(await response.Content.ReadAsStringAsync(), Is.EqualTo(expectedBody));
+        Assert.That(response.Headers.TryGetValues("X-Probe-Method", out var values), Is.True);
+        Assert.That(values!.Single(), Is.EqualTo(method).IgnoreCase);
+    }
+
     [Test]
     public async Task InvokeTimerAsync_WithDefaultTimerInfo_Succeeds()
     {
