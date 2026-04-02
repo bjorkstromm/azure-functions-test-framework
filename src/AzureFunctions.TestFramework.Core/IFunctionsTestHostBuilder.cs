@@ -86,6 +86,42 @@ public interface IFunctionsTestHostBuilder
     IFunctionsTestHostBuilder WithHostBuilderFactory(Func<string[], IHostBuilder> factory);
 
     /// <summary>
+    /// Specifies a factory used to create the underlying <see cref="Microsoft.Azure.Functions.Worker.Builder.FunctionsApplicationBuilder"/>
+    /// for the Functions worker.  Pass your application's <c>Program.CreateHostApplicationBuilder</c> or
+    /// <c>Program.CreateWorkerHostApplicationBuilder</c> method here so that all services, middleware and
+    /// configuration registered in <c>Program.cs</c> are automatically available in the test host
+    /// — exactly as they would be at runtime.
+    /// <para>
+    /// Use <c>FunctionsApplication.CreateBuilder(args)</c> inside the factory, which sets up
+    /// the worker defaults (<c>ConfigureFunctionsWorkerDefaults</c>) automatically:
+    /// </para>
+    /// <list type="bullet">
+    ///   <item><description>
+    ///     Without <c>ConfigureFunctionsWebApplication()</c> — invocations are dispatched directly
+    ///     via the gRPC <c>InvocationRequest</c> channel (direct gRPC mode).
+    ///   </description></item>
+    ///   <item><description>
+    ///     With <c>ConfigureFunctionsWebApplication()</c> — the worker's ASP.NET Core HTTP server is
+    ///     started on an ephemeral port; <see cref="IFunctionsTestHost.CreateHttpClient"/> returns
+    ///     a client that forwards requests to that server (ASP.NET Core / Kestrel mode).
+    ///   </description></item>
+    /// </list>
+    /// <para>
+    /// When a factory is provided the framework overlays the gRPC connection settings and
+    /// <c>IAutoConfigureStartup</c> registrations on top of the returned builder; any
+    /// <see cref="ConfigureServices"/> calls are applied afterwards and may override services
+    /// already registered by the factory.
+    /// </para>
+    /// </summary>
+    /// <param name="factory">
+    /// A delegate that accepts command-line arguments and returns a configured
+    /// <see cref="Microsoft.Azure.Functions.Worker.Builder.FunctionsApplicationBuilder"/>,
+    /// e.g. <c>args => Program.CreateHostApplicationBuilder(args)</c>.
+    /// </param>
+    IFunctionsTestHostBuilder WithHostApplicationBuilderFactory(
+        Func<string[], Microsoft.Azure.Functions.Worker.Builder.FunctionsApplicationBuilder> factory);
+
+    /// <summary>
     /// Overrides the <see cref="Microsoft.Extensions.Logging.ILoggerFactory"/> used by the test
     /// host infrastructure (gRPC server, worker host service, etc.).
     /// <para>

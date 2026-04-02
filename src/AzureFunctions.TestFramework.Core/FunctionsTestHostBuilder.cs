@@ -1,5 +1,6 @@
 using AzureFunctions.TestFramework.Core.Grpc;
 using AzureFunctions.TestFramework.Core.Worker;
+using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -18,6 +19,7 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private readonly Dictionary<string, string> _settings = new();
     private readonly Dictionary<string, string> _environmentVariables = new();
     private Func<string[], IHostBuilder>? _hostBuilderFactory;
+    private Func<string[], FunctionsApplicationBuilder>? _hostApplicationBuilderFactory;
     private ILoggerFactory? _loggerFactory;
 
     /// <summary>
@@ -102,6 +104,14 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
         return this;
     }
 
+    /// <inheritdoc/>
+    public IFunctionsTestHostBuilder WithHostApplicationBuilderFactory(
+        Func<string[], FunctionsApplicationBuilder> factory)
+    {
+        _hostApplicationBuilderFactory = factory;
+        return this;
+    }
+
     /// <summary>
     /// Builds and starts the test host asynchronously.
     /// </summary>
@@ -158,7 +168,8 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
             _hostBuilderFactory,
             _settings,
             _environmentVariables,
-            routePrefix);
+            routePrefix,
+            _hostApplicationBuilderFactory);
 
         // Apply service configurators
         foreach (var configurator in _serviceConfigurators)

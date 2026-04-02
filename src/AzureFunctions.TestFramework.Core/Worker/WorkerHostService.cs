@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -24,6 +25,7 @@ public class WorkerHostService : IWorkerHost
     private readonly int _grpcPort;
     private readonly Assembly _functionsAssembly;
     private readonly Func<string[], IHostBuilder>? _hostBuilderFactory;
+    private readonly Func<string[], FunctionsApplicationBuilder>? _hostApplicationBuilderFactory;
     private readonly GrpcHostService _grpcHostService;
     private readonly IReadOnlyDictionary<string, string> _settings;
     private readonly IReadOnlyDictionary<string, string> _environmentVariables;
@@ -53,11 +55,13 @@ public class WorkerHostService : IWorkerHost
     /// <param name="grpcPort">The gRPC port exposed by the in-process host.</param>
     /// <param name="functionsAssembly">The assembly containing the functions under test.</param>
     /// <param name="grpcHostService">The gRPC host service coordinating worker communication.</param>
-    /// <param name="hostBuilderFactory">Optional factory for creating the worker host builder.</param>
+    /// <param name="hostBuilderFactory">Optional factory for creating the worker host builder (<see cref="IHostBuilder"/>).</param>
     /// <param name="settings">Optional configuration overrides for the worker host.</param>
     /// <param name="environmentVariables">Optional environment variables to set before startup.</param>
     /// <param name="routePrefix">The HTTP route prefix from host.json (default "api"). Forwarded to
     /// <see cref="GrpcInvocationBridgeStartupFilter"/> so it can match incoming paths correctly.</param>
+    /// <param name="hostApplicationBuilderFactory">Optional factory for creating the worker host using
+    /// <see cref="FunctionsApplicationBuilder"/> (<c>IHostApplicationBuilder</c> style).</param>
     public WorkerHostService(
         ILogger<WorkerHostService> logger,
         int grpcPort,
@@ -66,13 +70,15 @@ public class WorkerHostService : IWorkerHost
         Func<string[], IHostBuilder>? hostBuilderFactory = null,
         IReadOnlyDictionary<string, string>? settings = null,
         IReadOnlyDictionary<string, string>? environmentVariables = null,
-        string routePrefix = "api")
+        string routePrefix = "api",
+        Func<string[], FunctionsApplicationBuilder>? hostApplicationBuilderFactory = null)
     {
         _logger = logger;
         _grpcPort = grpcPort;
         _functionsAssembly = functionsAssembly;
         _grpcHostService = grpcHostService;
         _hostBuilderFactory = hostBuilderFactory;
+        _hostApplicationBuilderFactory = hostApplicationBuilderFactory;
         _settings = settings ?? new Dictionary<string, string>();
         _environmentVariables = environmentVariables ?? new Dictionary<string, string>();
         _routePrefix = routePrefix;
@@ -186,6 +192,11 @@ public class WorkerHostService : IWorkerHost
 
     private IHost CreateWorkerHost()
     {
+        if (_hostApplicationBuilderFactory != null)
+        {
+            return CreateWorkerHostFromApplicationBuilder();
+        }
+
         // Use 127.0.0.1 explicitly to avoid DNS resolution issues
         var grpcUri = $"http://127.0.0.1:{_grpcPort}";
         var workerId = Guid.NewGuid().ToString();
@@ -375,6 +386,121 @@ public class WorkerHostService : IWorkerHost
         return hostBuilder.Build();
     }
 
+    /// <summary>
+    /// Builds the worker <see cref="IHost"/> using the <see cref="FunctionsApplicationBuilder"/>
+    /// (<c>IHostApplicationBuilder</c>) factory provided via
+    /// <see cref="FunctionsTestHostBuilder.WithHostApplicationBuilderFactory"/>.
+    /// </summary>
+    private IHost CreateWorkerHostFromApplicationBuilder()
+    {
+        var grpcUri = $"http://127.0.0.1:{_grpcPort}";
+        var workerId = Guid.NewGuid().ToString();
+        var requestId = Guid.NewGuid().ToString();
+        var httpUri = $"http://127.0.0.1:{_allocatedHttpPort}";
+
+        var functionAppDirectory = Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory;
+
+        _logger.LogInformation("Configuring worker (HostApplicationBuilder) to connect to {GrpcUri}", grpcUri);
+
+        // Set environment variables BEFORE calling the factory so they are picked up
+        // by FunctionsApplication.CreateBuilder() which reads AddEnvironmentVariables() internally.
+        Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME", "dotnet-isolated");
+        Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", $"{Environment.Version.Major}.0");
+        Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", "Development");
+        Environment.SetEnvironmentVariable("FUNCTIONS_APPLICATION_DIRECTORY", functionAppDirectory);
+        Environment.SetEnvironmentVariable("ASPNETCORE_URLS", httpUri);
+
+        foreach (var (name, value) in _environmentVariables)
+        {
+            Environment.SetEnvironmentVariable(name, value);
+            _logger.LogDebug("Set environment variable '{Name}'", name);
+        }
+
+        // Call user factory — FunctionsApplication.CreateBuilder() sets up worker defaults,
+        // registers middleware, and configures services.
+        var appBuilder = _hostApplicationBuilderFactory!([]);
+
+        // Add gRPC connection and runtime configuration after the factory so our values take
+        // priority (IConfigurationManager evaluates sources in reverse order — last added wins).
+        var allConfigValues = CreateConfigurationValues(
+            grpcUri,
+            workerId,
+            requestId,
+            functionAppDirectory,
+            httpUri,
+            includeFunctionDirectories: true,
+            includeUrls: true);
+        appBuilder.Configuration.AddInMemoryCollection(allConfigValues);
+
+        // Add high-priority overrides (same pattern as IHostBuilder path).
+        var overrideValues = CreateConfigurationValues(
+            grpcUri,
+            workerId,
+            requestId,
+            functionAppDirectory,
+            httpUri,
+            includeFunctionDirectories: false,
+            includeUrls: false);
+        appBuilder.Configuration.AddInMemoryCollection(overrideValues);
+
+        // Apply user service configurators (test doubles may override production services).
+        foreach (var configurator in _serviceConfigurators)
+        {
+            configurator(appBuilder.Services);
+        }
+
+        // Register test infrastructure services.
+        var grpcHostService = _grpcHostService;
+        var routePrefix = _routePrefix;
+        var logger = _logger;
+
+        InProcessMethodInfoLocator.TryRegister(appBuilder.Services, logger);
+
+        appBuilder.Services.AddSingleton(grpcHostService);
+        appBuilder.Services.AddTransient<IStartupFilter, InvocationIdStartupFilter>();
+        appBuilder.Services.AddSingleton<IStartupFilter>(sp =>
+            new GrpcInvocationBridgeStartupFilter(
+                sp.GetRequiredService<GrpcHostService>(),
+                sp.GetRequiredService<ILogger<GrpcInvocationBridgeStartupFilter>>(),
+                routePrefix));
+
+        if (!string.Equals(Environment.GetEnvironmentVariable("AFTF_SKIP_FALLBACK_CONVERTERS"), "1", StringComparison.Ordinal))
+        {
+            appBuilder.Services.PostConfigure<WorkerOptions>(options =>
+            {
+                options.InputConverters.Register<TestHttpRequestConverter>();
+                options.InputConverters.Register<TestFunctionContextConverter>();
+            });
+        }
+
+        // Invoke IAutoConfigureStartup implementations using a shim that delegates
+        // ConfigureServices calls to the application builder's service collection.
+        // The source-generated FunctionMetadataProviderAutoStartup and FunctionExecutorAutoStartup
+        // only call hostBuilder.ConfigureServices(...), so the shim is sufficient.
+        var autoStartupAdapter = new HostBuilderToServiceCollectionAdapter(appBuilder.Services);
+        foreach (var type in _functionsAssembly.GetTypes()
+            .Where(t => typeof(IAutoConfigureStartup).IsAssignableFrom(t) && !t.IsAbstract && !t.IsInterface))
+        {
+            try
+            {
+                var startup = (IAutoConfigureStartup)Activator.CreateInstance(type)!;
+                startup.Configure(autoStartupAdapter);
+                _logger.LogInformation("Registered auto-startup: {Type}", type.FullName);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to register auto-startup: {Type}", type.FullName);
+            }
+        }
+
+        // Configure logging to suppress noisy framework messages during tests.
+        appBuilder.Logging.SetMinimumLevel(LogLevel.Warning);
+        appBuilder.Logging.AddFilter("Microsoft.Azure.Functions.Worker", LogLevel.Warning);
+        appBuilder.Logging.AddFilter("Azure.Core", LogLevel.Warning);
+
+        return appBuilder.Build();
+    }
+
     private Dictionary<string, string?> CreateConfigurationValues(
         string grpcUri,
         string workerId,
@@ -524,5 +650,52 @@ public class WorkerHostService : IWorkerHost
 
                 next(app);
             };
+    }
+
+    /// <summary>
+    /// Minimal <see cref="IHostBuilder"/> adapter that delegates <c>ConfigureServices</c> calls
+    /// to an existing <see cref="IServiceCollection"/>.  Used to invoke
+    /// <see cref="IAutoConfigureStartup.Configure"/> implementations when the worker is built
+    /// using a <see cref="FunctionsApplicationBuilder"/> (<c>IHostApplicationBuilder</c> style),
+    /// which does not expose an <c>IHostBuilder</c> directly.
+    /// </summary>
+    private sealed class HostBuilderToServiceCollectionAdapter : IHostBuilder
+    {
+        private readonly IServiceCollection _services;
+
+        public HostBuilderToServiceCollectionAdapter(IServiceCollection services)
+            => _services = services;
+
+        /// <inheritdoc />
+        public IDictionary<object, object> Properties { get; } = new Dictionary<object, object>();
+
+        /// <inheritdoc />
+        public IHostBuilder ConfigureServices(Action<HostBuilderContext, IServiceCollection> configureDelegate)
+        {
+            configureDelegate(null!, _services);
+            return this;
+        }
+
+        /// <inheritdoc />
+        public IHostBuilder ConfigureHostConfiguration(Action<IConfigurationBuilder> configureDelegate) => this;
+
+        /// <inheritdoc />
+        public IHostBuilder ConfigureAppConfiguration(Action<HostBuilderContext, IConfigurationBuilder> configureDelegate) => this;
+
+        /// <inheritdoc />
+        public IHostBuilder UseServiceProviderFactory<TContainerBuilder>(IServiceProviderFactory<TContainerBuilder> factory)
+            where TContainerBuilder : notnull => this;
+
+        /// <inheritdoc />
+        public IHostBuilder UseServiceProviderFactory<TContainerBuilder>(Func<HostBuilderContext, IServiceProviderFactory<TContainerBuilder>> factory)
+            where TContainerBuilder : notnull => this;
+
+        /// <inheritdoc />
+        IHostBuilder IHostBuilder.ConfigureContainer<TContainerBuilder>(Action<HostBuilderContext, TContainerBuilder> configureDelegate)
+            => this;
+
+        /// <inheritdoc />
+        public IHost Build() =>
+            throw new NotSupportedException("Use the FunctionsApplicationBuilder to build the host.");
     }
 }

@@ -1,13 +1,20 @@
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Timer;
 using Microsoft.Extensions.DependencyInjection;
+using Sample.FunctionApp.Worker;
+using System.Net.Http.Json;
+using VerifyXunit;
+using Xunit;
+using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.Worker.Tests;
 
 /// <summary>
-/// Integration tests for the Worker SDK 2.x sample app using <see cref="FunctionsTestHost"/>.
+/// Integration tests for the Worker SDK 2.x sample app using <see cref="FunctionsTestHost"/>
+/// in direct gRPC mode (<c>ConfigureFunctionsWorkerDefaults</c>) with <c>IHostBuilder</c>.
+/// Inherits common tests from <see cref="TodoFunctionsCoreTestsBase"/>.
 /// </summary>
-public class TodoFunctionsTests : IAsyncLifetime
+public class TodoFunctionsTests : TodoFunctionsCoreTestsBase
 {
     private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
 
@@ -22,14 +29,18 @@ public class TodoFunctionsTests : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
-        var builder = new FunctionsTestHostBuilder()
-            .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
-            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
-            .ConfigureServices(services => services.AddSingleton<ITodoService, InMemoryTodoService>());
-
-        _testHost = await builder.BuildAndStartAsync(TestCancellation);
+        _testHost = await CreateTestHostAsync();
         _client = _testHost.CreateHttpClient();
     }
+
+    public TodoFunctionsTests(ITestOutputHelper output) : base(output) { }
+
+    protected override Task<IFunctionsTestHost> CreateTestHostAsync() =>
+        new FunctionsTestHostBuilder()
+            .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
+            .WithLoggerFactory(CreateLoggerFactory(Output))
+            .ConfigureServices(services => services.AddSingleton<ITodoService, InMemoryTodoService>())
+            .BuildAndStartAsync();
 
     public async ValueTask DisposeAsync()
     {
@@ -56,6 +67,7 @@ public class TodoFunctionsTests : IAsyncLifetime
         Assert.NotNull(todos);
         Assert.Empty(todos);
     }
+    // ── Mode-specific tests ───────────────────────────────────────────────────
 
     [Fact]
     public async Task CreateTodo_ReturnsTodo_WithGeneratedId()
@@ -108,8 +120,13 @@ public class TodoFunctionsTests : IAsyncLifetime
             $"/api/todos/{created!.Id}",
             new { Title = "Updated", IsCompleted = true },
             TestCancellation);
+    public async Task UpdateTodo_UpdatesExistingTodo()
+    {
+        var createResponse = await Client!.PostAsJsonAsync("/api/todos", new { Title = "Original" });
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
 
-        // Assert
+        var response = await Client!.PutAsJsonAsync($"/api/todos/{created!.Id}", new { Title = "Updated", IsCompleted = true });
+
         response.EnsureSuccessStatusCode();
         var updated = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         await Verify(updated);
@@ -158,8 +175,13 @@ public class TodoFunctionsTests : IAsyncLifetime
 
         // Act
         var response = await _client!.GetAsync($"/api/todos/{created!.Id}/alt", TestCancellation);
+    public async Task GetTodoAlt_ReturnsTodo_WhenHttpTriggerParamNameIsNotReq()
+    {
+        var createResponse = await Client!.PostAsJsonAsync("/api/todos", new { Title = "Alt Binding Test" });
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
 
-        // Assert — verifies framework uses actual binding name from metadata, not hardcoded "req"
+        var response = await Client!.GetAsync($"/api/todos/{created!.Id}/alt");
+
         response.EnsureSuccessStatusCode();
         var todo = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         Assert.Equal(created.Id, todo!.Id);
@@ -224,8 +246,11 @@ public class TodoFunctionsTests : IAsyncLifetime
         // Act
         var result = await _testHost!.InvokeTimerAsync("HeartbeatTimer", cancellationToken: TestCancellation);
         _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
+    public async Task InvokeTimerAsync_WithDefaultTimerInfo_Succeeds()
+    {
+        var result = await TestHost!.InvokeTimerAsync("HeartbeatTimer");
+        Output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
 
-        // Assert
         Assert.True(result.Success, $"Timer invocation failed: {result.Error}");
     }
 }
@@ -236,3 +261,4 @@ public class TodoDto
     public string Title { get; set; } = string.Empty;
     public bool IsCompleted { get; set; }
 }
+

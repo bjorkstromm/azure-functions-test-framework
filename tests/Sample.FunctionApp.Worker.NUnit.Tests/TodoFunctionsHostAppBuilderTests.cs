@@ -9,16 +9,19 @@ namespace Sample.FunctionApp.Worker.NUnit.Tests;
 
 /// <summary>
 /// Integration tests using <see cref="FunctionsTestHost"/> in direct gRPC mode with
-/// <c>IHostBuilder</c>.  Inherits common tests from <see cref="TodoFunctionsCoreTestsBase"/>.
+/// <c>IHostApplicationBuilder</c> (<c>FunctionsApplication.CreateBuilder</c>).
+/// Uses <c>Program.CreateWorkerHostApplicationBuilder</c> so the worker is bootstrapped via
+/// the modern minimal-hosting API.
+/// Inherits common tests from <see cref="TodoFunctionsCoreTestsBase"/>.
 /// </summary>
 [TestFixture]
-public class TodoFunctionsTests : TodoFunctionsCoreTestsBase
+public class TodoFunctionsHostAppBuilderTests : TodoFunctionsCoreTestsBase
 {
     protected override Task<IFunctionsTestHost> CreateTestHostAsync() =>
         new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
             .WithLoggerFactory(CreateLoggerFactory())
-            .ConfigureServices(services => services.AddSingleton<ITodoService, InMemoryTodoService>())
+            .WithHostApplicationBuilderFactory(Program.CreateWorkerHostApplicationBuilder)
             .BuildAndStartAsync();
 
     // ── Mode-specific tests ───────────────────────────────────────────────────
@@ -26,13 +29,13 @@ public class TodoFunctionsTests : TodoFunctionsCoreTestsBase
     [Test]
     public async Task CreateTodo_ReturnsTodo_WithGeneratedId()
     {
-        var response = await Client!.PostAsJsonAsync("/api/todos", new { Title = "NUnit Task" });
+        var response = await Client!.PostAsJsonAsync("/api/todos", new { Title = "NUnit HostAppBuilder Task" });
 
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var todo = await response.Content.ReadFromJsonAsync<TodoItem>();
         Assert.That(todo, Is.Not.Null);
         Assert.That(todo!.Id, Is.Not.Null.And.Not.Empty);
-        Assert.That(todo.Title, Is.EqualTo("NUnit Task"));
+        Assert.That(todo.Title, Is.EqualTo("NUnit HostAppBuilder Task"));
         Assert.That(todo.IsCompleted, Is.False);
     }
 
@@ -53,56 +56,6 @@ public class TodoFunctionsTests : TodoFunctionsCoreTestsBase
     }
 
     [Test]
-    public async Task DeleteTodo_RemovesTodo_WhenExists()
-    {
-        // Arrange
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Delete Me" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoItem>();
-
-        // Act
-        var response = await _client!.DeleteAsync($"/api/todos/{created!.Id}");
-
-        // Assert
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
-
-        var getResponse = await _client.GetAsync($"/api/todos/{created.Id}");
-        Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
-    }
-
-    [Test]
-    public async Task Health_ReturnsOk()
-    {
-        // Act
-        var response = await _client!.GetAsync("/api/health");
-
-        // Assert
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-    }
-
-    [TestCase("GET", "probe", false)]
-    [TestCase("HEAD", "", false)]
-    [TestCase("OPTIONS", "", false)]
-    [TestCase("PATCH", "PATCH", true)]
-    public async Task HttpVerbsProbe_RoutesVerbAndExposesMethodHeader(string method, string expectedBody, bool requestBody)
-    {
-        // Arrange
-        using var request = new HttpRequestMessage(new HttpMethod(method), "/api/http-verbs-probe");
-        if (requestBody)
-        {
-            request.Content = new StringContent(method);
-        }
-
-        // Act
-        var response = await _client!.SendAsync(request);
-
-        // Assert
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        Assert.That(await response.Content.ReadAsStringAsync(), Is.EqualTo(expectedBody));
-        Assert.That(response.Headers.TryGetValues("X-Probe-Method", out var values), Is.True);
-        Assert.That(values!.Single(), Is.EqualTo(method).IgnoreCase);
-    }
-
-    [Test]
     public async Task InvokeTimerAsync_WithDefaultTimerInfo_Succeeds()
     {
         var result = await TestHost!.InvokeTimerAsync("HeartbeatTimer");
@@ -111,4 +64,3 @@ public class TodoFunctionsTests : TodoFunctionsCoreTestsBase
         Assert.That(result.Success, Is.True, $"Timer invocation failed: {result.Error}");
     }
 }
-

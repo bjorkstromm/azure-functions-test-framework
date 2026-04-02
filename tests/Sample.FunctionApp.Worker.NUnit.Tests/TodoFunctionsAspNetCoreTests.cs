@@ -1,7 +1,6 @@
 using AzureFunctions.TestFramework.Core;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using System.Net;
 using System.Net.Http.Json;
@@ -9,63 +8,28 @@ using System.Net.Http.Json;
 namespace Sample.FunctionApp.Worker.NUnit.Tests;
 
 /// <summary>
-/// Integration tests for the Worker SDK 2.x sample using <see cref="FunctionsTestHost"/> in
-/// ASP.NET Core / Kestrel mode (<c>ConfigureFunctionsWebApplication</c>) with NUnit.
-/// Uses <c>Program.CreateHostBuilder</c> so the worker starts a real Kestrel server and requests
-/// are routed through the full ASP.NET Core middleware pipeline.
-/// Each test creates its own host for full isolation.
+/// Integration tests using <see cref="FunctionsTestHost"/> in ASP.NET Core / Kestrel mode with
+/// <c>IHostBuilder</c>.  Uses <c>Program.CreateHostBuilder</c> so the worker starts a real
+/// Kestrel server and requests are routed through the full ASP.NET Core middleware pipeline.
+/// Inherits common tests from <see cref="TodoFunctionsCoreTestsBase"/>.
 /// </summary>
 [TestFixture]
-public class TodoFunctionsAspNetCoreTests
+public class TodoFunctionsAspNetCoreTests : TodoFunctionsCoreTestsBase
 {
-    private IFunctionsTestHost? _testHost;
-    private HttpClient? _client;
-
-    [SetUp]
-    public async Task SetUp()
-    {
-        _testHost = await new FunctionsTestHostBuilder()
+    protected override Task<IFunctionsTestHost> CreateTestHostAsync() =>
+        new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
-            .WithLoggerFactory(LoggerFactory.Create(
-                b => b.AddProvider(new NUnitLoggerProvider())))
+            .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(Program.CreateHostBuilder)
             .BuildAndStartAsync();
 
-        _client = _testHost.CreateHttpClient();
-    }
-
-    [TearDown]
-    public async Task TearDown()
-    {
-        _client?.Dispose();
-        if (_testHost != null)
-        {
-            await _testHost.StopAsync();
-            _testHost.Dispose();
-        }
-    }
-
-    [Test]
-    public async Task GetTodos_ReturnsEmptyList_WhenNoTodosExist()
-    {
-        // Act
-        var response = await _client!.GetAsync("/api/todos");
-        TestContext.Progress.WriteLine($"Status: {response.StatusCode}");
-
-        // Assert
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var todos = await response.Content.ReadFromJsonAsync<List<TodoItem>>();
-        Assert.That(todos, Is.Not.Null);
-        Assert.That(todos, Is.Empty);
-    }
+    // ── Mode-specific tests ───────────────────────────────────────────────────
 
     [Test]
     public async Task CreateTodo_ReturnsTodo_WithGeneratedId()
     {
-        // Act
-        var response = await _client!.PostAsJsonAsync("/api/todos", new { Title = "NUnit ASP.NET Core Task" });
+        var response = await Client!.PostAsJsonAsync("/api/todos", new { Title = "NUnit ASP.NET Core Task" });
 
-        // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.Created));
         var todo = await response.Content.ReadFromJsonAsync<TodoItem>();
         Assert.That(todo, Is.Not.Null);
@@ -143,14 +107,11 @@ public class TodoFunctionsAspNetCoreTests
     [Test]
     public async Task CorrelationEndpoint_ReturnsHeaderValue_FromMiddleware()
     {
-        // Arrange
         using var request = new HttpRequestMessage(HttpMethod.Get, "/api/correlation");
         request.Headers.Add(CorrelationIdMiddleware.HeaderName, "nunit-aspnetcore-correlation-id");
 
-        // Act
-        var response = await _client!.SendAsync(request);
+        var response = await Client!.SendAsync(request);
 
-        // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
         Assert.That(payload, Is.Not.Null);
@@ -160,7 +121,6 @@ public class TodoFunctionsAspNetCoreTests
     [Test]
     public async Task ConfigureServices_CanOverrideServicesInKestrelMode()
     {
-        // Arrange
         var seededTodo = new TodoItem
         {
             Id = "nunit-aspnetcore-seeded-id",
@@ -171,8 +131,7 @@ public class TodoFunctionsAspNetCoreTests
 
         await using var overrideHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
-            .WithLoggerFactory(LoggerFactory.Create(
-                b => b.AddProvider(new NUnitLoggerProvider())))
+            .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(Program.CreateHostBuilder)
             .ConfigureServices(services =>
             {
@@ -183,10 +142,8 @@ public class TodoFunctionsAspNetCoreTests
 
         using var customClient = overrideHost.CreateHttpClient();
 
-        // Act
         var response = await customClient.GetAsync("/api/todos");
 
-        // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         var todos = await response.Content.ReadFromJsonAsync<List<TodoItem>>();
         Assert.That(todos, Is.Not.Null);
@@ -228,3 +185,4 @@ public class TodoFunctionsAspNetCoreTests
         }
     }
 }
+
