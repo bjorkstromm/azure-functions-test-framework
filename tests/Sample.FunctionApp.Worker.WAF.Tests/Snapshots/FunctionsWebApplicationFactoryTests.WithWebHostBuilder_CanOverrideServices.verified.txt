@@ -1,8 +1,0 @@
-﻿[
-  {
-    Id: waf-seeded-id,
-    Title: WAF Worker Seeded Todo,
-    IsCompleted: false,
-    CreatedAt: DateTime_1
-  }
-]
