@@ -28,7 +28,7 @@ internal sealed class FakeDurableEntityClient : DurableEntityClient
         CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
-        return Task.FromResult(_entityRunner.GetEntity<TState>(id));
+        return Task.FromResult<EntityMetadata<TState>?>(_entityRunner.GetEntity<TState>(id));
     }
 
     public override Task<EntityMetadata?> GetEntityAsync(
