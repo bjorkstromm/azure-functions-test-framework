@@ -120,7 +120,7 @@ public class TodoFunctionsAspNetCoreTests
     [TestCase("GET", "probe", false)]
     [TestCase("HEAD", "", false)]
     [TestCase("OPTIONS", "", false)]
-    [TestCase("PATCH", "probe", true)]
+    [TestCase("PATCH", "PATCH", true)]
     public async Task HttpVerbsProbe_RoutesVerbAndExposesMethodHeader_InKestrelMode(string method, string expectedBody, bool requestBody)
     {
         // Arrange
@@ -138,11 +138,6 @@ public class TodoFunctionsAspNetCoreTests
         Assert.That(await response.Content.ReadAsStringAsync(), Is.EqualTo(expectedBody));
         Assert.That(response.Headers.TryGetValues("X-Probe-Method", out var values), Is.True);
         Assert.That(values!.Single(), Is.EqualTo(method).IgnoreCase);
-        if (requestBody)
-        {
-            Assert.That(response.Headers.TryGetValues("X-Probe-Request-Body", out var echoedRequestBody), Is.True);
-            Assert.That(echoedRequestBody!.Single(), Is.EqualTo(method));
-        }
     }
 
     [Test]

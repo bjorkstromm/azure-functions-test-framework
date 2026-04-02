@@ -7,6 +7,12 @@ namespace Sample.FunctionApp.Worker;
 
 public class HealthFunctions
 {
+    /// <summary>
+    /// Maximum number of UTF-16 characters echoed for PATCH on <see cref="HttpVerbsProbe"/> to avoid
+    /// unbounded response bodies if this sample is deployed.
+    /// </summary>
+    private const int HttpVerbsProbeMaxEchoCharacters = 4096;
+
     private readonly IConfiguration _configuration;
 
     public HealthFunctions(IConfiguration configuration)
@@ -26,7 +32,8 @@ public class HealthFunctions
     /// <summary>
     /// Echoes the inbound HTTP method in <c>X-Probe-Method</c> for integration tests that verify
     /// GET, HEAD, OPTIONS, and PATCH route through the test host. For PATCH, the request body is
-    /// repeated in <c>X-Probe-Request-Body</c> so callers can assert the payload reached the function.
+    /// written to the response body (capped at <see cref="HttpVerbsProbeMaxEchoCharacters"/>) so
+    /// callers can assert the payload reached the function without putting untrusted data in headers.
     /// </summary>
     [Function("HttpVerbsProbe")]
     public async Task<HttpResponseData> HttpVerbsProbe(
@@ -37,12 +44,17 @@ public class HealthFunctions
         response.Headers.Add("X-Probe-Method", req.Method);
         if (string.Equals(req.Method, "PATCH", StringComparison.OrdinalIgnoreCase))
         {
-            var requestBody = await req.ReadAsStringAsync();
-            response.Headers.Add("X-Probe-Request-Body", requestBody ?? string.Empty);
+            var requestBody = await req.ReadAsStringAsync() ?? string.Empty;
+            if (requestBody.Length > HttpVerbsProbeMaxEchoCharacters)
+            {
+                requestBody = requestBody[..HttpVerbsProbeMaxEchoCharacters];
+            }
+
+            await response.WriteStringAsync(requestBody);
+            return response;
         }
 
-        if (string.Equals(req.Method, "GET", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(req.Method, "PATCH", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(req.Method, "GET", StringComparison.OrdinalIgnoreCase))
         {
             await response.WriteStringAsync("probe");
         }
