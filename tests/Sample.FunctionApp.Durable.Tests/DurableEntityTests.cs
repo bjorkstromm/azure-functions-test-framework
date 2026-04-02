@@ -70,7 +70,7 @@ public sealed class DurableEntityTests
     }
 
     [Fact]
-    public async Task GetEntity_BeforeAnyOperation_ReturnsNull()
+    public async Task GetEntity_BeforeAnyOperation_ReturnsEmptyState()
     {
         // Arrange
         await using var host = await CreateHostAsync();
@@ -80,7 +80,8 @@ public sealed class DurableEntityTests
         var metadata = host.GetEntity<int>(entityId);
 
         // Assert
-        Assert.Null(metadata);
+        Assert.NotNull(metadata);
+        Assert.Equal(0, metadata.State);
     }
 
     [Fact]

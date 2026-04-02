@@ -58,17 +58,17 @@ public static class FunctionsTestHostDurableEntityExtensions
     }
 
     /// <summary>
-    /// Returns the current state of a durable entity, or <see langword="null"/> if the entity
-    /// has no state yet.
+    /// Returns the current state of a durable entity. If the entity has not been initialized,
+    /// an <see cref="EntityMetadata{TState}"/> with the default state value is returned.
     /// </summary>
     /// <typeparam name="TState">The entity state type.</typeparam>
     /// <param name="host">The started functions test host.</param>
     /// <param name="entityId">The entity instance identifier.</param>
     /// <returns>
-    /// An <see cref="EntityMetadata{TState}"/> snapshot, or <see langword="null"/> if the entity
-    /// does not exist or has no state.
+    /// An <see cref="EntityMetadata{TState}"/> snapshot. If the entity has not been initialized,
+    /// the <see cref="EntityMetadata{TState}.State"/> will be the default value for <typeparamref name="TState"/>.
     /// </returns>
-    public static EntityMetadata<TState>? GetEntity<TState>(
+    public static EntityMetadata<TState> GetEntity<TState>(
         this IFunctionsTestHost host,
         EntityInstanceId entityId)
     {

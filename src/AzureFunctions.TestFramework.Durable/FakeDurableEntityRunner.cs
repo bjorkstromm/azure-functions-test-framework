@@ -70,11 +70,13 @@ internal sealed class FakeDurableEntityRunner : IDisposable
     }
 
     /// <summary>Retrieves the current state of an entity.</summary>
-    public EntityMetadata<TState>? GetEntity<TState>(EntityInstanceId entityId)
+    public EntityMetadata<TState> GetEntity<TState>(EntityInstanceId entityId)
     {
         if (!_entities.TryGetValue(entityId, out var instance) || !instance.EntityState.HasState)
         {
-            return null;
+            // Entities always exist (virtual-actor model). Return default state for uninitialized entities.
+            // For value types this is 0/false/etc.; for reference types this is null (suppressed with !).
+            return new EntityMetadata<TState>(entityId, default!);
         }
 
         return new EntityMetadata<TState>(entityId, instance.EntityState.GetState<TState>()!)
