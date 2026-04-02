@@ -74,6 +74,8 @@ internal sealed class FakeDurableEntityRunner : IDisposable
     {
         if (!_entities.TryGetValue(entityId, out var instance) || !instance.EntityState.HasState)
         {
+            // Entities always exist (virtual-actor model). Return default state for uninitialized entities.
+            // For value types this is 0/false/etc.; for reference types this is null (suppressed with !).
             return new EntityMetadata<TState>(entityId, default!);
         }
 
