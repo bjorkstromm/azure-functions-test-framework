@@ -135,20 +135,20 @@ dotnet build
 dotnet test
 
 # Worker SDK 2.x tests (xUnit — direct gRPC and ASP.NET Core / Kestrel modes)
-dotnet test tests/Sample.FunctionApp.Worker.Tests
+dotnet test samples/Sample.FunctionApp.Worker.Tests
 
 # Worker SDK 2.x tests (NUnit — direct gRPC and ASP.NET Core / Kestrel modes)
-dotnet test tests/Sample.FunctionApp.Worker.NUnit.Tests
+dotnet test samples/Sample.FunctionApp.Worker.NUnit.Tests
 
 # Durable Functions tests
-dotnet test tests/Sample.FunctionApp.Durable.Tests
+dotnet test samples/Sample.FunctionApp.Durable.Tests
 
 # Custom route prefix tests
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.Tests
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.Tests
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests
 
 # Run single test
-dotnet test tests/Sample.FunctionApp.Worker.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
+dotnet test samples/Sample.FunctionApp.Worker.Tests --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
 ```
 
 ### Code Style
@@ -203,19 +203,17 @@ samples/
     Worker SDK 2.x sample (net10.0) — TodoAPI + Correlation middleware + HeartbeatTimer + triggers + output bindings
     CreateHostBuilder = ASP.NET Core / Kestrel mode
     CreateWorkerHostBuilder = direct gRPC mode
+  Sample.FunctionApp.Worker.Tests/                         # xUnit — direct gRPC + ASP.NET Core / Kestrel modes
+  Sample.FunctionApp.Worker.NUnit.Tests/                   # NUnit — direct gRPC + ASP.NET Core / Kestrel modes
   Sample.FunctionApp.Durable/
     Durable Functions sample (net10.0) — HTTP starter + orchestrator + activity + sub-orchestrator
+  Sample.FunctionApp.Durable.Tests/                        # xUnit — Durable Functions
   Sample.FunctionApp.CustomRoutePrefix/
     Custom route prefix sample (net10.0) — ConfigureFunctionsWorkerDefaults() + host.json routePrefix "v1"
+  Sample.FunctionApp.CustomRoutePrefix.Tests/              # xUnit — custom prefix via direct gRPC
   Sample.FunctionApp.CustomRoutePrefix.AspNetCore/
     Custom route prefix sample (net10.0) — ConfigureFunctionsWebApplication()
     CreateHostBuilder = ASP.NET Core / Kestrel mode (also used as entrypoint)
-    
-tests/
-  Sample.FunctionApp.Worker.Tests/                         # xUnit — direct gRPC + ASP.NET Core / Kestrel modes
-  Sample.FunctionApp.Worker.NUnit.Tests/                   # NUnit — direct gRPC + ASP.NET Core / Kestrel modes
-  Sample.FunctionApp.Durable.Tests/                        # xUnit — Durable Functions
-  Sample.FunctionApp.CustomRoutePrefix.Tests/              # xUnit — custom prefix via direct gRPC
   Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/   # xUnit — custom prefix via ASP.NET Core / Kestrel mode
 ```
 
