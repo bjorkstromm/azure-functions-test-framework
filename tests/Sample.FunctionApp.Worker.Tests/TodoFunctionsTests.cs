@@ -195,13 +195,18 @@ public class TodoFunctionsTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("GET", "probe")]
-    [InlineData("HEAD", "")]
-    [InlineData("OPTIONS", "")]
-    public async Task HttpVerbsProbe_RoutesVerbAndExposesMethodHeader(string method, string expectedBody)
+    [InlineData("GET", "probe", false)]
+    [InlineData("HEAD", "", false)]
+    [InlineData("OPTIONS", "", false)]
+    [InlineData("PATCH", "probe", true)]
+    public async Task HttpVerbsProbe_RoutesVerbAndExposesMethodHeader(string method, string expectedBody, bool requestBody)
     {
         // Arrange
         using var request = new HttpRequestMessage(new HttpMethod(method), "/api/http-verbs-probe");
+        if (requestBody)
+        {
+            request.Content = new StringContent(method);
+        }
 
         // Act
         var response = await _client!.SendAsync(request);
@@ -212,6 +217,11 @@ public class TodoFunctionsTests : IAsyncLifetime
         Assert.Equal(expectedBody, body);
         Assert.True(response.Headers.TryGetValues("X-Probe-Method", out var values));
         Assert.Equal(method, Assert.Single(values), ignoreCase: true);
+        if (requestBody)
+        {
+            Assert.True(response.Headers.TryGetValues("X-Probe-Request-Body", out var echoedRequestBody));
+            Assert.Equal(method, Assert.Single(echoedRequestBody));
+        }
     }
 
     [Fact]

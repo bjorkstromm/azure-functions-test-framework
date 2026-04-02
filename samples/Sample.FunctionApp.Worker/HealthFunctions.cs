@@ -25,16 +25,24 @@ public class HealthFunctions
 
     /// <summary>
     /// Echoes the inbound HTTP method in <c>X-Probe-Method</c> for integration tests that verify
-    /// GET, HEAD, and OPTIONS route through the test host.
+    /// GET, HEAD, OPTIONS, and PATCH route through the test host. For PATCH, the request body is
+    /// repeated in <c>X-Probe-Request-Body</c> so callers can assert the payload reached the function.
     /// </summary>
     [Function("HttpVerbsProbe")]
     public async Task<HttpResponseData> HttpVerbsProbe(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "head", "options", Route = "http-verbs-probe")]
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "head", "options", "patch", Route = "http-verbs-probe")]
         HttpRequestData req)
     {
         var response = req.CreateResponse(HttpStatusCode.OK);
         response.Headers.Add("X-Probe-Method", req.Method);
-        if (string.Equals(req.Method, "GET", StringComparison.OrdinalIgnoreCase))
+        if (string.Equals(req.Method, "PATCH", StringComparison.OrdinalIgnoreCase))
+        {
+            var requestBody = await req.ReadAsStringAsync();
+            response.Headers.Add("X-Probe-Request-Body", requestBody ?? string.Empty);
+        }
+
+        if (string.Equals(req.Method, "GET", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(req.Method, "PATCH", StringComparison.OrdinalIgnoreCase))
         {
             await response.WriteStringAsync("probe");
         }

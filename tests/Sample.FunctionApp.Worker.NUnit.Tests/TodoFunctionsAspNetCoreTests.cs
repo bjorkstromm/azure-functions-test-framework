@@ -117,6 +117,34 @@ public class TodoFunctionsAspNetCoreTests
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
     }
 
+    [TestCase("GET", "probe", false)]
+    [TestCase("HEAD", "", false)]
+    [TestCase("OPTIONS", "", false)]
+    [TestCase("PATCH", "probe", true)]
+    public async Task HttpVerbsProbe_RoutesVerbAndExposesMethodHeader_InKestrelMode(string method, string expectedBody, bool requestBody)
+    {
+        // Arrange
+        using var request = new HttpRequestMessage(new HttpMethod(method), "/api/http-verbs-probe");
+        if (requestBody)
+        {
+            request.Content = new StringContent(method);
+        }
+
+        // Act
+        var response = await _client!.SendAsync(request);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(await response.Content.ReadAsStringAsync(), Is.EqualTo(expectedBody));
+        Assert.That(response.Headers.TryGetValues("X-Probe-Method", out var values), Is.True);
+        Assert.That(values!.Single(), Is.EqualTo(method).IgnoreCase);
+        if (requestBody)
+        {
+            Assert.That(response.Headers.TryGetValues("X-Probe-Request-Body", out var echoedRequestBody), Is.True);
+            Assert.That(echoedRequestBody!.Single(), Is.EqualTo(method));
+        }
+    }
+
     [Test]
     public async Task CorrelationEndpoint_ReturnsHeaderValue_FromMiddleware()
     {
