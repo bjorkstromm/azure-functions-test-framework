@@ -23,25 +23,23 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{5D20
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker", "samples\Sample.FunctionApp.Worker\Sample.FunctionApp.Worker.csproj", "{F1A2B3C4-D5E6-7890-ABCD-EF0123456789}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker.Tests", "tests\Sample.FunctionApp.Worker.Tests\Sample.FunctionApp.Worker.Tests.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F012345678AB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker.Tests", "samples\Sample.FunctionApp.Worker.Tests\Sample.FunctionApp.Worker.Tests.csproj", "{B2C3D4E5-F6A7-8901-BCDE-F012345678AB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AzureFunctions.TestFramework.Durable", "src\AzureFunctions.TestFramework.Durable\AzureFunctions.TestFramework.Durable.csproj", "{4934C894-A200-4103-85E9-C072B5B2433A}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Durable", "samples\Sample.FunctionApp.Durable\Sample.FunctionApp.Durable.csproj", "{F4ECF1F4-BC5E-4734-B1EA-925D3244B1C8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Durable.Tests", "tests\Sample.FunctionApp.Durable.Tests\Sample.FunctionApp.Durable.Tests.csproj", "{26013A6A-5A9B-49AD-A18B-9FCDA41CBB3E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Durable.Tests", "samples\Sample.FunctionApp.Durable.Tests\Sample.FunctionApp.Durable.Tests.csproj", "{26013A6A-5A9B-49AD-A18B-9FCDA41CBB3E}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix", "samples\Sample.FunctionApp.CustomRoutePrefix\Sample.FunctionApp.CustomRoutePrefix.csproj", "{A1B2C3D4-E5F6-7890-ABCD-EF1234567890}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.Tests", "tests\Sample.FunctionApp.CustomRoutePrefix.Tests\Sample.FunctionApp.CustomRoutePrefix.Tests.csproj", "{D5E6F7A8-B9C0-1234-EFAB-C012345678DE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.Tests", "samples\Sample.FunctionApp.CustomRoutePrefix.Tests\Sample.FunctionApp.CustomRoutePrefix.Tests.csproj", "{D5E6F7A8-B9C0-1234-EFAB-C012345678DE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker.NUnit.Tests", "tests\Sample.FunctionApp.Worker.NUnit.Tests\Sample.FunctionApp.Worker.NUnit.Tests.csproj", "{E6F7A8B9-C0D1-2345-F012-3456789ABCDE}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.Worker.NUnit.Tests", "samples\Sample.FunctionApp.Worker.NUnit.Tests\Sample.FunctionApp.Worker.NUnit.Tests.csproj", "{E6F7A8B9-C0D1-2345-F012-3456789ABCDE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.AspNetCore", "samples\Sample.FunctionApp.CustomRoutePrefix.AspNetCore\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.csproj", "{777E04C6-4117-4ECE-987C-77D7AE4BC8A3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests", "tests\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests.csproj", "{3678F83C-138C-47EC-B81A-8DCFACCFA328}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests", "samples\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests.csproj", "{3678F83C-138C-47EC-B81A-8DCFACCFA328}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -270,14 +268,14 @@ Global
 		{F6A7B8C9-D0E1-2345-F012-345678901234} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{A7B8C9D0-E1F2-3456-0123-456789012345} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{F1A2B3C4-D5E6-7890-ABCD-EF0123456789} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
-		{B2C3D4E5-F6A7-8901-BCDE-F012345678AB} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{B2C3D4E5-F6A7-8901-BCDE-F012345678AB} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{4934C894-A200-4103-85E9-C072B5B2433A} = {827E0CD3-B72D-47B6-A68D-7590B98EB39B}
 		{F4ECF1F4-BC5E-4734-B1EA-925D3244B1C8} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
-		{26013A6A-5A9B-49AD-A18B-9FCDA41CBB3E} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{26013A6A-5A9B-49AD-A18B-9FCDA41CBB3E} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{A1B2C3D4-E5F6-7890-ABCD-EF1234567890} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
-		{D5E6F7A8-B9C0-1234-EFAB-C012345678DE} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
-		{E6F7A8B9-C0D1-2345-F012-3456789ABCDE} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{D5E6F7A8-B9C0-1234-EFAB-C012345678DE} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
+		{E6F7A8B9-C0D1-2345-F012-3456789ABCDE} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 		{777E04C6-4117-4ECE-987C-77D7AE4BC8A3} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
-		{3678F83C-138C-47EC-B81A-8DCFACCFA328} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
+		{3678F83C-138C-47EC-B81A-8DCFACCFA328} = {5D20AA90-6969-D8BD-9DCD-8634F4692FDA}
 	EndGlobalSection
 EndGlobal

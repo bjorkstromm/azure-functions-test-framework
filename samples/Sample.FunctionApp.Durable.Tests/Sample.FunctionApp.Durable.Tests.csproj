@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Verify.Xunit" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
@@ -26,8 +27,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\samples\Sample.FunctionApp.CustomRoutePrefix.AspNetCore\Sample.FunctionApp.CustomRoutePrefix.AspNetCore.csproj" />
+    <ProjectReference Include="..\Sample.FunctionApp.Durable\Sample.FunctionApp.Durable.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Durable\AzureFunctions.TestFramework.Durable.csproj" />
   </ItemGroup>
 
 </Project>

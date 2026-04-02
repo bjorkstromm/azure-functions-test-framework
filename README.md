@@ -75,17 +75,17 @@ dotnet build --configuration Release
 dotnet test --configuration Release
 
 # Worker SDK 2.x tests — direct gRPC mode (xUnit)
-dotnet test tests/Sample.FunctionApp.Worker.Tests --no-build --configuration Release
+dotnet test samples/Sample.FunctionApp.Worker.Tests --no-build --configuration Release
 
 # Worker SDK 2.x tests — NUnit
-dotnet test tests/Sample.FunctionApp.Worker.NUnit.Tests --no-build --configuration Release
+dotnet test samples/Sample.FunctionApp.Worker.NUnit.Tests --no-build --configuration Release
 
 # Durable Functions tests
-dotnet test tests/Sample.FunctionApp.Durable.Tests --no-build --configuration Release
+dotnet test samples/Sample.FunctionApp.Durable.Tests --no-build --configuration Release
 
 # Custom route prefix tests
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.Tests --no-build --configuration Release
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests --no-build --configuration Release
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.Tests --no-build --configuration Release
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests --no-build --configuration Release
 
 # Pack NuGet packages locally
 dotnet pack --configuration Release --output ./artifacts
@@ -183,7 +183,7 @@ _testHost = await new FunctionsTestHostBuilder()
 
 **Service access + configuration overrides** — `FunctionsTestHost.Services` exposes the worker DI container after startup, and `FunctionsTestHostBuilder.ConfigureSetting("Demo:Message", "configured-value")` lets tests overlay configuration values that functions can read through `IConfiguration`.
 
-**Optional shared-host pattern** — if a test class can safely reset mutable app state between tests, it can amortize worker startup with an `IClassFixture`. See `tests/Sample.FunctionApp.Worker.Tests/SharedFunctionsTestHostFixture.cs` and `FunctionsTestHostReuseFixtureTests.cs` for a concrete example.
+**Optional shared-host pattern** — if a test class can safely reset mutable app state between tests, it can amortize worker startup with an `IClassFixture`. See `samples/Sample.FunctionApp.Worker.Tests/SharedFunctionsTestHostFixture.cs` and `FunctionsTestHostReuseFixtureTests.cs` for a concrete example.
 
 ### 3. Timer Trigger Invocation
 
@@ -452,16 +452,14 @@ src/
   AzureFunctions.TestFramework.Durable/      # Fake durable support (net8.0;net10.0)
 
 samples/
-  Sample.FunctionApp.Worker/                 # Worker SDK 2.x (net10.0) — TodoAPI, middleware, triggers
-  Sample.FunctionApp.Durable/               # Durable Functions sample — HTTP starter + orchestrator + activity
-  Sample.FunctionApp.CustomRoutePrefix/      # Custom route prefix with ConfigureFunctionsWorkerDefaults()
-  Sample.FunctionApp.CustomRoutePrefix.AspNetCore/ # Custom route prefix with ConfigureFunctionsWebApplication()
-
-tests/
+  Sample.FunctionApp.Worker/                               # Worker SDK 2.x (net10.0) — TodoAPI, middleware, triggers
   Sample.FunctionApp.Worker.Tests/                         # xUnit — both direct gRPC and ASP.NET Core / Kestrel mode (Worker SDK 2.x)
   Sample.FunctionApp.Worker.NUnit.Tests/                   # NUnit — both direct gRPC and ASP.NET Core / Kestrel mode (Worker SDK 2.x)
+  Sample.FunctionApp.Durable/                              # Durable Functions sample — HTTP starter + orchestrator + activity
   Sample.FunctionApp.Durable.Tests/                        # xUnit — Durable Functions (fully in-process)
+  Sample.FunctionApp.CustomRoutePrefix/                    # Custom route prefix with ConfigureFunctionsWorkerDefaults()
   Sample.FunctionApp.CustomRoutePrefix.Tests/              # xUnit — custom prefix via direct gRPC (ConfigureFunctionsWorkerDefaults)
+  Sample.FunctionApp.CustomRoutePrefix.AspNetCore/         # Custom route prefix with ConfigureFunctionsWebApplication()
   Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/   # xUnit — custom prefix via ASP.NET Core / Kestrel mode (ConfigureFunctionsWebApplication)
 ```
 
@@ -479,17 +477,17 @@ dotnet build
 dotnet test
 
 # Worker SDK 2.x tests (xUnit) — direct gRPC and ASP.NET Core / Kestrel mode
-dotnet test tests/Sample.FunctionApp.Worker.Tests
+dotnet test samples/Sample.FunctionApp.Worker.Tests
 
 # Worker SDK 2.x tests (NUnit) — direct gRPC and ASP.NET Core / Kestrel mode
-dotnet test tests/Sample.FunctionApp.Worker.NUnit.Tests
+dotnet test samples/Sample.FunctionApp.Worker.NUnit.Tests
 
 # Durable Functions tests
-dotnet test tests/Sample.FunctionApp.Durable.Tests
+dotnet test samples/Sample.FunctionApp.Durable.Tests
 
 # Custom route prefix tests
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.Tests
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.Tests
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests
 
 # Single test with detailed logging
 dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"

@@ -27,13 +27,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\samples\Sample.FunctionApp.Worker\Sample.FunctionApp.Worker.csproj" />
+    <ProjectReference Include="..\Sample.FunctionApp.CustomRoutePrefix\Sample.FunctionApp.CustomRoutePrefix.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
-    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Timer\AzureFunctions.TestFramework.Timer.csproj" />
-    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Queue\AzureFunctions.TestFramework.Queue.csproj" />
-    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.ServiceBus\AzureFunctions.TestFramework.ServiceBus.csproj" />
-    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Blob\AzureFunctions.TestFramework.Blob.csproj" />
-    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.EventGrid\AzureFunctions.TestFramework.EventGrid.csproj" />
   </ItemGroup>
 
 </Project>

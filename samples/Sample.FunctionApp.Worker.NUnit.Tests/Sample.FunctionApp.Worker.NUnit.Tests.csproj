@@ -10,12 +10,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
-    <PackageReference Include="Verify.Xunit" />
-    <PackageReference Include="xunit" />
-    <PackageReference Include="xunit.runner.visualstudio">
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-      <PrivateAssets>all</PrivateAssets>
-    </PackageReference>
+    <PackageReference Include="NUnit" />
+    <PackageReference Include="NUnit3TestAdapter" />
     <PackageReference Include="coverlet.collector">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
@@ -23,12 +19,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="xunit.runner.json" CopyToOutputDirectory="Always" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\samples\Sample.FunctionApp.CustomRoutePrefix\Sample.FunctionApp.CustomRoutePrefix.csproj" />
+    <ProjectReference Include="..\Sample.FunctionApp.Worker\Sample.FunctionApp.Worker.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Timer\AzureFunctions.TestFramework.Timer.csproj" />
   </ItemGroup>
 
 </Project>
