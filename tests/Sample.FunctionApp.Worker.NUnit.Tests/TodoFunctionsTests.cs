@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;
 using System.Net;
+
 using System.Net.Http.Json;
 
 namespace Sample.FunctionApp.Worker.NUnit.Tests;
@@ -141,6 +142,24 @@ public class TodoFunctionsTests
 
         // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+    }
+
+    [TestCase("GET", "probe")]
+    [TestCase("HEAD", "")]
+    [TestCase("OPTIONS", "")]
+    public async Task HttpVerbsProbe_RoutesVerbAndExposesMethodHeader(string method, string expectedBody)
+    {
+        // Arrange
+        using var request = new HttpRequestMessage(new HttpMethod(method), "/api/http-verbs-probe");
+
+        // Act
+        var response = await _client!.SendAsync(request);
+
+        // Assert
+        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
+        Assert.That(await response.Content.ReadAsStringAsync(), Is.EqualTo(expectedBody));
+        Assert.That(response.Headers.TryGetValues("X-Probe-Method", out var values), Is.True);
+        Assert.That(values!.Single(), Is.EqualTo(method).IgnoreCase);
     }
 
     [Test]

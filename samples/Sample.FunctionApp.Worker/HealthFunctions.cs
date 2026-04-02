@@ -23,6 +23,25 @@ public class HealthFunctions
         return response;
     }
 
+    /// <summary>
+    /// Echoes the inbound HTTP method in <c>X-Probe-Method</c> for integration tests that verify
+    /// GET, HEAD, and OPTIONS route through the test host.
+    /// </summary>
+    [Function("HttpVerbsProbe")]
+    public async Task<HttpResponseData> HttpVerbsProbe(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "get", "head", "options", Route = "http-verbs-probe")]
+        HttpRequestData req)
+    {
+        var response = req.CreateResponse(HttpStatusCode.OK);
+        response.Headers.Add("X-Probe-Method", req.Method);
+        if (string.Equals(req.Method, "GET", StringComparison.OrdinalIgnoreCase))
+        {
+            await response.WriteStringAsync("probe");
+        }
+
+        return response;
+    }
+
     [Function("Echo")]
     public async Task<HttpResponseData> Echo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "echo")] HttpRequestData req)

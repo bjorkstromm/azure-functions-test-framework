@@ -13,7 +13,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 | Area | Status |
 |------|--------|
-| **HTTP invocation** (GET / POST / PUT / DELETE) | ✅ Both direct gRPC and ASP.NET Core / Kestrel modes |
+| **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core / Kestrel modes |
 | **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid) | ✅ Extension methods + result capture |
 | **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events) | ✅ Fake-backed in-process |
 | **ASP.NET Core integration** (`ConfigureFunctionsWebApplication`) | ✅ Full parameter binding incl. `HttpRequest`, `FunctionContext`, typed route params, `CancellationToken` |
