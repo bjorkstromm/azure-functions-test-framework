@@ -24,6 +24,17 @@
     <Project Path="src/AzureFunctions.TestFramework.ServiceBus/AzureFunctions.TestFramework.ServiceBus.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Timer/AzureFunctions.TestFramework.Timer.csproj" />
   </Folder>
+  <Folder Name="/tests/TestProjects/">
+    <Project Path="tests/TestProject.Shared/TestProject.Shared.csproj" />
+    <Project Path="tests/TestProject.HostBuilder/TestProject.HostBuilder.csproj" />
+    <Project Path="tests/TestProject.HostBuilder.AspNetCore/TestProject.HostBuilder.AspNetCore.csproj" />
+    <Project Path="tests/TestProject.HostApplicationBuilder/TestProject.HostApplicationBuilder.csproj" />
+    <Project Path="tests/TestProject.HostApplicationBuilder.AspNetCore/TestProject.HostApplicationBuilder.AspNetCore.csproj" />
+    <Project Path="tests/TestProject.CustomRoutePrefix.HostBuilder/TestProject.CustomRoutePrefix.HostBuilder.csproj" />
+    <Project Path="tests/TestProject.CustomRoutePrefix.HostBuilder.AspNetCore/TestProject.CustomRoutePrefix.HostBuilder.AspNetCore.csproj" />
+    <Project Path="tests/TestProject.CustomRoutePrefix.HostApplicationBuilder/TestProject.CustomRoutePrefix.HostApplicationBuilder.csproj" />
+    <Project Path="tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore/TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests.csproj" />
     <Project Path="tests/Sample.FunctionApp.CustomRoutePrefix.Tests/Sample.FunctionApp.CustomRoutePrefix.Tests.csproj" />
@@ -31,5 +42,9 @@
     <Project Path="tests/Sample.FunctionApp.Worker.NUnit.Tests/Sample.FunctionApp.Worker.NUnit.Tests.csproj" />
     <Project Path="tests/Sample.FunctionApp.Worker.Tests/Sample.FunctionApp.Worker.Tests.csproj" />
     <Project Path="tests/Sample.FunctionApp.Worker.TUnit.Tests/Sample.FunctionApp.Worker.TUnit.Tests.csproj" />
+    <Project Path="tests/TestProject.HostBuilder.Tests/TestProject.HostBuilder.Tests.csproj" />
+    <Project Path="tests/TestProject.HostBuilder.AspNetCore.Tests/TestProject.HostBuilder.AspNetCore.Tests.csproj" />
+    <Project Path="tests/TestProject.HostApplicationBuilder.Tests/TestProject.HostApplicationBuilder.Tests.csproj" />
+    <Project Path="tests/TestProject.HostApplicationBuilder.AspNetCore.Tests/TestProject.HostApplicationBuilder.AspNetCore.Tests.csproj" />
   </Folder>
 </Solution>
