@@ -50,7 +50,7 @@ public class ProductFunctionsTests : IAsyncLifetime
         _client?.Dispose();
         if (_testHost != null)
         {
-            await _testHost.StopAsync(TestCancellation);
+            await _testHost.StopAsync(CancellationToken.None);
             _testHost.Dispose();
         }
 
