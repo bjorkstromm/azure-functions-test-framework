@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace TestProject;
 

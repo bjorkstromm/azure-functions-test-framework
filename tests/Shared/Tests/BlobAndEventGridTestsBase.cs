@@ -1,7 +1,7 @@
 using Azure.Messaging.EventGrid;
 using AzureFunctions.TestFramework.Blob;
 using AzureFunctions.TestFramework.EventGrid;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace TestProject;
 

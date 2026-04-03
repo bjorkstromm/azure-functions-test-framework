@@ -1,5 +1,5 @@
 using AzureFunctions.TestFramework.Timer;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace TestProject;
 

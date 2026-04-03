@@ -1,5 +1,5 @@
 using AzureFunctions.TestFramework.Durable;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace TestProject;
 

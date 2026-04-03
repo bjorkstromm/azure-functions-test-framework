@@ -1,5 +1,6 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using TestProject;
 
@@ -10,7 +11,7 @@ public partial class Program
     public static FunctionsApplicationBuilder CreateApplicationBuilder(string[] args)
     {
         var builder = FunctionsApplication.CreateBuilder(args);
-        builder.UseMiddleware<CorrelationMiddleware>();
+        ((Microsoft.Azure.Functions.Worker.IFunctionsWorkerApplicationBuilder)builder).UseMiddleware<CorrelationMiddleware>();
         ConfigureServices(builder.Services);
         return builder;
     }

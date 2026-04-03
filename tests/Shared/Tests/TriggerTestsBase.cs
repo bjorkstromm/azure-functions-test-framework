@@ -3,7 +3,7 @@ using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Queue;
 using AzureFunctions.TestFramework.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
-using Xunit.Abstractions;
+using Xunit;
 
 namespace TestProject;
 

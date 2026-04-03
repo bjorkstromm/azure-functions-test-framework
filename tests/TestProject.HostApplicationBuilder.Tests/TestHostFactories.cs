@@ -13,7 +13,7 @@ internal static class TestHostFactory
     public static FunctionsApplicationBuilder CreateApplicationBuilder(string[] args)
     {
         var builder = FunctionsApplication.CreateBuilder(args);
-        builder.UseMiddleware<CorrelationMiddleware>();
+        ((Microsoft.Azure.Functions.Worker.IFunctionsWorkerApplicationBuilder)builder).UseMiddleware<CorrelationMiddleware>();
         builder.Services.AddSingleton<IItemService, InMemoryItemService>();
         builder.Services.AddSingleton<IProcessedItemsService, InMemoryProcessedItemsService>();
         return builder;
