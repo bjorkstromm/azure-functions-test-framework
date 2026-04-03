@@ -1,23 +1,23 @@
+using System.Reflection;
 using AzureFunctions.TestFramework.Core;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Sample.FunctionApp.Worker;
+using System.Net.Http.Json;
+using TUnit.Core;
 
-namespace Sample.FunctionApp.Worker.Tests;
+namespace Sample.FunctionApp.Worker.TUnit.Tests;
 
+/// <summary>
+/// Tests for <see cref="FunctionsTestHostBuilder"/> configuration and DI behavior.
+/// </summary>
 public class FunctionsTestHostFeaturesTests
 {
-    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
+    private static ILoggerFactory CreateLoggerFactory() =>
+        LoggerFactory.Create(b => b.AddProvider(new TUnitLoggerProvider()));
 
-    private readonly ITestOutputHelper _output;
-
-    public FunctionsTestHostFeaturesTests(ITestOutputHelper output)
-    {
-        _output = output;
-    }
-
-    private ILoggerFactory CreateLoggerFactory() =>
-        LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output)));
-    [Fact]
+    [Test]
     public async Task Services_ReturnsConfiguredSingletonService()
     {
         // Arrange
@@ -35,22 +35,22 @@ public class FunctionsTestHostFeaturesTests
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
             .WithLoggerFactory(CreateLoggerFactory())
             .ConfigureServices(services => services.AddSingleton<ITodoService>(seededService))
-            .BuildAndStartAsync(TestCancellation);
+            .BuildAndStartAsync();
 
         // Act
         var resolvedService = testHost.Services.GetRequiredService<ITodoService>();
 
         // Assert
-        Assert.Same(seededService, resolvedService);
+        await Assert.That(ReferenceEquals(seededService, resolvedService)).IsTrue();
 
         using var client = testHost.CreateHttpClient();
-        var todos = await client.GetFromJsonAsync<List<TodoItem>>("/api/todos", TestCancellation);
+        var todos = await client.GetFromJsonAsync<List<TodoItem>>("/api/todos");
 
-        Assert.NotNull(todos);
-        await Verify(todos);
+        await Assert.That(todos).IsNotNull();
+        await Verify(todos!);
     }
 
-    [Fact]
+    [Test]
     public async Task WithHostBuilderFactory_ConfigureServices_CanOverrideServices()
     {
         // Arrange
@@ -69,22 +69,22 @@ public class FunctionsTestHostFeaturesTests
             .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .ConfigureServices(services => services.AddSingleton<ITodoService>(seededService))
-            .BuildAndStartAsync(TestCancellation);
+            .BuildAndStartAsync();
 
         // Act
         var resolvedService = testHost.Services.GetRequiredService<ITodoService>();
 
         // Assert
-        Assert.Same(seededService, resolvedService);
+        await Assert.That(ReferenceEquals(seededService, resolvedService)).IsTrue();
 
         using var client = testHost.CreateHttpClient();
-        var todos = await client.GetFromJsonAsync<List<TodoItem>>("/api/todos", TestCancellation);
+        var todos = await client.GetFromJsonAsync<List<TodoItem>>("/api/todos");
 
-        Assert.NotNull(todos);
-        await Verify(todos);
+        await Assert.That(todos).IsNotNull();
+        await Verify(todos!);
     }
 
-    [Fact]
+    [Test]
     public async Task ConfigureSetting_AddsConfigurationOverride()
     {
         // Arrange
@@ -93,22 +93,22 @@ public class FunctionsTestHostFeaturesTests
             .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .ConfigureSetting("Demo:Message", "configured-value")
-            .BuildAndStartAsync(TestCancellation);
+            .BuildAndStartAsync();
 
         // Act
         var configuration = testHost.Services.GetRequiredService<IConfiguration>();
 
         // Assert
-        Assert.Equal("configured-value", configuration["Demo:Message"]);
+        await Assert.That(configuration["Demo:Message"]).IsEqualTo("configured-value");
 
         using var client = testHost.CreateHttpClient();
-        var payload = await client.GetFromJsonAsync<ConfigurationValueResponse>("/api/config/Demo:Message", TestCancellation);
+        var payload = await client.GetFromJsonAsync<ConfigurationValueResponse>("/api/config/Demo:Message");
 
-        Assert.NotNull(payload);
-        await Verify(payload);
+        await Assert.That(payload).IsNotNull();
+        await Verify(payload!);
     }
 
-    [Fact]
+    [Test]
     public async Task ConfigureEnvironmentVariable_SetsEnvironmentVariableVisibleToFunction()
     {
         // Arrange
@@ -120,24 +120,23 @@ public class FunctionsTestHostFeaturesTests
             .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .ConfigureEnvironmentVariable(envVarName, envVarValue)
-            .BuildAndStartAsync(TestCancellation);
+            .BuildAndStartAsync();
 
         // Act
         var configuration = testHost.Services.GetRequiredService<IConfiguration>();
 
         // Assert
-        Assert.Equal(envVarValue, configuration[envVarName]);
+        await Assert.That(configuration[envVarName]).IsEqualTo(envVarValue);
 
         using var client = testHost.CreateHttpClient();
         var payload = await client.GetFromJsonAsync<ConfigurationValueResponse>(
-            $"/api/config/{Uri.EscapeDataString(envVarName)}",
-            TestCancellation);
+            $"/api/config/{Uri.EscapeDataString(envVarName)}");
 
-        Assert.NotNull(payload);
-        Assert.Equal(envVarValue, payload!.Value);
+        await Assert.That(payload).IsNotNull();
+        await Assert.That(payload!.Value).IsEqualTo(envVarValue);
     }
 
-    [Fact]
+    [Test]
     public async Task InProcessMethodInfoLocator_PreventsAssemblyDualLoading()
     {
         // Arrange & Act: start a host and let functions load
@@ -145,13 +144,13 @@ public class FunctionsTestHostFeaturesTests
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
             .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
-            .BuildAndStartAsync(TestCancellation);
+            .BuildAndStartAsync();
 
         // Assert: no assembly name appears more than once in the AppDomain
         // (excluding dynamic, resource, and test-runner assemblies).
         var loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies()
             .Where(a => !a.IsDynamic && !string.IsNullOrEmpty(a.Location))
-            .Where(a => !(a.GetName().Name?.StartsWith("xunit", StringComparison.OrdinalIgnoreCase) ?? false))
+            .Where(a => !IsTestRunnerAssembly(a.GetName().Name))
             .GroupBy(a => a.GetName().Name)
             .Where(g => g.Count() > 1)
             .Select(g => new { Name = g.Key, Count = g.Count(), Paths = g.Select(a => a.Location).ToList() })
@@ -159,10 +158,25 @@ public class FunctionsTestHostFeaturesTests
 
         foreach (var dup in loadedAssemblies)
         {
-            _output.WriteLine($"DUPLICATE: {dup.Name} loaded {dup.Count}x from: {string.Join(", ", dup.Paths)}");
+            TestContext.Current?.Output.WriteLine(
+                $"DUPLICATE: {dup.Name} loaded {dup.Count}x from: {string.Join(", ", dup.Paths)}");
         }
 
-        Assert.Empty(loadedAssemblies);
+        await Assert.That(loadedAssemblies.Count).IsEqualTo(0);
+    }
+
+    private static bool IsTestRunnerAssembly(string? name)
+    {
+        if (string.IsNullOrEmpty(name))
+        {
+            return false;
+        }
+
+        return name.StartsWith("xunit", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("TUnit", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("nunit", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("Microsoft.Testing", StringComparison.OrdinalIgnoreCase)
+            || name.StartsWith("testhost", StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed class SeededTodoService : ITodoService
@@ -171,9 +185,13 @@ public class FunctionsTestHostFeaturesTests
 
         public SeededTodoService(params TodoItem[] seed) => _todos = new List<TodoItem>(seed);
 
+        /// <inheritdoc />
         public Task<IEnumerable<TodoItem>> GetAllAsync() => Task.FromResult<IEnumerable<TodoItem>>(_todos);
+
+        /// <inheritdoc />
         public Task<TodoItem?> GetByIdAsync(string id) => Task.FromResult(_todos.FirstOrDefault(t => t.Id == id));
 
+        /// <inheritdoc />
         public Task<TodoItem> CreateAsync(TodoItem item)
         {
             item.Id = Guid.NewGuid().ToString();
@@ -181,19 +199,29 @@ public class FunctionsTestHostFeaturesTests
             return Task.FromResult(item);
         }
 
+        /// <inheritdoc />
         public Task<TodoItem?> UpdateAsync(string id, TodoItem updates)
         {
             var existing = _todos.FirstOrDefault(t => t.Id == id);
-            if (existing == null) return Task.FromResult<TodoItem?>(null);
+            if (existing == null)
+            {
+                return Task.FromResult<TodoItem?>(null);
+            }
+
             existing.Title = updates.Title;
             existing.IsCompleted = updates.IsCompleted;
             return Task.FromResult<TodoItem?>(existing);
         }
 
+        /// <inheritdoc />
         public Task<bool> DeleteAsync(string id)
         {
             var todo = _todos.FirstOrDefault(t => t.Id == id);
-            if (todo == null) return Task.FromResult(false);
+            if (todo == null)
+            {
+                return Task.FromResult(false);
+            }
+
             _todos.Remove(todo);
             return Task.FromResult(true);
         }

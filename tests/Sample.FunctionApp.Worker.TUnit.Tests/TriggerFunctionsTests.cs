@@ -1,54 +1,58 @@
-using Azure.Storage.Queues.Models;
 using Azure.Messaging.ServiceBus;
+using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Queue;
 using AzureFunctions.TestFramework.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Sample.FunctionApp.Worker;
+using TUnit.Core;
 
-namespace Sample.FunctionApp.Worker.Tests;
+namespace Sample.FunctionApp.Worker.TUnit.Tests;
 
 /// <summary>
 /// Integration tests for queue-triggered and Service Bus–triggered functions.
 /// </summary>
-public class TriggerFunctionsTests : IAsyncLifetime
+public class TriggerFunctionsTests
 {
-    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
-
-    private readonly ITestOutputHelper _output;
     private IFunctionsTestHost? _testHost;
     private InMemoryProcessedItemsService? _processedItems;
 
-    public TriggerFunctionsTests(ITestOutputHelper output)
+    /// <summary>
+    /// Starts a host with in-memory processed-items tracking before each test.
+    /// </summary>
+    [Before(Test)]
+    public async Task SetUp()
     {
-        _output = output;
-    }
-
-    public async ValueTask InitializeAsync()
-    {
+        // Arrange
         _processedItems = new InMemoryProcessedItemsService();
 
         var builder = new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
-            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
+            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new TUnitLoggerProvider())))
             .ConfigureServices(services =>
             {
                 services.AddSingleton<ITodoService, InMemoryTodoService>();
                 services.AddSingleton<IProcessedItemsService>(_processedItems);
             });
 
-        _testHost = await builder.BuildAndStartAsync(TestCancellation);
+        _testHost = await builder.BuildAndStartAsync();
     }
 
-    public async ValueTask DisposeAsync()
+    /// <summary>
+    /// Stops the host after each test.
+    /// </summary>
+    [After(Test)]
+    public async Task TearDown()
     {
         if (_testHost != null)
         {
-            await _testHost.StopAsync(TestCancellation);
+            await _testHost.StopAsync();
             _testHost.Dispose();
         }
     }
 
-    [Fact]
+    [Test]
     public async Task InvokeQueueAsync_WithTextMessage_Succeeds()
     {
         // Arrange
@@ -60,18 +64,18 @@ public class TriggerFunctionsTests : IAsyncLifetime
             dequeueCount: 1);
 
         // Act
-        var result = await _testHost!.InvokeQueueAsync("ProcessQueueMessage", message, TestCancellation);
+        var result = await _testHost!.InvokeQueueAsync("ProcessQueueMessage", message);
 
         // Assert
-        _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
-        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
+        TestContext.Current?.Output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
+        await Assert.That(result.Success).IsTrue();
 
         var processed = _processedItems!.TakeAll();
-        Assert.Single(processed);
-        Assert.Equal(messageText, processed[0]);
+        await Assert.That(processed.Count).IsEqualTo(1);
+        await Assert.That(processed[0]).IsEqualTo(messageText);
     }
 
-    [Fact]
+    [Test]
     public async Task InvokeServiceBusAsync_WithTextBody_Succeeds()
     {
         // Arrange
@@ -83,18 +87,18 @@ public class TriggerFunctionsTests : IAsyncLifetime
         };
 
         // Act
-        var result = await _testHost!.InvokeServiceBusAsync("ProcessServiceBusMessage", message, TestCancellation);
+        var result = await _testHost!.InvokeServiceBusAsync("ProcessServiceBusMessage", message);
 
         // Assert
-        _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
-        Assert.True(result.Success, $"Service Bus invocation failed: {result.Error}");
+        TestContext.Current?.Output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
+        await Assert.That(result.Success).IsTrue();
 
         var processed = _processedItems!.TakeAll();
-        Assert.Single(processed);
-        Assert.Equal(body, processed[0]);
+        await Assert.That(processed.Count).IsEqualTo(1);
+        await Assert.That(processed[0]).IsEqualTo(body);
     }
 
-    [Fact]
+    [Test]
     public async Task InvokeQueueAsync_CapturesPlainReturnValue()
     {
         // Arrange
@@ -106,15 +110,15 @@ public class TriggerFunctionsTests : IAsyncLifetime
             dequeueCount: 1);
 
         // Act
-        var result = await _testHost!.InvokeQueueAsync("ReturnQueueMessageValue", message, TestCancellation);
+        var result = await _testHost!.InvokeQueueAsync("ReturnQueueMessageValue", message);
 
         // Assert
-        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
-        Assert.Equal($"return:{messageText}", result.ReadReturnValueAs<string>());
-        Assert.Empty(result.OutputData);
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.ReadReturnValueAs<string>()).IsEqualTo($"return:{messageText}");
+        await Assert.That(result.OutputData.Count).IsEqualTo(0);
     }
 
-    [Fact]
+    [Test]
     public async Task InvokeQueueAsync_CapturesOutputBindingData()
     {
         // Arrange
@@ -126,21 +130,22 @@ public class TriggerFunctionsTests : IAsyncLifetime
             dequeueCount: 1);
 
         // Act
-        var result = await _testHost!.InvokeQueueAsync("CreateQueueOutputMessages", message, TestCancellation);
+        var result = await _testHost!.InvokeQueueAsync("CreateQueueOutputMessages", message);
 
         // Assert
-        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
-        Assert.Null(result.ReturnValue);
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.ReturnValue).IsNull();
 
-        var outputBinding = Assert.Single(result.OutputData);
+        await Assert.That(result.OutputData.Count).IsEqualTo(1);
+        var outputBinding = result.OutputData.Single();
         var messages = result.ReadOutputAs<string[]>(outputBinding.Key);
 
-        Assert.Equal("Messages", outputBinding.Key);
-        Assert.NotNull(messages);
-        await Verify(messages);
+        await Assert.That(outputBinding.Key).IsEqualTo("Messages");
+        await Assert.That(messages).IsNotNull();
+        await Verify(messages!);
     }
 
-    [Fact]
+    [Test]
     public async Task InvokeQueueAsync_CapturesBlobOutputBindingData()
     {
         // Arrange
@@ -152,20 +157,21 @@ public class TriggerFunctionsTests : IAsyncLifetime
             dequeueCount: 1);
 
         // Act
-        var result = await _testHost!.InvokeQueueAsync("CreateBlobOutputDocument", message, TestCancellation);
+        var result = await _testHost!.InvokeQueueAsync("CreateBlobOutputDocument", message);
 
         // Assert
-        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
-        Assert.Null(result.ReturnValue);
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.ReturnValue).IsNull();
 
-        var outputBinding = Assert.Single(result.OutputData);
+        await Assert.That(result.OutputData.Count).IsEqualTo(1);
+        var outputBinding = result.OutputData.Single();
         var content = result.ReadOutputAs<string>(outputBinding.Key);
 
-        Assert.Equal("Content", outputBinding.Key);
-        Assert.Equal($"blob:{messageText}", content);
+        await Assert.That(outputBinding.Key).IsEqualTo("Content");
+        await Assert.That(content).IsEqualTo($"blob:{messageText}");
     }
 
-    [Fact]
+    [Test]
     public async Task InvokeQueueAsync_CapturesTableOutputBindingData()
     {
         // Arrange
@@ -177,17 +183,18 @@ public class TriggerFunctionsTests : IAsyncLifetime
             dequeueCount: 1);
 
         // Act
-        var result = await _testHost!.InvokeQueueAsync("CreateTableOutputEntity", message, TestCancellation);
+        var result = await _testHost!.InvokeQueueAsync("CreateTableOutputEntity", message);
 
         // Assert
-        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
-        Assert.Null(result.ReturnValue);
+        await Assert.That(result.Success).IsTrue();
+        await Assert.That(result.ReturnValue).IsNull();
 
-        var outputBinding = Assert.Single(result.OutputData);
+        await Assert.That(result.OutputData.Count).IsEqualTo(1);
+        var outputBinding = result.OutputData.Single();
         var entity = result.ReadOutputAs<CapturedTableEntity>(outputBinding.Key);
 
-        Assert.Equal("Entity", outputBinding.Key);
-        Assert.NotNull(entity);
-        await Verify(entity);
+        await Assert.That(outputBinding.Key).IsEqualTo("Entity");
+        await Assert.That(entity).IsNotNull();
+        await Verify(entity!);
     }
 }

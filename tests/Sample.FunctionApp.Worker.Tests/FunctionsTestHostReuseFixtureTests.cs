@@ -1,9 +1,3 @@
-using System.Net;
-using System.Net.Http.Json;
-using Sample.FunctionApp.Worker;
-using VerifyXunit;
-using Xunit;
-
 namespace Sample.FunctionApp.Worker.Tests;
 
 /// <summary>
@@ -13,6 +7,8 @@ public sealed class FunctionsTestHostReuseFixtureTests :
     IClassFixture<SharedFunctionsTestHostFixture>,
     IAsyncLifetime
 {
+    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
+
     private readonly SharedFunctionsTestHostFixture _fixture;
 
     public FunctionsTestHostReuseFixtureTests(SharedFunctionsTestHostFixture fixture)
@@ -20,20 +16,20 @@ public sealed class FunctionsTestHostReuseFixtureTests :
         _fixture = fixture;
     }
 
-    public Task InitializeAsync() => _fixture.ResetAsync();
+    public ValueTask InitializeAsync() => new(_fixture.ResetAsync());
 
-    public Task DisposeAsync() => Task.CompletedTask;
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task SharedFixture_CanCreateTodo()
     {
         // Act
-        var response = await _fixture.Client.PostAsJsonAsync("/api/todos", new { Title = "Shared host item" });
+        var response = await _fixture.Client.PostAsJsonAsync("/api/todos", new { Title = "Shared host item" }, TestCancellation);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-        var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
+        var todo = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         Assert.NotNull(todo);
         await Verify(todo);
     }
@@ -42,7 +38,7 @@ public sealed class FunctionsTestHostReuseFixtureTests :
     public async Task SharedFixture_ResetKeepsTestsIsolated()
     {
         // Act
-        var todos = await _fixture.Client.GetFromJsonAsync<List<TodoItem>>("/api/todos");
+        var todos = await _fixture.Client.GetFromJsonAsync<List<TodoItem>>("/api/todos", TestCancellation);
 
         // Assert
         Assert.NotNull(todos);

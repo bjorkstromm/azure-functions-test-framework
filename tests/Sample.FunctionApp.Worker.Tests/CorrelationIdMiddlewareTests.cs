@@ -1,15 +1,11 @@
 using AzureFunctions.TestFramework.Core;
-using Microsoft.Extensions.Logging;
-using Sample.FunctionApp.Worker;
-using System.Net.Http.Json;
-using VerifyXunit;
-using Xunit;
-using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.Worker.Tests;
 
 public class CorrelationIdMiddlewareTests : IAsyncLifetime
 {
+    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
+
     private readonly ITestOutputHelper _output;
     private IFunctionsTestHost? _testHost;
     private HttpClient? _client;
@@ -19,25 +15,27 @@ public class CorrelationIdMiddlewareTests : IAsyncLifetime
         _output = output;
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _testHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
             .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
             .WithHostBuilderFactory(Program.CreateHostBuilder)
-            .BuildAndStartAsync();
+            .BuildAndStartAsync(TestCancellation);
 
         _client = _testHost.CreateHttpClient();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _client?.Dispose();
         if (_testHost != null)
         {
-            await _testHost.StopAsync();
+            await _testHost.StopAsync(TestCancellation);
             _testHost.Dispose();
         }
+
+        GC.SuppressFinalize(this);
     }
 
     [Fact]
@@ -48,12 +46,12 @@ public class CorrelationIdMiddlewareTests : IAsyncLifetime
         request.Headers.Add(CorrelationIdMiddleware.HeaderName, "grpc-correlation-id");
 
         // Act
-        var response = await _client!.SendAsync(request);
+        var response = await _client!.SendAsync(request, TestCancellation);
 
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>(TestCancellation);
         Assert.NotNull(payload);
         await Verify(payload);
     }
@@ -62,12 +60,12 @@ public class CorrelationIdMiddlewareTests : IAsyncLifetime
     public async Task CorrelationEndpoint_ReturnsNull_WhenHeaderMissing()
     {
         // Act
-        var response = await _client!.GetAsync("/api/correlation");
+        var response = await _client!.GetAsync("/api/correlation", TestCancellation);
 
         // Assert
         response.EnsureSuccessStatusCode();
 
-        var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>();
+        var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>(TestCancellation);
         Assert.NotNull(payload);
         await Verify(payload);
     }

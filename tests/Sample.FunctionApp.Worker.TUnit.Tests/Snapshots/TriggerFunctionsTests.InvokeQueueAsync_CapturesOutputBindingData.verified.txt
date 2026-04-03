@@ -1,0 +1,4 @@
+﻿[
+  output:Hello output binding!,
+  output:Hello output binding!:copy
+]
