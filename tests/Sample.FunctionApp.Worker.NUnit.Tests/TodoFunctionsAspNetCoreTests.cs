@@ -38,66 +38,20 @@ public class TodoFunctionsAspNetCoreTests : TodoFunctionsCoreTestsBase
         Assert.That(todo.IsCompleted, Is.False);
     }
 
-    [Test]
-    public async Task GetTodo_ReturnsTodo_WhenExists()
-    {
-        // Arrange
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Find Me" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoItem>();
-
-        // Act
-        var response = await _client!.GetAsync($"/api/todos/{created!.Id}");
-
-        // Assert
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-        var todo = await response.Content.ReadFromJsonAsync<TodoItem>();
-        Assert.That(todo!.Id, Is.EqualTo(created.Id));
-    }
-
-    [Test]
-    public async Task DeleteTodo_RemovesTodo_WhenExists()
-    {
-        // Arrange
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Delete Me" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoItem>();
-
-        // Act
-        var response = await _client!.DeleteAsync($"/api/todos/{created!.Id}");
-
-        // Assert
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.NoContent));
-
-        var getResponse = await _client.GetAsync($"/api/todos/{created.Id}");
-        Assert.That(getResponse.StatusCode, Is.EqualTo(HttpStatusCode.NotFound));
-    }
-
-    [Test]
-    public async Task Health_ReturnsOk()
-    {
-        // Act
-        var response = await _client!.GetAsync("/api/health");
-
-        // Assert
-        Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
-    }
-
     [TestCase("GET", "probe", false)]
     [TestCase("HEAD", "", false)]
     [TestCase("OPTIONS", "", false)]
     [TestCase("PATCH", "PATCH", true)]
     public async Task HttpVerbsProbe_RoutesVerbAndExposesMethodHeader_InKestrelMode(string method, string expectedBody, bool requestBody)
     {
-        // Arrange
         using var request = new HttpRequestMessage(new HttpMethod(method), "/api/http-verbs-probe");
         if (requestBody)
         {
             request.Content = new StringContent(method);
         }
 
-        // Act
-        var response = await _client!.SendAsync(request);
+        var response = await Client!.SendAsync(request);
 
-        // Assert
         Assert.That(response.StatusCode, Is.EqualTo(HttpStatusCode.OK));
         Assert.That(await response.Content.ReadAsStringAsync(), Is.EqualTo(expectedBody));
         Assert.That(response.Headers.TryGetValues("X-Probe-Method", out var values), Is.True);

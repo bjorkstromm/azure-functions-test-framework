@@ -1,11 +1,6 @@
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Timer;
 using Microsoft.Extensions.DependencyInjection;
-using Sample.FunctionApp.Worker;
-using System.Net;
-using System.Net.Http.Json;
-using Xunit;
-using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.Worker.Tests;
 
@@ -26,17 +21,17 @@ public class TodoFunctionsHostAppBuilderTests : TodoFunctionsCoreTestsBase
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
             .WithLoggerFactory(CreateLoggerFactory(Output))
             .WithHostApplicationBuilderFactory(Program.CreateWorkerHostApplicationBuilder)
-            .BuildAndStartAsync();
+            .BuildAndStartAsync(TestCancellation);
 
     // ── Mode-specific tests ───────────────────────────────────────────────────
 
     [Fact]
     public async Task CreateTodo_ReturnsTodo_WithGeneratedId()
     {
-        var response = await Client!.PostAsJsonAsync("/api/todos", new { Title = "HostAppBuilder Task" });
+        var response = await Client!.PostAsJsonAsync("/api/todos", new { Title = "HostAppBuilder Task" }, TestCancellation);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
+        var todo = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         Assert.NotNull(todo);
         Assert.False(string.IsNullOrEmpty(todo!.Id.ToString()));
         Assert.Equal("HostAppBuilder Task", todo.Title);
@@ -46,15 +41,16 @@ public class TodoFunctionsHostAppBuilderTests : TodoFunctionsCoreTestsBase
     [Fact]
     public async Task UpdateTodo_UpdatesExistingTodo()
     {
-        var createResponse = await Client!.PostAsJsonAsync("/api/todos", new { Title = "Original" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
+        var createResponse = await Client!.PostAsJsonAsync("/api/todos", new { Title = "Original" }, TestCancellation);
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
 
         var response = await Client!.PutAsJsonAsync(
             $"/api/todos/{created!.Id}",
-            new { Title = "Updated", IsCompleted = true });
+            new { Title = "Updated", IsCompleted = true },
+            TestCancellation);
 
         response.EnsureSuccessStatusCode();
-        var updated = await response.Content.ReadFromJsonAsync<TodoDto>();
+        var updated = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         Assert.Equal("Updated", updated!.Title);
         Assert.True(updated.IsCompleted);
     }
@@ -62,7 +58,7 @@ public class TodoFunctionsHostAppBuilderTests : TodoFunctionsCoreTestsBase
     [Fact]
     public async Task InvokeTimerAsync_WithDefaultTimerInfo_Succeeds()
     {
-        var result = await TestHost!.InvokeTimerAsync("HeartbeatTimer");
+        var result = await TestHost!.InvokeTimerAsync("HeartbeatTimer", cancellationToken: TestCancellation);
         Output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
 
         Assert.True(result.Success, $"Timer invocation failed: {result.Error}");
