@@ -1,6 +1,3 @@
-using Microsoft.Extensions.Logging;
-using Xunit.Abstractions;
-
 namespace Sample.FunctionApp.Durable.Tests;
 
 /// <summary>

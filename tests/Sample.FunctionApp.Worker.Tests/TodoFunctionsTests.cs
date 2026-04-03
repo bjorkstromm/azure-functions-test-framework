@@ -1,14 +1,6 @@
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Timer;
-using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Sample.FunctionApp.Worker;
-using System.Net;
-using System.Net.Http.Json;
-using VerifyXunit;
-using Xunit;
-using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.Worker.Tests;
 
@@ -17,6 +9,8 @@ namespace Sample.FunctionApp.Worker.Tests;
 /// </summary>
 public class TodoFunctionsTests : IAsyncLifetime
 {
+    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
+
     private readonly ITestOutputHelper _output;
     private IFunctionsTestHost? _testHost;
     private HttpClient? _client;
@@ -26,37 +20,39 @@ public class TodoFunctionsTests : IAsyncLifetime
         _output = output;
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         var builder = new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
             .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
             .ConfigureServices(services => services.AddSingleton<ITodoService, InMemoryTodoService>());
 
-        _testHost = await builder.BuildAndStartAsync();
+        _testHost = await builder.BuildAndStartAsync(TestCancellation);
         _client = _testHost.CreateHttpClient();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _client?.Dispose();
         if (_testHost != null)
         {
-            await _testHost.StopAsync();
+            await _testHost.StopAsync(TestCancellation);
             _testHost.Dispose();
         }
+
+        GC.SuppressFinalize(this);
     }
 
     [Fact]
     public async Task GetTodos_ReturnsEmptyList_WhenNoTodosExist()
     {
         // Act
-        var response = await _client!.GetAsync("/api/todos");
+        var response = await _client!.GetAsync("/api/todos", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var todos = await response.Content.ReadFromJsonAsync<List<TodoDto>>();
+        var todos = await response.Content.ReadFromJsonAsync<List<TodoDto>>(TestCancellation);
         Assert.NotNull(todos);
         Assert.Empty(todos);
     }
@@ -65,11 +61,11 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task CreateTodo_ReturnsTodo_WithGeneratedId()
     {
         // Act
-        var response = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Test Task" });
+        var response = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Test Task" }, TestCancellation);
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
+        var todo = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         Assert.NotNull(todo);
         await Verify(todo);
     }
@@ -78,15 +74,15 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task GetTodo_ReturnsTodo_WhenExists()
     {
         // Arrange
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Find Me" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Find Me" }, TestCancellation);
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
 
         // Act
-        var response = await _client!.GetAsync($"/api/todos/{created!.Id}");
+        var response = await _client!.GetAsync($"/api/todos/{created!.Id}", TestCancellation);
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
+        var todo = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         Assert.Equal(created.Id, todo!.Id);
     }
 
@@ -94,7 +90,7 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task GetTodo_ReturnsNotFound_WhenDoesNotExist()
     {
         // Act
-        var response = await _client!.GetAsync($"/api/todos/{Guid.NewGuid()}");
+        var response = await _client!.GetAsync($"/api/todos/{Guid.NewGuid()}", TestCancellation);
 
         // Assert
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
@@ -104,15 +100,18 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task UpdateTodo_UpdatesExistingTodo()
     {
         // Arrange
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Original" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Original" }, TestCancellation);
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
 
         // Act
-        var response = await _client!.PutAsJsonAsync($"/api/todos/{created!.Id}", new { Title = "Updated", IsCompleted = true });
+        var response = await _client!.PutAsJsonAsync(
+            $"/api/todos/{created!.Id}",
+            new { Title = "Updated", IsCompleted = true },
+            TestCancellation);
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var updated = await response.Content.ReadFromJsonAsync<TodoDto>();
+        var updated = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         await Verify(updated);
     }
 
@@ -120,16 +119,16 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task DeleteTodo_RemovesTodo_WhenExists()
     {
         // Arrange
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Delete Me" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Delete Me" }, TestCancellation);
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
 
         // Act
-        var response = await _client!.DeleteAsync($"/api/todos/{created!.Id}");
+        var response = await _client!.DeleteAsync($"/api/todos/{created!.Id}", TestCancellation);
 
         // Assert
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
 
-        var getResponse = await _client.GetAsync($"/api/todos/{created.Id}");
+        var getResponse = await _client.GetAsync($"/api/todos/{created.Id}", TestCancellation);
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
     }
 
@@ -137,15 +136,15 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task GetTodoByBindingData_ReturnsTodo_WhenRouteParamInBindingData()
     {
         // Arrange
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Binding Data Test" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Binding Data Test" }, TestCancellation);
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
 
         // Act — endpoint reads id exclusively from BindingContext.BindingData, not from a direct parameter
-        var response = await _client!.GetAsync($"/api/todos/{created!.Id}/binding-data");
+        var response = await _client!.GetAsync($"/api/todos/{created!.Id}/binding-data", TestCancellation);
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
+        var todo = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         Assert.Equal(created.Id, todo!.Id);
         Assert.Equal("Binding Data Test", todo.Title);
     }
@@ -154,15 +153,15 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task GetTodoAlt_ReturnsTodo_WhenHttpTriggerParamNameIsNotReq()
     {
         // Arrange — GetTodoAlt uses 'request' (not 'req') as the HttpRequestData parameter name
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Alt Binding Test" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Alt Binding Test" }, TestCancellation);
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
 
         // Act
-        var response = await _client!.GetAsync($"/api/todos/{created!.Id}/alt");
+        var response = await _client!.GetAsync($"/api/todos/{created!.Id}/alt", TestCancellation);
 
         // Assert — verifies framework uses actual binding name from metadata, not hardcoded "req"
         response.EnsureSuccessStatusCode();
-        var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
+        var todo = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         Assert.Equal(created.Id, todo!.Id);
         Assert.Equal("Alt Binding Test", todo.Title);
     }
@@ -171,15 +170,15 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task GetTodoWithContext_ReturnsTodo_WhenFunctionContextInjectedAsParameter()
     {
         // Arrange — GetTodoWithContext takes FunctionContext as a direct function parameter
-        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Context Test" });
-        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>();
+        var createResponse = await _client!.PostAsJsonAsync("/api/todos", new { Title = "Context Test" }, TestCancellation);
+        var created = await createResponse.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
 
         // Act
-        var response = await _client!.GetAsync($"/api/todos/{created!.Id}/with-context");
+        var response = await _client!.GetAsync($"/api/todos/{created!.Id}/with-context", TestCancellation);
 
         // Assert — FunctionContext must be non-null; function returns 500 otherwise
         response.EnsureSuccessStatusCode();
-        var todo = await response.Content.ReadFromJsonAsync<TodoDto>();
+        var todo = await response.Content.ReadFromJsonAsync<TodoDto>(TestCancellation);
         Assert.Equal(created.Id, todo!.Id);
         Assert.Equal("Context Test", todo.Title);
     }
@@ -188,7 +187,7 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task Health_ReturnsOk()
     {
         // Act
-        var response = await _client!.GetAsync("/api/health");
+        var response = await _client!.GetAsync("/api/health", TestCancellation);
 
         // Assert
         response.EnsureSuccessStatusCode();
@@ -209,11 +208,11 @@ public class TodoFunctionsTests : IAsyncLifetime
         }
 
         // Act
-        var response = await _client!.SendAsync(request);
+        var response = await _client!.SendAsync(request, TestCancellation);
 
         // Assert
         response.EnsureSuccessStatusCode();
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestCancellation);
         Assert.Equal(expectedBody, body);
         Assert.True(response.Headers.TryGetValues("X-Probe-Method", out var values));
         Assert.Equal(method, Assert.Single(values), ignoreCase: true);
@@ -223,7 +222,7 @@ public class TodoFunctionsTests : IAsyncLifetime
     public async Task InvokeTimerAsync_WithDefaultTimerInfo_Succeeds()
     {
         // Act
-        var result = await _testHost!.InvokeTimerAsync("HeartbeatTimer");
+        var result = await _testHost!.InvokeTimerAsync("HeartbeatTimer", cancellationToken: TestCancellation);
         _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
 
         // Assert

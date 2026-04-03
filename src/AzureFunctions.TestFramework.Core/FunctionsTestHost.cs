@@ -163,6 +163,8 @@ public class FunctionsTestHost : IFunctionsTestHost
         _cachedHandler?.Dispose();
         await _workerHostService.DisposeAsync();
         await _grpcServerManager.DisposeAsync();
+
+        GC.SuppressFinalize(this);
     }
 
     /// <summary>

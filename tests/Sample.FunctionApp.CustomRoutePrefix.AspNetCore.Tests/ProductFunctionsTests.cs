@@ -14,6 +14,8 @@ namespace Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests;
 /// </summary>
 public class ProductFunctionsTests : IAsyncLifetime
 {
+    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
+
     private readonly ITestOutputHelper _output;
     private IFunctionsTestHost? _testHost;
     private HttpClient? _client;
@@ -24,7 +26,7 @@ public class ProductFunctionsTests : IAsyncLifetime
         _output = output;
     }
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         _productService = new InMemoryProductService();
 
@@ -39,18 +41,20 @@ public class ProductFunctionsTests : IAsyncLifetime
             .ConfigureServices(services =>
                 services.AddSingleton<IProductService>(_productService));
 
-        _testHost = await builder.BuildAndStartAsync();
+        _testHost = await builder.BuildAndStartAsync(TestCancellation);
         _client = _testHost.CreateHttpClient();
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         _client?.Dispose();
         if (_testHost != null)
         {
-            await _testHost.StopAsync();
+            await _testHost.StopAsync(TestCancellation);
             _testHost.Dispose();
         }
+
+        GC.SuppressFinalize(this);
     }
 
     [Fact]
@@ -58,9 +62,9 @@ public class ProductFunctionsTests : IAsyncLifetime
     {
         // Act — call the endpoint that uses the DEFAULT route (function name "Ping", no Route= param)
         // This verifies that functions without explicit Route= still have HttpRequest + FunctionContext bound.
-        var response = await _client!.GetAsync("/v1/Ping");
+        var response = await _client!.GetAsync("/v1/Ping", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestCancellation);
         _output.WriteLine(body);
 
         // Assert
@@ -85,9 +89,9 @@ public class ProductFunctionsTests : IAsyncLifetime
         var product = _productService!.CreateWithId(productId.ToString(), "Widget", 9.99m);
 
         // Act — call the endpoint that uses HttpRequest + FunctionContext + Guid + CancellationToken
-        var response = await _client!.GetAsync($"/v1/products/by-id/{productId}");
+        var response = await _client!.GetAsync($"/v1/products/by-id/{productId}", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestCancellation);
         _output.WriteLine(body);
 
         // Assert
@@ -114,7 +118,7 @@ public class ProductFunctionsTests : IAsyncLifetime
         var unknownId = Guid.NewGuid();
 
         // Act
-        var response = await _client!.GetAsync($"/v1/products/by-id/{unknownId}");
+        var response = await _client!.GetAsync($"/v1/products/by-id/{unknownId}", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // Assert
@@ -125,7 +129,7 @@ public class ProductFunctionsTests : IAsyncLifetime
     public async Task GetProductById_InvalidGuid_ReturnsBadRequest()
     {
         // Act — non-Guid value should fail route constraint matching
-        var response = await _client!.GetAsync("/v1/products/by-id/not-a-guid");
+        var response = await _client!.GetAsync("/v1/products/by-id/not-a-guid", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // ASP.NET Core route constraints reject "not-a-guid" and return 404 (no match) or 400
@@ -138,12 +142,12 @@ public class ProductFunctionsTests : IAsyncLifetime
     public async Task GetProducts_WithCustomRoutePrefix_ReturnsEmptyList()
     {
         // Act
-        var response = await _client!.GetAsync("/v1/products");
+        var response = await _client!.GetAsync("/v1/products", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestCancellation);
         Assert.Equal("[]", body.Trim());
     }
 
@@ -155,12 +159,12 @@ public class ProductFunctionsTests : IAsyncLifetime
         var content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
 
         // Act
-        var response = await _client!.PostAsync("/v1/products", content);
+        var response = await _client!.PostAsync("/v1/products", content, TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // Assert
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestCancellation);
         var product = JsonSerializer.Deserialize<Product>(body,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         Assert.NotNull(product);
@@ -174,19 +178,19 @@ public class ProductFunctionsTests : IAsyncLifetime
         // Arrange
         var payload = JsonSerializer.Serialize(new { name = "Gadget", price = 19.99m });
         var content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
-        var createResponse = await _client!.PostAsync("/v1/products", content);
+        var createResponse = await _client!.PostAsync("/v1/products", content, TestCancellation);
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = JsonSerializer.Deserialize<Product>(
-            await createResponse.Content.ReadAsStringAsync(),
+            await createResponse.Content.ReadAsStringAsync(TestCancellation),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
 
         // Act
-        var response = await _client.GetAsync($"/v1/products/{created.Id}");
+        var response = await _client.GetAsync($"/v1/products/{created.Id}", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestCancellation);
         var product = JsonSerializer.Deserialize<Product>(body,
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
         Assert.NotNull(product);
@@ -197,7 +201,7 @@ public class ProductFunctionsTests : IAsyncLifetime
     public async Task GetProduct_ReturnsNotFound_WhenProductDoesNotExist()
     {
         // Act
-        var response = await _client!.GetAsync("/v1/products/nonexistent-id");
+        var response = await _client!.GetAsync("/v1/products/nonexistent-id", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // Assert
@@ -210,13 +214,13 @@ public class ProductFunctionsTests : IAsyncLifetime
         // Arrange
         var payload = JsonSerializer.Serialize(new { name = "Disposable", price = 1.00m });
         var content = new StringContent(payload, System.Text.Encoding.UTF8, "application/json");
-        var createResponse = await _client!.PostAsync("/v1/products", content);
+        var createResponse = await _client!.PostAsync("/v1/products", content, TestCancellation);
         var created = JsonSerializer.Deserialize<Product>(
-            await createResponse.Content.ReadAsStringAsync(),
+            await createResponse.Content.ReadAsStringAsync(TestCancellation),
             new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
 
         // Act
-        var response = await _client.DeleteAsync($"/v1/products/{created.Id}");
+        var response = await _client.DeleteAsync($"/v1/products/{created.Id}", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // Assert
@@ -227,7 +231,7 @@ public class ProductFunctionsTests : IAsyncLifetime
     public async Task DeleteProduct_ReturnsNotFound_WhenDoesNotExist()
     {
         // Act
-        var response = await _client!.DeleteAsync("/v1/products/nonexistent-id");
+        var response = await _client!.DeleteAsync("/v1/products/nonexistent-id", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
 
         // Assert
@@ -238,9 +242,9 @@ public class ProductFunctionsTests : IAsyncLifetime
     public async Task HealthWithHttpRequest_ReturnsOk_WhenUsingAspNetCoreHttpRequest()
     {
         // Act — this function uses HttpRequest (ASP.NET Core native) not HttpRequestData
-        var response = await _client!.GetAsync("/v1/health-http-request");
+        var response = await _client!.GetAsync("/v1/health-http-request", TestCancellation);
         _output.WriteLine($"Status: {response.StatusCode}");
-        var body = await response.Content.ReadAsStringAsync();
+        var body = await response.Content.ReadAsStringAsync(TestCancellation);
         _output.WriteLine(body);
 
         // Assert — verifies HttpRequest binding works through ConfigureFunctionsWebApplication

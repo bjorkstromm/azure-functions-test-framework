@@ -3,51 +3,55 @@ using AzureFunctions.TestFramework.Blob;
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.EventGrid;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using Sample.FunctionApp.Worker;
+using TUnit.Core;
 
-namespace Sample.FunctionApp.Worker.Tests;
+namespace Sample.FunctionApp.Worker.TUnit.Tests;
 
 /// <summary>
 /// Integration tests for blob-triggered and Event Grid–triggered functions.
 /// </summary>
-public class BlobAndEventGridTriggerTests : IAsyncLifetime
+public class BlobAndEventGridTriggerTests
 {
-    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
-
-    private readonly ITestOutputHelper _output;
     private IFunctionsTestHost? _testHost;
     private InMemoryProcessedItemsService? _processedItems;
 
-    public BlobAndEventGridTriggerTests(ITestOutputHelper output)
+    /// <summary>
+    /// Starts a host with supporting services before each test.
+    /// </summary>
+    [Before(Test)]
+    public async Task SetUp()
     {
-        _output = output;
-    }
-
-    public async ValueTask InitializeAsync()
-    {
+        // Arrange
         _processedItems = new InMemoryProcessedItemsService();
 
         var builder = new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
-            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
+            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new TUnitLoggerProvider())))
             .ConfigureServices(services =>
             {
                 services.AddSingleton<ITodoService, InMemoryTodoService>();
                 services.AddSingleton<IProcessedItemsService>(_processedItems);
             });
 
-        _testHost = await builder.BuildAndStartAsync(TestCancellation);
+        _testHost = await builder.BuildAndStartAsync();
     }
 
-    public async ValueTask DisposeAsync()
+    /// <summary>
+    /// Stops the host after each test.
+    /// </summary>
+    [After(Test)]
+    public async Task TearDown()
     {
         if (_testHost != null)
         {
-            await _testHost.StopAsync(TestCancellation);
+            await _testHost.StopAsync();
             _testHost.Dispose();
         }
     }
 
-    [Fact]
+    [Test]
     public async Task InvokeBlobAsync_WithTextContent_Succeeds()
     {
         // Arrange
@@ -55,18 +59,18 @@ public class BlobAndEventGridTriggerTests : IAsyncLifetime
         var blobName = "file.txt";
 
         // Act
-        var result = await _testHost!.InvokeBlobAsync("ProcessBlob", content, blobName, cancellationToken: TestCancellation);
+        var result = await _testHost!.InvokeBlobAsync("ProcessBlob", content, blobName);
 
         // Assert
-        _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
-        Assert.True(result.Success, $"Blob invocation failed: {result.Error}");
+        TestContext.Current?.Output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
+        await Assert.That(result.Success).IsTrue();
 
         var processed = _processedItems!.TakeAll();
-        Assert.Single(processed);
-        Assert.Contains("Hello from blob!", processed[0]);
+        await Assert.That(processed.Count).IsEqualTo(1);
+        await Assert.That(processed[0].Contains("Hello from blob!")).IsTrue();
     }
 
-    [Fact]
+    [Test]
     public async Task InvokeEventGridAsync_WithEventGridEvent_Succeeds()
     {
         // Arrange
@@ -78,14 +82,14 @@ public class BlobAndEventGridTriggerTests : IAsyncLifetime
             data: BinaryData.FromObjectAsJson(new { message = "Hello from Event Grid!" }));
 
         // Act
-        var result = await _testHost!.InvokeEventGridAsync("ProcessEventGridEvent", eventGridEvent, TestCancellation);
+        var result = await _testHost!.InvokeEventGridAsync("ProcessEventGridEvent", eventGridEvent);
 
         // Assert
-        _output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
-        Assert.True(result.Success, $"Event Grid invocation failed: {result.Error}");
+        TestContext.Current?.Output.WriteLine($"Success: {result.Success}, Error: {result.Error}");
+        await Assert.That(result.Success).IsTrue();
 
         var processed = _processedItems!.TakeAll();
-        Assert.Single(processed);
-        Assert.Equal(subject, processed[0]);
+        await Assert.That(processed.Count).IsEqualTo(1);
+        await Assert.That(processed[0]).IsEqualTo(subject);
     }
 }

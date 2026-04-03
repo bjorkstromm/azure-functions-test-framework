@@ -2,16 +2,13 @@ using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Durable;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System.Net;
-using VerifyXunit;
-using Xunit;
-using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.Durable.Tests;
 
 public sealed class DurableFunctionsSpikeTests
 {
+    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
+
     private readonly ITestOutputHelper _output;
 
     public DurableFunctionsSpikeTests(ITestOutputHelper output)
@@ -65,8 +62,8 @@ public sealed class DurableFunctionsSpikeTests
         using var client = testHost.CreateHttpClient();
 
         // Act
-        using var response = await client.GetAsync("/api/durable/hello/martin");
-        var content = await response.Content.ReadAsStringAsync();
+        using var response = await client.GetAsync("/api/durable/hello/martin", TestCancellation);
+        var content = await response.Content.ReadAsStringAsync(TestCancellation);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -81,8 +78,8 @@ public sealed class DurableFunctionsSpikeTests
         using var client = testHost.CreateHttpClient();
 
         // Act
-        using var response = await client.GetAsync("/api/durable/hello/sub/martin");
-        var content = await response.Content.ReadAsStringAsync();
+        using var response = await client.GetAsync("/api/durable/hello/sub/martin", TestCancellation);
+        var content = await response.Content.ReadAsStringAsync(TestCancellation);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -99,13 +96,15 @@ public sealed class DurableFunctionsSpikeTests
         var durableClient = durableClientProvider.GetClient();
 
         // Act
+#pragma warning disable xUnit1051 // ScheduleNewOrchestrationInstanceAsync has no CancellationToken overload on DurableTaskClient.
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(DurableGreetingFunctions.RunGreetingOrchestration),
             "martin");
+#pragma warning restore xUnit1051
 
-        var metadata = await durableClient.WaitForInstanceCompletionAsync(
-            instanceId,
-            getInputsAndOutputs: true);
+#pragma warning disable xUnit1051 // DurableTaskClient.WaitForInstanceCompletionAsync has no CancellationToken overload in this package version.
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
 
         // Assert
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
@@ -122,13 +121,15 @@ public sealed class DurableFunctionsSpikeTests
         var durableClient = durableClientProvider.GetClient();
 
         // Act
+#pragma warning disable xUnit1051 // ScheduleNewOrchestrationInstanceAsync has no CancellationToken overload on DurableTaskClient.
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(DurableGreetingFunctions.RunGreetingParentOrchestration),
             "martin");
+#pragma warning restore xUnit1051
 
-        var metadata = await durableClient.WaitForInstanceCompletionAsync(
-            instanceId,
-            getInputsAndOutputs: true);
+#pragma warning disable xUnit1051 // DurableTaskClient.WaitForInstanceCompletionAsync has no CancellationToken overload in this package version.
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
 
         // Assert
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
@@ -145,13 +146,15 @@ public sealed class DurableFunctionsSpikeTests
         var durableClient = durableClientProvider.GetClient();
 
         // Act
+#pragma warning disable xUnit1051 // ScheduleNewOrchestrationInstanceAsync has no CancellationToken overload on DurableTaskClient.
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(DurableGreetingFunctions.RunGreetingStatusOrchestration),
             "martin");
+#pragma warning restore xUnit1051
 
-        var metadata = await durableClient.WaitForInstanceCompletionAsync(
-            instanceId,
-            getInputsAndOutputs: true);
+#pragma warning disable xUnit1051 // DurableTaskClient.WaitForInstanceCompletionAsync has no CancellationToken overload in this package version.
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
 
         var customStatus = metadata.ReadCustomStatusAs<GreetingProgressStatus>();
 
@@ -170,15 +173,18 @@ public sealed class DurableFunctionsSpikeTests
         using var client = testHost.CreateHttpClient();
 
         // Act
-        using var response = await client.GetAsync("/api/durable/manage/martin");
-        var payload = await response.ReadDurableHttpManagementPayloadAsync();
+        using var response = await client.GetAsync("/api/durable/manage/martin", TestCancellation);
+        var payload = await response.ReadDurableHttpManagementPayloadAsync(TestCancellation);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.NotNull(payload);
         Assert.False(string.IsNullOrWhiteSpace(payload!.StatusQueryGetUri));
 
-        var status = await client.WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5));
+        var status = await client.WaitForCompletionAsync(
+            payload,
+            TimeSpan.FromSeconds(5),
+            cancellationToken: TestCancellation);
         var customStatus = status.ReadCustomStatusAs<GreetingProgressStatus>();
 
         Assert.Equal("Completed", status.RuntimeStatus);
@@ -196,11 +202,15 @@ public sealed class DurableFunctionsSpikeTests
         var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
         var durableClient = durableClientProvider.GetClient();
 
+#pragma warning disable xUnit1051 // ScheduleNewOrchestrationInstanceAsync has no CancellationToken overload on DurableTaskClient.
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(DurableGreetingFunctions.RunGreetingAwaitEventOrchestration),
             "martin");
+#pragma warning restore xUnit1051
 
+#pragma warning disable xUnit1051 // DurableTaskClient.WaitForInstanceStartAsync has no CancellationToken overload in this package version.
         await durableClient.WaitForInstanceStartAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
 
         var waitingStatus = await WaitForCustomStatusAsync(
             durableClient,
@@ -211,14 +221,16 @@ public sealed class DurableFunctionsSpikeTests
         await Verify(waitingStatus).UseMethodName(nameof(DurableClientProvider_CompletesFakeOrchestration_AfterExternalEvent) + "_waiting");
 
         // Act
+#pragma warning disable xUnit1051 // DurableTaskClient.RaiseEventAsync has no CancellationToken overload in this package version.
         await durableClient.RaiseEventAsync(
             instanceId,
             "greeting-suffix",
             new GreetingSuffixEvent("from event"));
+#pragma warning restore xUnit1051
 
-        var metadata = await durableClient.WaitForInstanceCompletionAsync(
-            instanceId,
-            getInputsAndOutputs: true);
+#pragma warning disable xUnit1051 // DurableTaskClient.WaitForInstanceCompletionAsync has no CancellationToken overload in this package version.
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
 
         var completedStatus = metadata.ReadCustomStatusAs<GreetingProgressStatus>();
 
@@ -238,21 +250,27 @@ public sealed class DurableFunctionsSpikeTests
         var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
         var durableClient = durableClientProvider.GetClient();
 
+#pragma warning disable xUnit1051 // ScheduleNewOrchestrationInstanceAsync has no CancellationToken overload on DurableTaskClient.
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(DurableGreetingFunctions.RunGreetingAwaitEventOrchestration),
             "martin");
+#pragma warning restore xUnit1051
 
+#pragma warning disable xUnit1051 // DurableTaskClient.WaitForInstanceStartAsync has no CancellationToken overload in this package version.
         await durableClient.WaitForInstanceStartAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
 
         // Act
+#pragma warning disable xUnit1051 // DurableTaskClient.RaiseEventAsync has no CancellationToken overload in this package version.
         await durableClient.RaiseEventAsync(
             instanceId,
             "greeting-suffix",
             new GreetingSuffixEvent("from buffered event"));
+#pragma warning restore xUnit1051
 
-        var metadata = await durableClient.WaitForInstanceCompletionAsync(
-            instanceId,
-            getInputsAndOutputs: true);
+#pragma warning disable xUnit1051 // DurableTaskClient.WaitForInstanceCompletionAsync has no CancellationToken overload in this package version.
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
 
         var completedStatus = metadata.ReadCustomStatusAs<GreetingProgressStatus>();
 
@@ -272,7 +290,8 @@ public sealed class DurableFunctionsSpikeTests
         // Act
         var result = await testHost.InvokeActivityAsync<string>(
             nameof(DurableGreetingFunctions.CreateGreeting),
-            "martin");
+            "martin",
+            TestCancellation);
 
         // Assert
         Assert.Equal("Hello, martin!", result);
@@ -287,7 +306,8 @@ public sealed class DurableFunctionsSpikeTests
         // Act
         var result = await testHost.InvokeActivityAsync<string>(
             nameof(InjectedGreetingActivityFunctions.CreateGreetingWithService),
-            "martin");
+            "martin",
+            TestCancellation);
 
         // Assert
         Assert.Equal("Hello, martin! (from service)", result);
@@ -300,7 +320,7 @@ public sealed class DurableFunctionsSpikeTests
             .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
             .ConfigureFakeDurableSupport(typeof(DurableGreetingFunctions).Assembly)
-            .BuildAndStartAsync();
+            .BuildAndStartAsync(TestCancellation);
     }
 
     private static async Task<GreetingProgressStatus?> WaitForCustomStatusAsync(
@@ -309,13 +329,16 @@ public sealed class DurableFunctionsSpikeTests
         Func<GreetingProgressStatus?, bool> predicate)
     {
         using var timeoutCts = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(
+            TestContext.Current.CancellationToken,
+            timeoutCts.Token);
 
         while (true)
         {
             var metadata = await durableClient.GetInstancesAsync(
                 instanceId,
                 getInputsAndOutputs: true,
-                timeoutCts.Token);
+                linked.Token);
 
             var status = metadata?.ReadCustomStatusAs<GreetingProgressStatus>();
             if (predicate(status))
@@ -323,7 +346,7 @@ public sealed class DurableFunctionsSpikeTests
                 return status;
             }
 
-            await Task.Delay(50, timeoutCts.Token);
+            await Task.Delay(50, linked.Token);
         }
     }
 }

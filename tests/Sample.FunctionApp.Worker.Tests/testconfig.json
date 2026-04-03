@@ -1,0 +1,6 @@
+{
+  "xUnit": {
+    "parallelizeAssembly": true,
+    "parallelizeTestCollections": true
+  }
+}

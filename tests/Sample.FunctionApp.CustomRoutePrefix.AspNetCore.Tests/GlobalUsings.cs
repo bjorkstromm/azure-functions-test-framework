@@ -4,4 +4,3 @@ global using System.Text.Json;
 global using AzureFunctions.TestFramework.Core;
 global using Sample.FunctionApp.CustomRoutePrefix.AspNetCore;
 global using Xunit;
-global using Xunit.Abstractions;

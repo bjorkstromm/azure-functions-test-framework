@@ -2,10 +2,6 @@ using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Durable;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using System.Net;
-using Xunit;
-using Xunit.Abstractions;
 
 namespace Sample.FunctionApp.Durable.Tests;
 
@@ -17,6 +13,8 @@ namespace Sample.FunctionApp.Durable.Tests;
 /// </summary>
 public sealed class DurableFunctionsAspNetCoreTests
 {
+    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
+
     private readonly ITestOutputHelper _output;
 
     public DurableFunctionsAspNetCoreTests(ITestOutputHelper output)
@@ -32,8 +30,8 @@ public sealed class DurableFunctionsAspNetCoreTests
         using var client = testHost.CreateHttpClient();
 
         // Act — uses the ASP.NET Core-native function (HttpRequest + IActionResult)
-        using var response = await client.GetAsync("/api/aspnetcore/durable/hello/martin");
-        var content = await response.Content.ReadAsStringAsync();
+        using var response = await client.GetAsync("/api/aspnetcore/durable/hello/martin", TestCancellation);
+        var content = await response.Content.ReadAsStringAsync(TestCancellation);
 
         // Assert
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
@@ -50,13 +48,15 @@ public sealed class DurableFunctionsAspNetCoreTests
         var durableClient = durableClientProvider.GetClient();
 
         // Act
+#pragma warning disable xUnit1051 // ScheduleNewOrchestrationInstanceAsync has no CancellationToken overload on DurableTaskClient.
         var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
             nameof(DurableGreetingFunctions.RunGreetingOrchestration),
             "martin");
+#pragma warning restore xUnit1051
 
-        var metadata = await durableClient.WaitForInstanceCompletionAsync(
-            instanceId,
-            getInputsAndOutputs: true);
+#pragma warning disable xUnit1051 // DurableTaskClient.WaitForInstanceCompletionAsync has no CancellationToken overload in this package version.
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
 
         // Assert
         Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
@@ -70,6 +70,6 @@ public sealed class DurableFunctionsAspNetCoreTests
             .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
             .WithHostBuilderFactory(Program.CreateHostBuilder)
             .ConfigureFakeDurableSupport(typeof(DurableGreetingFunctions).Assembly)
-            .BuildAndStartAsync();
+            .BuildAndStartAsync(TestCancellation);
     }
 }

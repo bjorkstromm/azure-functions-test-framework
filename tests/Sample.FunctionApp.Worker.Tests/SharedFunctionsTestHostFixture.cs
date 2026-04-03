@@ -1,7 +1,5 @@
 using AzureFunctions.TestFramework.Core;
 using Microsoft.Extensions.DependencyInjection;
-using Sample.FunctionApp.Worker;
-using Xunit;
 
 namespace Sample.FunctionApp.Worker.Tests;
 
@@ -11,16 +9,18 @@ namespace Sample.FunctionApp.Worker.Tests;
 /// </summary>
 public sealed class SharedFunctionsTestHostFixture : IAsyncLifetime
 {
+    private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
+
     public IFunctionsTestHost TestHost { get; private set; } = default!;
 
     public HttpClient Client { get; private set; } = default!;
 
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         TestHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
             .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
-            .BuildAndStartAsync();
+            .BuildAndStartAsync(TestCancellation);
 
         Client = TestHost.CreateHttpClient();
     }
@@ -33,7 +33,7 @@ public sealed class SharedFunctionsTestHostFixture : IAsyncLifetime
         return Task.CompletedTask;
     }
 
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         Client.Dispose();
         await TestHost.DisposeAsync();
