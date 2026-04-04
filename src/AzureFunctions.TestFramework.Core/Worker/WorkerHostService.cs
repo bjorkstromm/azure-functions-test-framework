@@ -35,6 +35,7 @@ public class WorkerHostService : IWorkerHost
     private bool _isInitialized;
     private int? _httpPort;
     private readonly int _allocatedHttpPort;
+    private string? _tempAppDirectory;
 
     /// <summary>
     /// The port on which the worker's ASP.NET Core HTTP server is listening, or <c>null</c>
@@ -200,6 +201,13 @@ public class WorkerHostService : IWorkerHost
             await _workerHost.StopAsync();
             _workerHost.Dispose();
         }
+
+        // Clean up temporary app directory created by ResolveFunctionAppDirectory.
+        if (_tempAppDirectory != null)
+        {
+            try { Directory.Delete(_tempAppDirectory, recursive: true); }
+            catch { /* best-effort cleanup */ }
+        }
     }
 
     /// <summary>
@@ -268,7 +276,7 @@ public class WorkerHostService : IWorkerHost
         
         _logger.LogInformation("Configuring worker to connect to {GrpcUri}", grpcUri);
         
-        var functionAppDirectory = Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory;
+        var functionAppDirectory = ResolveFunctionAppDirectory();
         var hostConfigurationValues = CreateConfigurationValues(
             grpcUri,
             workerId,
@@ -461,7 +469,7 @@ public class WorkerHostService : IWorkerHost
         var requestId = Guid.NewGuid().ToString();
         var httpUri = $"http://127.0.0.1:{_allocatedHttpPort}";
 
-        var functionAppDirectory = Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory;
+        var functionAppDirectory = ResolveFunctionAppDirectory();
 
         _logger.LogInformation("Configuring worker (HostApplicationBuilder) to connect to {GrpcUri}", grpcUri);
 
@@ -520,6 +528,12 @@ public class WorkerHostService : IWorkerHost
         InProcessMethodInfoLocator.TryRegister(appBuilder.Services, logger);
 
         appBuilder.Services.AddSingleton(grpcHostService);
+        appBuilder.Services.AddTransient<IStartupFilter, InvocationIdStartupFilter>();
+        appBuilder.Services.AddSingleton<IStartupFilter>(sp =>
+            new GrpcInvocationBridgeStartupFilter(
+                sp.GetRequiredService<GrpcHostService>(),
+                sp.GetRequiredService<ILogger<GrpcInvocationBridgeStartupFilter>>(),
+                routePrefix));
 
         if (!string.Equals(Environment.GetEnvironmentVariable("AFTF_SKIP_FALLBACK_CONVERTERS"), "1", StringComparison.Ordinal))
         {
@@ -609,6 +623,38 @@ public class WorkerHostService : IWorkerHost
             System.Net.Sockets.ProtocolType.Tcp);
         socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
         return ((IPEndPoint)socket.LocalEndPoint!).Port;
+    }
+
+    /// <summary>
+    /// Returns the directory to use as <c>FUNCTIONS_APPLICATION_DIRECTORY</c>.
+    /// When multiple function app assemblies share the same output directory, the generic
+    /// <c>host.json</c> may belong to a different assembly.  If an assembly-specific
+    /// <c>{AssemblyName}.host.json</c> exists, a temporary directory is created containing
+    /// a <c>host.json</c> copied from the named file and the rest of the content from the
+    /// original directory, ensuring the SDK reads the correct route prefix.
+    /// </summary>
+    private string ResolveFunctionAppDirectory()
+    {
+        var assemblyDir = Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory;
+        var assemblyName = _functionsAssembly.GetName().Name;
+        if (string.IsNullOrEmpty(assemblyName)) return assemblyDir;
+
+        var namedHostJson = Path.Combine(assemblyDir, $"{assemblyName}.host.json");
+        if (!File.Exists(namedHostJson)) return assemblyDir;
+
+        // The named host.json exists — create a temp directory so the SDK's
+        // GetRoutePrefixFromHostJson reads the correct file.
+        var tempDir = Path.Combine(Path.GetTempPath(), $"aftf-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempDir);
+        _tempAppDirectory = tempDir;
+
+        // Copy the named host.json as the generic host.json.
+        File.Copy(namedHostJson, Path.Combine(tempDir, "host.json"), overwrite: true);
+
+        _logger.LogDebug("Created temporary app directory {TempDir} with host.json from {NamedHostJson}",
+            tempDir, namedHostJson);
+
+        return tempDir;
     }
 
     /// <summary>
