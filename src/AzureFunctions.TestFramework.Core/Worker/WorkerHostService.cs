@@ -279,6 +279,69 @@ public class WorkerHostService : IWorkerHost
         return null;
     }
 
+    /// <summary>
+    /// Diagnostic helper — logs key service registrations to help debug pipeline issues.
+    /// </summary>
+    private static void DiagnosticDumpServices(IServiceCollection services, ILogger logger)
+    {
+        // Check for IHttpCoordinator
+        var httpCoordinatorCount = services.Count(d => d.ServiceType.FullName?.Contains("IHttpCoordinator") == true);
+        logger.LogWarning("DIAG: IHttpCoordinator registrations: {Count}", httpCoordinatorCount);
+
+        // Check for FunctionsHttpProxyingMiddleware
+        var proxyMiddlewareCount = services.Count(d => 
+            d.ServiceType.FullName?.Contains("FunctionsHttpProxyingMiddleware") == true ||
+            d.ImplementationType?.FullName?.Contains("FunctionsHttpProxyingMiddleware") == true);
+        logger.LogWarning("DIAG: FunctionsHttpProxyingMiddleware registrations: {Count}", proxyMiddlewareCount);
+
+        // Check for FunctionExecutionDelegate
+        var delegateCount = services.Count(d => d.ServiceType.FullName?.Contains("FunctionExecutionDelegate") == true);
+        logger.LogWarning("DIAG: FunctionExecutionDelegate registrations: {Count}", delegateCount);
+
+        // Check for IFunctionsWorkerApplicationBuilder
+        var workerAppBuilderCount = services.Count(d => d.ServiceType.FullName?.Contains("IFunctionsWorkerApplicationBuilder") == true);
+        logger.LogWarning("DIAG: IFunctionsWorkerApplicationBuilder registrations: {Count}", workerAppBuilderCount);
+
+        // Check for FunctionsEndpointDataSource
+        var endpointDataSourceCount = services.Count(d => 
+            d.ServiceType.FullName?.Contains("FunctionsEndpointDataSource") == true ||
+            d.ImplementationType?.FullName?.Contains("FunctionsEndpointDataSource") == true);
+        logger.LogWarning("DIAG: FunctionsEndpointDataSource registrations: {Count}", endpointDataSourceCount);
+
+        // Check for ExtensionTrace
+        var extensionTraceCount = services.Count(d => d.ServiceType.FullName?.Contains("ExtensionTrace") == true);
+        logger.LogWarning("DIAG: ExtensionTrace registrations: {Count}", extensionTraceCount);
+
+        // Check for IServer
+        var serverCount = services.Count(d => d.ServiceType.FullName == "Microsoft.AspNetCore.Hosting.Server.IServer");
+        logger.LogWarning("DIAG: IServer registrations: {Count}", serverCount);
+
+        // Check for GenericWebHostService
+        var webHostServiceCount = services.Count(d => 
+            d.ImplementationType?.FullName?.Contains("GenericWebHostService") == true);
+        logger.LogWarning("DIAG: GenericWebHostService registrations: {Count}", webHostServiceCount);
+
+        // Check for IStartupFilter
+        var startupFilterCount = services.Count(d => d.ServiceType.FullName?.Contains("IStartupFilter") == true);
+        logger.LogWarning("DIAG: IStartupFilter registrations: {Count}", startupFilterCount);
+        foreach (var sf in services.Where(d => d.ServiceType.FullName?.Contains("IStartupFilter") == true))
+        {
+            var implName = sf.ImplementationType?.FullName ?? sf.ImplementationFactory?.Method?.ToString() ?? sf.ImplementationInstance?.GetType().FullName ?? "unknown";
+            logger.LogWarning("DIAG:   IStartupFilter: {ImplName} (Lifetime={Lifetime})", implName, sf.Lifetime);
+        }
+
+        // Check for HttpContextConverter
+        var httpContextConverterCount = services.Count(d => 
+            d.ServiceType.FullName?.Contains("HttpContextConverter") == true ||
+            d.ImplementationType?.FullName?.Contains("HttpContextConverter") == true);
+        logger.LogWarning("DIAG: HttpContextConverter registrations: {Count}", httpContextConverterCount);
+
+        // Dump WorkerOptions configure registrations
+        var workerOptionsCount = services.Count(d => 
+            d.ServiceType.FullName?.Contains("WorkerOptions") == true);
+        logger.LogWarning("DIAG: WorkerOptions-related registrations: {Count}", workerOptionsCount);
+    }
+
     private IHost CreateWorkerHost()
     {
         if (_hostApplicationBuilderFactory != null)
@@ -555,12 +618,40 @@ public class WorkerHostService : IWorkerHost
 
         if (!string.Equals(Environment.GetEnvironmentVariable("AFTF_SKIP_FALLBACK_CONVERTERS"), "1", StringComparison.Ordinal))
         {
+            var diagLoggerForPostConfigure = _logger;
             appBuilder.Services.PostConfigure<WorkerOptions>(options =>
             {
-                options.InputConverters.Register<TestHttpRequestConverter>();
+                // Log and replace HttpContextConverter with a diagnostic wrapper
+                var converterTypes = options.InputConverters.ToList();
+                diagLoggerForPostConfigure.LogWarning("DIAG PostConfigure: InputConverters count={Count}", converterTypes.Count);
+                
+                // Register our TestHttpRequestConverter at position 0 to ensure it runs first
+                options.InputConverters.RegisterAt<TestHttpRequestConverter>(0);
                 options.InputConverters.Register<TestFunctionContextConverter>();
             });
         }
+
+        // DIAGNOSTIC: Add inline middleware to check if FunctionsHttpProxyingMiddleware has run
+        var diagLogger = logger;
+        appBuilder.Use(next => async context =>
+        {
+            var hasHttpCtx = context.Items.TryGetValue("HttpRequestContext", out var httpCtxObj);
+            diagLogger.LogWarning(
+                "DIAG MIDDLEWARE: func={Func}, hasHttpCtx={HasHttpCtx}, httpCtxType={HType}",
+                context.FunctionDefinition?.Name ?? "??",
+                hasHttpCtx,
+                httpCtxObj?.GetType().FullName ?? "null");
+
+            // Check all loaded assemblies for Http.AspNetCore
+            var httpAspNetCoreAssemblies = AppDomain.CurrentDomain.GetAssemblies()
+                .Where(a => a.GetName().Name?.Contains("Http.AspNetCore") == true)
+                .Select(a => $"{a.GetName().Name} v{a.GetName().Version} @ {a.Location}")
+                .ToList();
+            diagLogger.LogWarning("DIAG: Http.AspNetCore assemblies loaded: [{Assemblies}]",
+                string.Join(" | ", httpAspNetCoreAssemblies));
+            
+            await next(context);
+        });
 
         // Invoke IAutoConfigureStartup implementations using a shim that delegates
         // ConfigureServices calls to the application builder's service collection.
@@ -589,6 +680,9 @@ public class WorkerHostService : IWorkerHost
         appBuilder.Logging.AddFilter("Microsoft.Azure.Functions.Worker", LogLevel.Warning);
         appBuilder.Logging.AddFilter("Azure.Core", LogLevel.Warning);
         appBuilder.Logging.AddFilter("AzureFunctions.TestFramework", LogLevel.Information);
+
+        // DIAGNOSTIC: Check what's registered in the service collection
+        DiagnosticDumpServices(appBuilder.Services, logger);
 
         return appBuilder.Build();
     }

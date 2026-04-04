@@ -31,21 +31,31 @@ internal sealed class TestHttpRequestConverter : IInputConverter
 
     public ValueTask<ConversionResult> ConvertAsync(ConverterContext context)
     {
+        // DIAGNOSTIC: Log to stderr so we can see if this converter is reached
+        System.Console.Error.WriteLine($"[TestHttpRequestConverter] ConvertAsync called: TargetType={context.TargetType.FullName}, Source={context.Source?.GetType().FullName ?? "null"}");
+
         if (context.TargetType.FullName != HttpRequestFullName)
         {
             return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
         }
 
+        System.Console.Error.WriteLine($"[TestHttpRequestConverter] TargetType matches HttpRequest");
+
         if (!context.FunctionContext.Items.TryGetValue(HttpContextItemsKey, out var httpContextObj)
             || httpContextObj is null)
         {
+            System.Console.Error.WriteLine($"[TestHttpRequestConverter] HttpRequestContext NOT found in Items. Keys: {string.Join(", ", context.FunctionContext.Items.Keys)}");
             return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
         }
+
+        System.Console.Error.WriteLine($"[TestHttpRequestConverter] HttpRequestContext found: {httpContextObj.GetType().FullName}");
 
         // Use reflection to get the Request property, bypassing any 'is HttpContext'
         // type-identity check that could fail when assemblies are loaded in-process.
         var requestProp = httpContextObj.GetType().GetProperty("Request");
         var request = requestProp?.GetValue(httpContextObj);
+
+        System.Console.Error.WriteLine($"[TestHttpRequestConverter] Request: {request?.GetType().FullName ?? "null"}");
 
         if (request is not null)
         {
