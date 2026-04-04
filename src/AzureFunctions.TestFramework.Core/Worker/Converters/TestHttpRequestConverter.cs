@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.Azure.Functions.Worker.Converters;
 
 namespace AzureFunctions.TestFramework.Core.Worker.Converters;
@@ -34,12 +35,14 @@ internal sealed class TestHttpRequestConverter : IInputConverter
         // DIAGNOSTIC: Log to stderr so we can see if this converter is reached
         System.Console.Error.WriteLine($"[TestHttpRequestConverter] ConvertAsync called: TargetType={context.TargetType.FullName}, Source={context.Source?.GetType().FullName ?? "null"}");
 
-        if (context.TargetType.FullName != HttpRequestFullName)
+        // Check if TargetType matches HttpRequest (either for HttpRequest or HttpRequestData targets)
+        bool isHttpRequestTarget = context.TargetType.FullName == HttpRequestFullName;
+        bool isHttpRequestDataTarget = context.TargetType.FullName == "Microsoft.Azure.Functions.Worker.Http.HttpRequestData";
+
+        if (!isHttpRequestTarget && !isHttpRequestDataTarget)
         {
             return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
         }
-
-        System.Console.Error.WriteLine($"[TestHttpRequestConverter] TargetType matches HttpRequest");
 
         if (!context.FunctionContext.Items.TryGetValue(HttpContextItemsKey, out var httpContextObj)
             || httpContextObj is null)
@@ -48,18 +51,37 @@ internal sealed class TestHttpRequestConverter : IInputConverter
             return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
         }
 
-        System.Console.Error.WriteLine($"[TestHttpRequestConverter] HttpRequestContext found: {httpContextObj.GetType().FullName}");
+        // DIAGNOSTIC: Test if the SDK's `is HttpContext` check would succeed
+        bool sdkIsCheckWorks = httpContextObj is HttpContext;
+        var httpContextObjType = httpContextObj.GetType();
+        var expectedType = typeof(HttpContext);
+        System.Console.Error.WriteLine(
+            $"[TestHttpRequestConverter] DIAG: httpContextObj type={httpContextObjType.FullName} " +
+            $"asm={httpContextObjType.Assembly.GetName().Name} v={httpContextObjType.Assembly.GetName().Version} " +
+            $"loc={httpContextObjType.Assembly.Location}");
+        System.Console.Error.WriteLine(
+            $"[TestHttpRequestConverter] DIAG: expected HttpContext type={expectedType.FullName} " +
+            $"asm={expectedType.Assembly.GetName().Name} v={expectedType.Assembly.GetName().Version} " +
+            $"loc={expectedType.Assembly.Location}");
+        System.Console.Error.WriteLine(
+            $"[TestHttpRequestConverter] DIAG: is HttpContext check={sdkIsCheckWorks}, " +
+            $"same assembly={ReferenceEquals(httpContextObjType.Assembly, expectedType.Assembly)}");
 
-        // Use reflection to get the Request property, bypassing any 'is HttpContext'
-        // type-identity check that could fail when assemblies are loaded in-process.
-        var requestProp = httpContextObj.GetType().GetProperty("Request");
-        var request = requestProp?.GetValue(httpContextObj);
-
-        System.Console.Error.WriteLine($"[TestHttpRequestConverter] Request: {request?.GetType().FullName ?? "null"}");
-
-        if (request is not null)
+        if (isHttpRequestTarget)
         {
-            return new ValueTask<ConversionResult>(ConversionResult.Success(request));
+            System.Console.Error.WriteLine($"[TestHttpRequestConverter] TargetType matches HttpRequest");
+
+            // Use reflection to get the Request property, bypassing any 'is HttpContext'
+            // type-identity check that could fail when assemblies are loaded in-process.
+            var requestProp = httpContextObjType.GetProperty("Request");
+            var request = requestProp?.GetValue(httpContextObj);
+
+            System.Console.Error.WriteLine($"[TestHttpRequestConverter] Request: {request?.GetType().FullName ?? "null"}");
+
+            if (request is not null)
+            {
+                return new ValueTask<ConversionResult>(ConversionResult.Success(request));
+            }
         }
 
         return new ValueTask<ConversionResult>(ConversionResult.Unhandled());

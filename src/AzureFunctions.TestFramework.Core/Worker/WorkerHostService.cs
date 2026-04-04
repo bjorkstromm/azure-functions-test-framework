@@ -636,19 +636,16 @@ public class WorkerHostService : IWorkerHost
         appBuilder.Use(next => async context =>
         {
             var hasHttpCtx = context.Items.TryGetValue("HttpRequestContext", out var httpCtxObj);
+            
+            // Log function parameter types from FunctionDefinition
+            var paramInfo = string.Join(", ", context.FunctionDefinition?.Parameters.Select(
+                p => $"{p.Name}:{p.Type.FullName}") ?? Enumerable.Empty<string>());
             diagLogger.LogWarning(
-                "DIAG MIDDLEWARE: func={Func}, hasHttpCtx={HasHttpCtx}, httpCtxType={HType}",
+                "DIAG MIDDLEWARE: func={Func}, hasHttpCtx={HasHttpCtx}, httpCtxType={HType}, params=[{Params}]",
                 context.FunctionDefinition?.Name ?? "??",
                 hasHttpCtx,
-                httpCtxObj?.GetType().FullName ?? "null");
-
-            // Check all loaded assemblies for Http.AspNetCore
-            var httpAspNetCoreAssemblies = AppDomain.CurrentDomain.GetAssemblies()
-                .Where(a => a.GetName().Name?.Contains("Http.AspNetCore") == true)
-                .Select(a => $"{a.GetName().Name} v{a.GetName().Version} @ {a.Location}")
-                .ToList();
-            diagLogger.LogWarning("DIAG: Http.AspNetCore assemblies loaded: [{Assemblies}]",
-                string.Join(" | ", httpAspNetCoreAssemblies));
+                httpCtxObj?.GetType().FullName ?? "null",
+                paramInfo);
             
             await next(context);
         });
