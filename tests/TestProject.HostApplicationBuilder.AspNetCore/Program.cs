@@ -11,8 +11,11 @@ public partial class Program
     public static FunctionsApplicationBuilder CreateWebApplicationBuilder(string[] args)
     {
         var builder = FunctionsApplication.CreateBuilder(args);
-        builder.UseMiddleware<CorrelationMiddleware>();
+        // ConfigureFunctionsWebApplication must be called BEFORE UseMiddleware so that
+        // FunctionsHttpProxyingMiddleware runs first and sets Items["HttpRequestContext"]
+        // before any user middleware that may call GetHttpRequestDataAsync().
         builder.ConfigureFunctionsWebApplication();
+        builder.UseMiddleware<CorrelationMiddleware>();
         ConfigureServices(builder.Services);
         return builder;
     }

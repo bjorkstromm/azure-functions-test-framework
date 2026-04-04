@@ -641,11 +641,13 @@ public class WorkerHostService : IWorkerHost
             var paramInfo = string.Join(", ", context.FunctionDefinition?.Parameters.Select(
                 p => $"{p.Name}:{p.Type.FullName}") ?? Enumerable.Empty<string>());
             diagLogger.LogWarning(
-                "DIAG MIDDLEWARE: func={Func}, hasHttpCtx={HasHttpCtx}, httpCtxType={HType}, params=[{Params}]",
+                "DIAG MIDDLEWARE: invId={InvId}, func={Func}, hasHttpCtx={HasHttpCtx}, itemCount={ItemCount}, ctxHash={CtxHash}, itemsHash={ItemsHash}",
+                context.InvocationId,
                 context.FunctionDefinition?.Name ?? "??",
                 hasHttpCtx,
-                httpCtxObj?.GetType().FullName ?? "null",
-                paramInfo);
+                context.Items.Count,
+                System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(context),
+                System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(context.Items));
             
             await next(context);
         });
