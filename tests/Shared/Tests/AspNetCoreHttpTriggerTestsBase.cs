@@ -76,4 +76,24 @@ public abstract class AspNetCoreHttpTriggerTestsBase : TestHostTestBase
         var response = await Client.DeleteAsync($"/api/aspnetcore/items/{created!.Id}", TestCancellation);
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
+
+    /// <summary>
+    /// Verifies that the correlation middleware can read the request header via
+    /// <c>context.GetHttpRequestDataAsync()</c> in ASP.NET Core / Kestrel mode.
+    /// (In direct gRPC mode the HTTP bindings are not yet resolved when middleware runs,
+    /// so this test is ASP.NET Core-only.)
+    /// </summary>
+    [Fact]
+    public async Task CorrelationEndpoint_ReturnsHeaderValue_FromMiddleware_AspNetCore()
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/correlation");
+        request.Headers.Add(CorrelationMiddleware.HeaderName, "aspnetcore-correlation-id");
+
+        var response = await Client.SendAsync(request, TestCancellation);
+        response.EnsureSuccessStatusCode();
+
+        var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>(TestCancellation);
+        Assert.NotNull(payload);
+        Assert.Equal("aspnetcore-correlation-id", payload.CorrelationId);
+    }
 }

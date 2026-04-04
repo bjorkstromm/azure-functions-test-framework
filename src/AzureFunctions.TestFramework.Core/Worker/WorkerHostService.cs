@@ -520,12 +520,6 @@ public class WorkerHostService : IWorkerHost
         InProcessMethodInfoLocator.TryRegister(appBuilder.Services, logger);
 
         appBuilder.Services.AddSingleton(grpcHostService);
-        appBuilder.Services.AddTransient<IStartupFilter, InvocationIdStartupFilter>();
-        appBuilder.Services.AddSingleton<IStartupFilter>(sp =>
-            new GrpcInvocationBridgeStartupFilter(
-                sp.GetRequiredService<GrpcHostService>(),
-                sp.GetRequiredService<ILogger<GrpcInvocationBridgeStartupFilter>>(),
-                routePrefix));
 
         if (!string.Equals(Environment.GetEnvironmentVariable("AFTF_SKIP_FALLBACK_CONVERTERS"), "1", StringComparison.Ordinal))
         {

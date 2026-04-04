@@ -187,7 +187,7 @@ public class HttpTriggerFunction
             return new BadRequestObjectResult("Name is required");
 
         var item = _itemService.Create(body.Name);
-        return new CreatedAtRouteResult("GetItemAspNetCore", new { id = item.Id }, item);
+        return new CreatedResult($"/api/aspnetcore/items/{item.Id}", item);
     }
 
     [Function("UpdateItemAspNetCore")]

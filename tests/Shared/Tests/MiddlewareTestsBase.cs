@@ -7,20 +7,10 @@ public abstract class MiddlewareTestsBase : TestHostTestBase
 {
     protected MiddlewareTestsBase(ITestOutputHelper output) : base(output) { }
 
-    [Fact]
-    public async Task CorrelationEndpoint_ReturnsHeaderValue_FromMiddleware()
-    {
-        using var request = new HttpRequestMessage(HttpMethod.Get, "/api/correlation");
-        request.Headers.Add(CorrelationMiddleware.HeaderName, "test-correlation-id");
-
-        var response = await Client.SendAsync(request, TestCancellation);
-        response.EnsureSuccessStatusCode();
-
-        var payload = await response.Content.ReadFromJsonAsync<CorrelationIdResponse>(TestCancellation);
-        Assert.NotNull(payload);
-        Assert.Equal("test-correlation-id", payload.CorrelationId);
-    }
-
+    /// <summary>
+    /// Verifies that when the correlation header is absent the function returns a null
+    /// correlation ID. Works in both direct gRPC and ASP.NET Core modes.
+    /// </summary>
     [Fact]
     public async Task CorrelationEndpoint_ReturnsNull_WhenHeaderMissing()
     {

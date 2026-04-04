@@ -193,26 +193,41 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
         var assemblyDir = Path.GetDirectoryName(functionsAssembly.Location);
         if (assemblyDir == null) return "api";
 
-        var hostJsonPath = Path.Combine(assemblyDir, "host.json");
-        if (!File.Exists(hostJsonPath)) return "api";
+        // When multiple function app assemblies share the same output directory (e.g. a test project
+        // that references both a main function app and a custom-route-prefix function app), the generic
+        // "host.json" may belong to either project.  Check for an assembly-specific override first:
+        // "{AssemblyName}.host.json" (e.g. "TestProject.CustomRoutePrefix.HostBuilder.host.json").
+        var assemblyName = functionsAssembly.GetName().Name;
+        if (!string.IsNullOrEmpty(assemblyName))
+        {
+            var namedPath = Path.Combine(assemblyDir, $"{assemblyName}.host.json");
+            var namedPrefix = TryReadRoutePrefixFromFile(namedPath);
+            if (namedPrefix != null) return namedPrefix;
+        }
 
+        var hostJsonPath = Path.Combine(assemblyDir, "host.json");
+        return TryReadRoutePrefixFromFile(hostJsonPath) ?? "api";
+    }
+
+    private static string? TryReadRoutePrefixFromFile(string path)
+    {
+        if (!File.Exists(path)) return null;
         try
         {
-            using var stream = File.OpenRead(hostJsonPath);
+            using var stream = File.OpenRead(path);
             using var doc = JsonDocument.Parse(stream);
             if (doc.RootElement.TryGetProperty("extensions", out var extensions) &&
                 extensions.TryGetProperty("http", out var http) &&
                 http.TryGetProperty("routePrefix", out var prefix))
             {
-                return prefix.GetString() ?? "api";
+                return prefix.GetString();
             }
         }
         catch
         {
-            // Ignore parse errors and fall back to the default.
+            // Ignore parse errors and fall back.
         }
-
-        return "api";
+        return null;
     }
 
     private static int FindAvailablePort()
