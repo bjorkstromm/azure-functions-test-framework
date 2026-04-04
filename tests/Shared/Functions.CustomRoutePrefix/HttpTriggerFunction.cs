@@ -97,7 +97,7 @@ public class HttpTriggerFunction
         if (input == null || string.IsNullOrWhiteSpace(input.Name))
             return new BadRequestObjectResult("Name is required");
         var item = _itemService.Create(input.Name);
-        return new CreatedAtRouteResult("GetItemAspNetCoreCrp", new { id = item.Id }, item);
+        return new CreatedResult($"/v1/aspnetcore/items/{item.Id}", item);
     }
 #endif
 }

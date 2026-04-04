@@ -21,6 +21,10 @@ namespace AzureFunctions.TestFramework.Core.Worker;
 /// </summary>
 public class WorkerHostService : IWorkerHost
 {
+    // Serializes environment variable changes and host creation across parallel test instances
+    // to avoid race conditions where concurrent hosts overwrite each other's env vars.
+    private static readonly SemaphoreSlim s_envLock = new(1, 1);
+
     private readonly ILogger<WorkerHostService> _logger;
     private readonly int _grpcPort;
     private readonly Assembly _functionsAssembly;
@@ -114,11 +118,23 @@ public class WorkerHostService : IWorkerHost
 
         try
         {
-            // Create the worker host with Azure Functions infrastructure
-            _workerHost = CreateWorkerHost();
-
-            // Start the worker
-            await _workerHost.StartAsync(cancellationToken);
+            // Create the worker host with Azure Functions infrastructure.
+            // Environment variables (FUNCTIONS_APPLICATION_DIRECTORY, ASPNETCORE_URLS, etc.)
+            // are process-global. To avoid races when tests run in parallel, serialize the
+            // env-var-set → builder-create → host-build → host-start sequence so each host
+            // reads its own values.  The lock must cover StartAsync because the SDK's
+            // FunctionsEndpointDataSource reads FUNCTIONS_APPLICATION_DIRECTORY directly from
+            // the environment at endpoint build time (during Kestrel startup).
+            await s_envLock.WaitAsync(cancellationToken);
+            try
+            {
+                _workerHost = CreateWorkerHost();
+                await _workerHost.StartAsync(cancellationToken);
+            }
+            finally
+            {
+                s_envLock.Release();
+            }
 
             // Auto-detect ASP.NET Core integration mode: if an IServer is registered in the
             // worker's DI container, the factory used ConfigureFunctionsWebApplication().
@@ -630,8 +646,9 @@ public class WorkerHostService : IWorkerHost
     /// When multiple function app assemblies share the same output directory, the generic
     /// <c>host.json</c> may belong to a different assembly.  If an assembly-specific
     /// <c>{AssemblyName}.host.json</c> exists, a temporary directory is created containing
-    /// a <c>host.json</c> copied from the named file and the rest of the content from the
-    /// original directory, ensuring the SDK reads the correct route prefix.
+    /// a <c>host.json</c> copied from the named file plus symlinks to all other content from
+    /// the original directory, ensuring the SDK reads the correct route prefix while still
+    /// finding all required assemblies and metadata.
     /// </summary>
     private string ResolveFunctionAppDirectory()
     {
@@ -650,6 +667,27 @@ public class WorkerHostService : IWorkerHost
 
         // Copy the named host.json as the generic host.json.
         File.Copy(namedHostJson, Path.Combine(tempDir, "host.json"), overwrite: true);
+
+        // Symlink everything else from the original directory so the worker can find
+        // assemblies, metadata, extensions, etc.
+        foreach (var entry in Directory.EnumerateFileSystemEntries(assemblyDir))
+        {
+            var name = Path.GetFileName(entry);
+            if (string.Equals(name, "host.json", StringComparison.OrdinalIgnoreCase)) continue;
+            var target = Path.Combine(tempDir, name);
+            if (!File.Exists(target) && !Directory.Exists(target))
+            {
+                try
+                {
+                    File.CreateSymbolicLink(target, entry);
+                }
+                catch
+                {
+                    // Symlinks may not be supported; fall back to copying the host.json approach.
+                    // The worker should still find assemblies through AppDomain paths.
+                }
+            }
+        }
 
         _logger.LogDebug("Created temporary app directory {TempDir} with host.json from {NamedHostJson}",
             tempDir, namedHostJson);
