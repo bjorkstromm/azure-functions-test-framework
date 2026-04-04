@@ -156,11 +156,13 @@ public class WorkerHostService : IWorkerHost
                     .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>();
                 if (addressFeature?.Addresses is { Count: > 0 } addresses)
                 {
+                    _logger.LogWarning("DEBUG IServerAddressesFeature.Addresses: [{Addresses}], allocated port: {AllocatedPort}", string.Join(", ", addresses), _allocatedHttpPort);
                     var uri = new Uri(addresses.First());
                     _httpPort = uri.Port;
                 }
                 else
                 {
+                    _logger.LogWarning("DEBUG IServerAddressesFeature has no addresses; using allocated port {Port}", _allocatedHttpPort);
                     _httpPort = _allocatedHttpPort;
                 }
                 _logger.LogInformation(
