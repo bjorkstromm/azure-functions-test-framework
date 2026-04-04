@@ -11,7 +11,7 @@ public partial class Program
     public static FunctionsApplicationBuilder CreateApplicationBuilder(string[] args)
     {
         var builder = FunctionsApplication.CreateBuilder(args);
-        ((Microsoft.Azure.Functions.Worker.IFunctionsWorkerApplicationBuilder)builder).UseMiddleware<CorrelationMiddleware>();
+        builder.UseMiddleware<CorrelationMiddleware>();
         ConfigureServices(builder.Services);
         return builder;
     }

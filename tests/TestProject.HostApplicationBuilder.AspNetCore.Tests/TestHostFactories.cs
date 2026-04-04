@@ -1,6 +1,7 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace TestProject;
 
@@ -14,7 +15,7 @@ internal static class TestHostFactory
     public static FunctionsApplicationBuilder CreateWebApplicationBuilder(string[] args)
     {
         var builder = FunctionsApplication.CreateBuilder(args);
-        ((Microsoft.Azure.Functions.Worker.IFunctionsWorkerApplicationBuilder)builder).UseMiddleware<CorrelationMiddleware>();
+        builder.UseMiddleware<CorrelationMiddleware>();
         builder.ConfigureFunctionsWebApplication();
         builder.Services.AddSingleton<IItemService, InMemoryItemService>();
         builder.Services.AddSingleton<IProcessedItemsService, InMemoryProcessedItemsService>();
@@ -25,7 +26,7 @@ internal static class TestHostFactory
     public static FunctionsApplicationBuilder CreateApplicationBuilder(string[] args)
     {
         var builder = FunctionsApplication.CreateBuilder(args);
-        ((Microsoft.Azure.Functions.Worker.IFunctionsWorkerApplicationBuilder)builder).UseMiddleware<CorrelationMiddleware>();
+        builder.UseMiddleware<CorrelationMiddleware>();
         builder.Services.AddSingleton<IItemService, InMemoryItemService>();
         builder.Services.AddSingleton<IProcessedItemsService, InMemoryProcessedItemsService>();
         return builder;
