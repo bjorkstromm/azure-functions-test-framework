@@ -628,11 +628,34 @@ public class WorkerHostService : IWorkerHost
                 // Register our TestHttpRequestConverter at position 0 to ensure it runs first
                 options.InputConverters.RegisterAt<TestHttpRequestConverter>(0);
                 options.InputConverters.Register<TestFunctionContextConverter>();
+                var finalOrder = options.InputConverters.Select((t, i) => $"{i}:{t.Name}");
+                diagLoggerForPostConfigure.LogWarning("DIAG PostConfigure: Final converter order: {Order}", string.Join(", ", finalOrder));
             });
         }
 
         // DIAGNOSTIC: Add inline middleware to check if FunctionsHttpProxyingMiddleware has run
         var diagLogger = logger;
+
+        // Add a FIRST middleware at position 0 to see state before FunctionsHttpProxyingMiddleware
+        appBuilder.Use(next => async context =>
+        {
+            var hasHttpCtxBefore = context.Items.TryGetValue("HttpRequestContext", out _);
+            var hasFeatureBefore = context.Features.Get<Microsoft.Azure.Functions.Worker.Http.IHttpRequestDataFeature>() != null;
+            diagLogger.LogWarning(
+                "DIAG FIRST-MW: invId={InvId}, func={Func}, hasHttpCtx={HHC}, hasFeature={HF}",
+                context.InvocationId,
+                context.FunctionDefinition?.Name ?? "??",
+                hasHttpCtxBefore,
+                hasFeatureBefore);
+            await next(context);
+            var hasHttpCtxAfter = context.Items.TryGetValue("HttpRequestContext", out _);
+            diagLogger.LogWarning(
+                "DIAG FIRST-MW AFTER: invId={InvId}, func={Func}, hasHttpCtxAfter={HHC}",
+                context.InvocationId,
+                context.FunctionDefinition?.Name ?? "??",
+                hasHttpCtxAfter);
+        });
+
         appBuilder.Use(next => async context =>
         {
             var hasHttpCtx = context.Items.TryGetValue("HttpRequestContext", out var httpCtxObj);
