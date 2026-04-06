@@ -16,21 +16,8 @@ public partial class Program
         // before any user middleware that may call GetHttpRequestDataAsync().
         builder.ConfigureFunctionsWebApplication();
         builder.UseMiddleware<CorrelationMiddleware>();
-        ConfigureServices(builder.Services);
+        builder.Services.AddSingleton<IItemService, InMemoryItemService>();
+        builder.Services.AddSingleton<IProcessedItemsService, InMemoryProcessedItemsService>();
         return builder;
-    }
-
-    public static FunctionsApplicationBuilder CreateApplicationBuilder(string[] args)
-    {
-        var builder = FunctionsApplication.CreateBuilder(args);
-        builder.UseMiddleware<CorrelationMiddleware>();
-        ConfigureServices(builder.Services);
-        return builder;
-    }
-
-    private static void ConfigureServices(IServiceCollection services)
-    {
-        services.AddSingleton<IItemService, InMemoryItemService>();
-        services.AddSingleton<IProcessedItemsService, InMemoryProcessedItemsService>();
     }
 }

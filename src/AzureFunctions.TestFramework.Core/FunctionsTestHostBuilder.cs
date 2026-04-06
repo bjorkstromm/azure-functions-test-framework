@@ -193,23 +193,6 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
         var assemblyDir = Path.GetDirectoryName(functionsAssembly.Location);
         if (assemblyDir == null) return "api";
 
-        // When multiple function app assemblies share the same output directory (e.g. a test project
-        // that references both a main function app and a custom-route-prefix function app), the generic
-        // "host.json" may belong to either project.  Check for an assembly-specific override first:
-        // "{AssemblyName}.host.json" (e.g. "TestProject.CustomRoutePrefix.HostBuilder.host.json").
-        // If the named file exists, it is authoritative – even if it does not declare a routePrefix
-        // we return the default "api" and do NOT fall through to the generic host.json (which could
-        // belong to a different function app assembly).
-        var assemblyName = functionsAssembly.GetName().Name;
-        if (!string.IsNullOrEmpty(assemblyName))
-        {
-            var namedPath = Path.Combine(assemblyDir, $"{assemblyName}.host.json");
-            if (File.Exists(namedPath))
-            {
-                return TryReadRoutePrefixFromFile(namedPath) ?? "api";
-            }
-        }
-
         var hostJsonPath = Path.Combine(assemblyDir, "host.json");
         return TryReadRoutePrefixFromFile(hostJsonPath) ?? "api";
     }

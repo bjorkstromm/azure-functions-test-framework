@@ -44,5 +44,9 @@
     <Project Path="tests/TestProject.HostBuilder.AspNetCore.Tests/TestProject.HostBuilder.AspNetCore.Tests.csproj" />
     <Project Path="tests/TestProject.HostApplicationBuilder.Tests/TestProject.HostApplicationBuilder.Tests.csproj" />
     <Project Path="tests/TestProject.HostApplicationBuilder.AspNetCore.Tests/TestProject.HostApplicationBuilder.AspNetCore.Tests.csproj" />
+    <Project Path="tests/TestProject.CustomRoutePrefix.HostBuilder.Tests/TestProject.CustomRoutePrefix.HostBuilder.Tests.csproj" />
+    <Project Path="tests/TestProject.CustomRoutePrefix.HostBuilder.AspNetCore.Tests/TestProject.CustomRoutePrefix.HostBuilder.AspNetCore.Tests.csproj" />
+    <Project Path="tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.Tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.Tests.csproj" />
+    <Project Path="tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore.Tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore.Tests.csproj" />
   </Folder>
 </Solution>

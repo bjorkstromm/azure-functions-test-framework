@@ -2,6 +2,7 @@ using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Durable;
 using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Sample.FunctionApp.Durable.Tests;
 
@@ -162,7 +163,9 @@ public sealed class DurableEntityTests
         return new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(DurableGreetingFunctions).Assembly)
             .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
-            .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
+            .WithHostBuilderFactory(args => new HostBuilder()
+                .ConfigureFunctionsWorkerDefaults()
+                .ConfigureServices(s => s.AddSingleton<GreetingFormatter>()))
             .ConfigureFakeDurableSupport(typeof(DurableGreetingFunctions).Assembly)
             .BuildAndStartAsync(TestCancellation);
     }

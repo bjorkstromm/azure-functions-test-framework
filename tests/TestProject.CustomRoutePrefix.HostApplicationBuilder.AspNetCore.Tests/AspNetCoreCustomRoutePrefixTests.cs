@@ -1,14 +1,13 @@
-
 namespace TestProject;
 
-public class CustomRoutePrefixTests : CustomRoutePrefixTestsBase
+public class AspNetCoreCustomRoutePrefixTests : AspNetCoreCustomRoutePrefixTestsBase
 {
-    public CustomRoutePrefixTests(ITestOutputHelper output) : base(output) { }
+    public AspNetCoreCustomRoutePrefixTests(ITestOutputHelper output) : base(output) { }
 
     protected override Task<IFunctionsTestHost> CreateTestHostAsync() =>
         new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(CustomRoutePrefix.HttpTriggerFunction).Assembly)
             .WithLoggerFactory(CreateLoggerFactory())
-            .WithHostApplicationBuilderFactory(CrpTestHostFactory.CreateApplicationBuilder)
+            .WithHostApplicationBuilderFactory(TestHostFactory.CreateWebApplicationBuilder)
             .BuildAndStartAsync(TestCancellation);
 }

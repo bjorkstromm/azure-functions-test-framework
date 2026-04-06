@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <RootNamespace>TestProject</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\Shared\Tests\GlobalUsings.cs" Link="Shared\GlobalUsings.cs" />
+    <Compile Include="..\Shared\Tests\XUnitLoggerProvider.cs" Link="Shared\XUnitLoggerProvider.cs" />
+    <Compile Include="..\Shared\Tests\TestHostTestBase.cs" Link="Shared\TestHostTestBase.cs" />
+    <Compile Include="..\Shared\Tests\CustomRoutePrefixTestsBase.cs" Link="Shared\CustomRoutePrefixTestsBase.cs" />
+    <Compile Include="..\Shared\Tests\AspNetCoreCustomRoutePrefixTestsBase.cs" Link="Shared\AspNetCoreCustomRoutePrefixTestsBase.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\TestProject.CustomRoutePrefix.HostBuilder.AspNetCore\TestProject.CustomRoutePrefix.HostBuilder.AspNetCore.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+  </ItemGroup>
+</Project>

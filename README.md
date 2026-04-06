@@ -82,6 +82,12 @@ dotnet test tests/TestProject.HostBuilder.AspNetCore.Tests --no-build --configur
 dotnet test tests/TestProject.HostApplicationBuilder.Tests --no-build --configuration Release
 dotnet test tests/TestProject.HostApplicationBuilder.AspNetCore.Tests --no-build --configuration Release
 
+# Custom route prefix tests (4-flavour)
+dotnet test tests/TestProject.CustomRoutePrefix.HostBuilder.Tests --no-build --configuration Release
+dotnet test tests/TestProject.CustomRoutePrefix.HostBuilder.AspNetCore.Tests --no-build --configuration Release
+dotnet test tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.Tests --no-build --configuration Release
+dotnet test tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore.Tests --no-build --configuration Release
+
 # Sample tests (Worker SDK 2.x, Durable, Custom route prefix)
 dotnet test samples/Sample.FunctionApp.Worker.Tests --no-build --configuration Release
 dotnet test samples/Sample.FunctionApp.Durable.Tests --no-build --configuration Release
@@ -540,8 +546,17 @@ tests/
   TestProject.HostApplicationBuilder.Tests/             # xUnit — direct gRPC, FunctionsApplicationBuilder
   TestProject.HostApplicationBuilder.AspNetCore/        # Function app — FunctionsApplicationBuilder + ConfigureFunctionsWebApplication
   TestProject.HostApplicationBuilder.AspNetCore.Tests/  # xUnit — ASP.NET Core / Kestrel, FunctionsApplicationBuilder
+  # Custom route prefix 4-flavour matrix (one test project per function app)
+  TestProject.CustomRoutePrefix.HostBuilder/            # CRP function app — IHostBuilder, gRPC
+  TestProject.CustomRoutePrefix.HostBuilder.Tests/
+  TestProject.CustomRoutePrefix.HostBuilder.AspNetCore/ # CRP function app — IHostBuilder, ASP.NET Core
+  TestProject.CustomRoutePrefix.HostBuilder.AspNetCore.Tests/
+  TestProject.CustomRoutePrefix.HostApplicationBuilder/            # CRP function app — FunctionsApplicationBuilder, gRPC
+  TestProject.CustomRoutePrefix.HostApplicationBuilder.Tests/
+  TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore/ # CRP function app — FunctionsApplicationBuilder, ASP.NET Core
+  TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore.Tests/
   Shared/                                               # Shared test base classes + shared function implementations
-  TestProject.Shared/                                   # Shared project consumed by all four test projects
+  TestProject.Shared/                                   # Shared project consumed by all test projects
 ```
 
 ## Building
@@ -562,6 +577,12 @@ dotnet test tests/TestProject.HostBuilder.Tests
 dotnet test tests/TestProject.HostBuilder.AspNetCore.Tests
 dotnet test tests/TestProject.HostApplicationBuilder.Tests
 dotnet test tests/TestProject.HostApplicationBuilder.AspNetCore.Tests
+
+# Custom route prefix tests (4-flavour)
+dotnet test tests/TestProject.CustomRoutePrefix.HostBuilder.Tests
+dotnet test tests/TestProject.CustomRoutePrefix.HostBuilder.AspNetCore.Tests
+dotnet test tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.Tests
+dotnet test tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore.Tests
 
 # Sample tests (Worker SDK 2.x, Durable, Custom route prefix)
 dotnet test samples/Sample.FunctionApp.Worker.Tests

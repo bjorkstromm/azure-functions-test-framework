@@ -20,16 +20,3 @@ internal static class TestHostFactory
         return builder;
     }
 }
-
-/// <summary>
-/// Factory helpers for the custom-route-prefix function app using FunctionsApplicationBuilder.
-/// </summary>
-internal static class CrpTestHostFactory
-{
-    public static FunctionsApplicationBuilder CreateApplicationBuilder(string[] args)
-    {
-        var builder = FunctionsApplication.CreateBuilder(args);
-        builder.Services.AddSingleton<IItemService, InMemoryItemService>();
-        return builder;
-    }
-}

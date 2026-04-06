@@ -20,7 +20,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\TestProject.HostApplicationBuilder.AspNetCore\TestProject.HostApplicationBuilder.AspNetCore.csproj" />
-    <ProjectReference Include="..\TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore\TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Timer\AzureFunctions.TestFramework.Timer.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Queue\AzureFunctions.TestFramework.Queue.csproj" />

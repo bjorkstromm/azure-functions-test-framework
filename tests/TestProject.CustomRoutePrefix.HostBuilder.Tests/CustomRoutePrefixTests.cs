@@ -1,4 +1,3 @@
-
 namespace TestProject;
 
 public class CustomRoutePrefixTests : CustomRoutePrefixTestsBase
@@ -9,6 +8,6 @@ public class CustomRoutePrefixTests : CustomRoutePrefixTestsBase
         new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(CustomRoutePrefix.HttpTriggerFunction).Assembly)
             .WithLoggerFactory(CreateLoggerFactory())
-            .WithHostBuilderFactory(CrpTestHostFactory.CreateWorkerHostBuilder)
+            .WithHostBuilderFactory(TestHostFactory.CreateWorkerHostBuilder)
             .BuildAndStartAsync(TestCancellation);
 }

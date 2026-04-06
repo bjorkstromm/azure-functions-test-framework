@@ -19,7 +19,7 @@ public sealed class SharedFunctionsTestHostFixture : IAsyncLifetime
     {
         TestHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
-            .WithHostBuilderFactory(Program.CreateWorkerHostBuilder)
+            .WithHostBuilderFactory(Program.CreateHostBuilder)
             .BuildAndStartAsync(TestCancellation);
 
         Client = TestHost.CreateHttpClient();
