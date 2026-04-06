@@ -15,8 +15,8 @@ internal static class TestHostFactory
     public static FunctionsApplicationBuilder CreateWebApplicationBuilder(string[] args)
     {
         var builder = FunctionsApplication.CreateBuilder(args);
-        builder.UseMiddleware<CorrelationMiddleware>();
         builder.ConfigureFunctionsWebApplication();
+        builder.UseMiddleware<CorrelationMiddleware>();
         builder.Services.AddSingleton<IItemService, InMemoryItemService>();
         builder.Services.AddSingleton<IProcessedItemsService, InMemoryProcessedItemsService>();
         return builder;

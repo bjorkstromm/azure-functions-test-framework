@@ -154,10 +154,6 @@ public class MethodInfoLocatorProxy : DispatchProxy
                 $"Method '{methodName}' specified in entry point was not found. " +
                 "This function cannot be created.");
 
-        // DIAGNOSTIC: Log resolved method parameter types
-        var paramTypes = string.Join(", ", methodInfo.GetParameters().Select(p => $"{p.Name}:{p.ParameterType.FullName}"));
-        _logger?.LogWarning("DIAG LOCATOR: {EntryPoint} -> {Params}", entryPoint, paramTypes);
-
         return methodInfo;
     }
 }

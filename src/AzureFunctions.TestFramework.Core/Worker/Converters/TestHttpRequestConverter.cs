@@ -1,6 +1,4 @@
 using Microsoft.Azure.Functions.Worker.Converters;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 namespace AzureFunctions.TestFramework.Core.Worker.Converters;
 
@@ -28,23 +26,6 @@ internal sealed class TestHttpRequestConverter : IInputConverter
 
     public ValueTask<ConversionResult> ConvertAsync(ConverterContext context)
     {
-        var logger = context.FunctionContext.InstanceServices.GetService<ILogger<TestHttpRequestConverter>>();
-        logger?.LogWarning(
-            "CONV TestHttpRequestConverter: invId={InvId}, func={Func}, TargetType={TT}, itemCount={IC}, hasHttpCtx={HHC}",
-            context.FunctionContext.InvocationId,
-            context.FunctionContext.FunctionDefinition?.Name,
-            context.TargetType.FullName,
-            context.FunctionContext.Items.Count,
-            context.FunctionContext.Items.ContainsKey(HttpContextItemsKey));
-
-        // Stack trace to understand caller chain
-        var stackFrames = new System.Diagnostics.StackTrace(skipFrames: 0, fNeedFileInfo: false)
-            .GetFrames()
-            .Select(f => $"{f.GetMethod()?.DeclaringType?.Name}.{f.GetMethod()?.Name}")
-            .Take(30)
-            .ToArray();
-        logger?.LogWarning("CONV STACK: {Frames}", string.Join(" → ", stackFrames));
-
         if (context.TargetType.FullName != HttpRequestFullName)
         {
             return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
@@ -53,7 +34,6 @@ internal sealed class TestHttpRequestConverter : IInputConverter
         if (!context.FunctionContext.Items.TryGetValue(HttpContextItemsKey, out var httpContextObj)
             || httpContextObj is null)
         {
-            logger?.LogWarning("CONV TestHttpRequestConverter: returning Unhandled (no HttpRequestContext in Items)");
             return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
         }
 
@@ -64,11 +44,9 @@ internal sealed class TestHttpRequestConverter : IInputConverter
 
         if (request is not null)
         {
-            logger?.LogWarning("CONV TestHttpRequestConverter: returning Success({Type})", request.GetType().FullName);
             return new ValueTask<ConversionResult>(ConversionResult.Success(request));
         }
 
-        logger?.LogWarning("CONV TestHttpRequestConverter: returning Unhandled (Request property was null)");
         return new ValueTask<ConversionResult>(ConversionResult.Unhandled());
     }
 }

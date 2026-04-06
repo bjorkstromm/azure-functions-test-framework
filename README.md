@@ -212,8 +212,8 @@ public partial class Program
     public static FunctionsApplicationBuilder CreateWebApplicationBuilder(string[] args)
     {
         var builder = FunctionsApplication.CreateBuilder(args);
+        builder.ConfigureFunctionsWebApplication(); // enables ASP.NET Core / Kestrel mode — call before UseMiddleware
         builder.UseMiddleware<CorrelationMiddleware>();
-        builder.ConfigureFunctionsWebApplication(); // enables ASP.NET Core / Kestrel mode
         builder.Services.AddSingleton<IMyService, MyService>();
         return builder;
     }
@@ -496,6 +496,14 @@ When using `ConfigureFunctionsWebApplication()`, the ASP.NET Core middleware pat
 ### IAutoConfigureStartup scanning
 
 The functions assembly contains source-generated classes (`FunctionMetadataProviderAutoStartup`, `FunctionExecutorAutoStartup`) implementing `IAutoConfigureStartup`. `WorkerHostService` scans for and invokes these to register `GeneratedFunctionMetadataProvider` and `DirectFunctionExecutor`, overriding the defaults that would require a `functions.metadata` file on disk.
+
+### Binding cache clearing (FunctionsApplicationBuilder + ASP.NET Core)
+
+**Problem:** The Worker SDK's `IBindingCache<ConversionResult>` uses binding-name-only keys (e.g. `"req"`), not `(name, targetType)`. If user middleware calls `GetHttpRequestDataAsync()` before `FunctionExecutionMiddleware` runs, the cache stores a `GrpcHttpRequestData` under key `"req"`. Later, `FunctionExecutionMiddleware` calls `BindFunctionInputAsync` for the same `"req"` binding with `TargetType=HttpRequest` — the cache returns the stale `GrpcHttpRequestData` and the SDK casts `(HttpRequest)GrpcHttpRequestData` → `InvalidCastException`.
+
+**Solution:** In the `FunctionsApplicationBuilder` path, `WorkerHostService` appends a cache-clearing middleware after the user factory returns (so it runs after user middleware but before `FunctionExecutionMiddleware`). The middleware checks `context.Items.ContainsKey("HttpRequestContext")` — confirming ASP.NET Core mode is active — and uses `BindingCacheCleaner.TryClearBindingCache(context.InstanceServices)` to clear the internal `ConcurrentDictionary` via reflection. Converters then re-run with correct state.
+
+> ℹ️ In the `IHostBuilder` path, middleware is registered inside the `ConfigureFunctionsWebApplication(builder => { ... })` callback, where the SDK guarantees correct ordering. The framework cannot insert worker middleware from `ConfigureServices`, but the cache-poisoning scenario is avoided as long as `ConfigureFunctionsWebApplication()` is called **before** any `UseMiddleware<T>()` calls.
 
 ### Custom route prefix auto-detection
 

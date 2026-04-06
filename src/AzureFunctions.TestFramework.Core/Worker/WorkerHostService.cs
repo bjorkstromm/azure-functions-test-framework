@@ -156,13 +156,11 @@ public class WorkerHostService : IWorkerHost
                     .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>();
                 if (addressFeature?.Addresses is { Count: > 0 } addresses)
                 {
-                    _logger.LogWarning("DEBUG IServerAddressesFeature.Addresses: [{Addresses}], allocated port: {AllocatedPort}", string.Join(", ", addresses), _allocatedHttpPort);
                     var uri = new Uri(addresses.First());
                     _httpPort = uri.Port;
                 }
                 else
                 {
-                    _logger.LogWarning("DEBUG IServerAddressesFeature has no addresses; using allocated port {Port}", _allocatedHttpPort);
                     _httpPort = _allocatedHttpPort;
                 }
                 _logger.LogInformation(
@@ -277,69 +275,6 @@ public class WorkerHostService : IWorkerHost
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// Diagnostic helper — logs key service registrations to help debug pipeline issues.
-    /// </summary>
-    private static void DiagnosticDumpServices(IServiceCollection services, ILogger logger)
-    {
-        // Check for IHttpCoordinator
-        var httpCoordinatorCount = services.Count(d => d.ServiceType.FullName?.Contains("IHttpCoordinator") == true);
-        logger.LogWarning("DIAG: IHttpCoordinator registrations: {Count}", httpCoordinatorCount);
-
-        // Check for FunctionsHttpProxyingMiddleware
-        var proxyMiddlewareCount = services.Count(d => 
-            d.ServiceType.FullName?.Contains("FunctionsHttpProxyingMiddleware") == true ||
-            d.ImplementationType?.FullName?.Contains("FunctionsHttpProxyingMiddleware") == true);
-        logger.LogWarning("DIAG: FunctionsHttpProxyingMiddleware registrations: {Count}", proxyMiddlewareCount);
-
-        // Check for FunctionExecutionDelegate
-        var delegateCount = services.Count(d => d.ServiceType.FullName?.Contains("FunctionExecutionDelegate") == true);
-        logger.LogWarning("DIAG: FunctionExecutionDelegate registrations: {Count}", delegateCount);
-
-        // Check for IFunctionsWorkerApplicationBuilder
-        var workerAppBuilderCount = services.Count(d => d.ServiceType.FullName?.Contains("IFunctionsWorkerApplicationBuilder") == true);
-        logger.LogWarning("DIAG: IFunctionsWorkerApplicationBuilder registrations: {Count}", workerAppBuilderCount);
-
-        // Check for FunctionsEndpointDataSource
-        var endpointDataSourceCount = services.Count(d => 
-            d.ServiceType.FullName?.Contains("FunctionsEndpointDataSource") == true ||
-            d.ImplementationType?.FullName?.Contains("FunctionsEndpointDataSource") == true);
-        logger.LogWarning("DIAG: FunctionsEndpointDataSource registrations: {Count}", endpointDataSourceCount);
-
-        // Check for ExtensionTrace
-        var extensionTraceCount = services.Count(d => d.ServiceType.FullName?.Contains("ExtensionTrace") == true);
-        logger.LogWarning("DIAG: ExtensionTrace registrations: {Count}", extensionTraceCount);
-
-        // Check for IServer
-        var serverCount = services.Count(d => d.ServiceType.FullName == "Microsoft.AspNetCore.Hosting.Server.IServer");
-        logger.LogWarning("DIAG: IServer registrations: {Count}", serverCount);
-
-        // Check for GenericWebHostService
-        var webHostServiceCount = services.Count(d => 
-            d.ImplementationType?.FullName?.Contains("GenericWebHostService") == true);
-        logger.LogWarning("DIAG: GenericWebHostService registrations: {Count}", webHostServiceCount);
-
-        // Check for IStartupFilter
-        var startupFilterCount = services.Count(d => d.ServiceType.FullName?.Contains("IStartupFilter") == true);
-        logger.LogWarning("DIAG: IStartupFilter registrations: {Count}", startupFilterCount);
-        foreach (var sf in services.Where(d => d.ServiceType.FullName?.Contains("IStartupFilter") == true))
-        {
-            var implName = sf.ImplementationType?.FullName ?? sf.ImplementationFactory?.Method?.ToString() ?? sf.ImplementationInstance?.GetType().FullName ?? "unknown";
-            logger.LogWarning("DIAG:   IStartupFilter: {ImplName} (Lifetime={Lifetime})", implName, sf.Lifetime);
-        }
-
-        // Check for HttpContextConverter
-        var httpContextConverterCount = services.Count(d => 
-            d.ServiceType.FullName?.Contains("HttpContextConverter") == true ||
-            d.ImplementationType?.FullName?.Contains("HttpContextConverter") == true);
-        logger.LogWarning("DIAG: HttpContextConverter registrations: {Count}", httpContextConverterCount);
-
-        // Dump WorkerOptions configure registrations
-        var workerOptionsCount = services.Count(d => 
-            d.ServiceType.FullName?.Contains("WorkerOptions") == true);
-        logger.LogWarning("DIAG: WorkerOptions-related registrations: {Count}", workerOptionsCount);
     }
 
     private IHost CreateWorkerHost()
@@ -618,60 +553,20 @@ public class WorkerHostService : IWorkerHost
 
         if (!string.Equals(Environment.GetEnvironmentVariable("AFTF_SKIP_FALLBACK_CONVERTERS"), "1", StringComparison.Ordinal))
         {
-            var diagLoggerForPostConfigure = _logger;
             appBuilder.Services.PostConfigure<WorkerOptions>(options =>
             {
-                // Log and replace HttpContextConverter with a diagnostic wrapper
-                var converterTypes = options.InputConverters.ToList();
-                diagLoggerForPostConfigure.LogWarning("DIAG PostConfigure: InputConverters count={Count}", converterTypes.Count);
-                
-                // Register our TestHttpRequestConverter at position 0 to ensure it runs first
                 options.InputConverters.RegisterAt<TestHttpRequestConverter>(0);
                 options.InputConverters.Register<TestFunctionContextConverter>();
-                var finalOrder = options.InputConverters.Select((t, i) => $"{i}:{t.Name}");
-                diagLoggerForPostConfigure.LogWarning("DIAG PostConfigure: Final converter order: {Order}", string.Join(", ", finalOrder));
             });
         }
 
-        // DIAGNOSTIC: Add inline middleware to check if FunctionsHttpProxyingMiddleware has run
-        var diagLogger = logger;
-
-        // Add a FIRST middleware at position 0 to see state before FunctionsHttpProxyingMiddleware
+        // Remove stale IBindingCache entries that user middleware may have populated
+        // (e.g. from GetHttpRequestDataAsync → BindInputAsync<HttpRequestData>) before
+        // FunctionExecutionMiddleware binds the actual function parameters.
         appBuilder.Use(next => async context =>
         {
-            var hasHttpCtxBefore = context.Items.TryGetValue("HttpRequestContext", out _);
-            var hasFeatureBefore = context.Features.Get<Microsoft.Azure.Functions.Worker.Http.IHttpRequestDataFeature>() != null;
-            diagLogger.LogWarning(
-                "DIAG FIRST-MW: invId={InvId}, func={Func}, hasHttpCtx={HHC}, hasFeature={HF}",
-                context.InvocationId,
-                context.FunctionDefinition?.Name ?? "??",
-                hasHttpCtxBefore,
-                hasFeatureBefore);
-            await next(context);
-            var hasHttpCtxAfter = context.Items.TryGetValue("HttpRequestContext", out _);
-            diagLogger.LogWarning(
-                "DIAG FIRST-MW AFTER: invId={InvId}, func={Func}, hasHttpCtxAfter={HHC}",
-                context.InvocationId,
-                context.FunctionDefinition?.Name ?? "??",
-                hasHttpCtxAfter);
-        });
-
-        appBuilder.Use(next => async context =>
-        {
-            var hasHttpCtx = context.Items.TryGetValue("HttpRequestContext", out var httpCtxObj);
-            
-            // Log function parameter types from FunctionDefinition
-            var paramInfo = string.Join(", ", context.FunctionDefinition?.Parameters.Select(
-                p => $"{p.Name}:{p.Type.FullName}") ?? Enumerable.Empty<string>());
-            diagLogger.LogWarning(
-                "DIAG MIDDLEWARE: invId={InvId}, func={Func}, hasHttpCtx={HasHttpCtx}, itemCount={ItemCount}, ctxHash={CtxHash}, itemsHash={ItemsHash}",
-                context.InvocationId,
-                context.FunctionDefinition?.Name ?? "??",
-                hasHttpCtx,
-                context.Items.Count,
-                System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(context),
-                System.Runtime.CompilerServices.RuntimeHelpers.GetHashCode(context.Items));
-            
+            if (context.Items.ContainsKey("HttpRequestContext"))
+                BindingCacheCleaner.TryClearBindingCache(context.InstanceServices);
             await next(context);
         });
 
@@ -702,9 +597,6 @@ public class WorkerHostService : IWorkerHost
         appBuilder.Logging.AddFilter("Microsoft.Azure.Functions.Worker", LogLevel.Warning);
         appBuilder.Logging.AddFilter("Azure.Core", LogLevel.Warning);
         appBuilder.Logging.AddFilter("AzureFunctions.TestFramework", LogLevel.Information);
-
-        // DIAGNOSTIC: Check what's registered in the service collection
-        DiagnosticDumpServices(appBuilder.Services, logger);
 
         return appBuilder.Build();
     }
