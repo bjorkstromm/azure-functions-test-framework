@@ -1,5 +1,0 @@
-﻿{
-  PartitionKey: captured,
-  RowKey: row-20,
-  Payload: table:Hello table binding!
-}

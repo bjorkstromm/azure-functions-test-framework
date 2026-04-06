@@ -5,12 +5,16 @@
     <Platform Name="x86" />
   </Configurations>
   <Folder Name="/samples/">
+    <Project Path="samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests.csproj" />
     <Project Path="samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.csproj" />
+    <Project Path="samples/Sample.FunctionApp.CustomRoutePrefix.Tests/Sample.FunctionApp.CustomRoutePrefix.Tests.csproj" />
     <Project Path="samples/Sample.FunctionApp.CustomRoutePrefix/Sample.FunctionApp.CustomRoutePrefix.csproj" />
+    <Project Path="samples/Sample.FunctionApp.Durable.Tests/Sample.FunctionApp.Durable.Tests.csproj" />
     <Project Path="samples/Sample.FunctionApp.Durable/Sample.FunctionApp.Durable.csproj" />
     <Project Path="samples/Sample.FunctionApp.Tests.NUnit/Sample.FunctionApp.Tests.NUnit.csproj" />
     <Project Path="samples/Sample.FunctionApp.Tests.TUnit/Sample.FunctionApp.Tests.TUnit.csproj" />
     <Project Path="samples/Sample.FunctionApp.Tests.XUnit/Sample.FunctionApp.Tests.XUnit.csproj" />
+    <Project Path="samples/Sample.FunctionApp.Worker.Tests/Sample.FunctionApp.Worker.Tests.csproj" />
     <Project Path="samples/Sample.FunctionApp.Worker/Sample.FunctionApp.Worker.csproj" />
     <Project Path="samples/Sample.FunctionApp/Sample.FunctionApp.csproj" />
   </Folder>
@@ -36,12 +40,6 @@
     <Project Path="tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore/TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests.csproj" />
-    <Project Path="tests/Sample.FunctionApp.CustomRoutePrefix.Tests/Sample.FunctionApp.CustomRoutePrefix.Tests.csproj" />
-    <Project Path="tests/Sample.FunctionApp.Durable.Tests/Sample.FunctionApp.Durable.Tests.csproj" />
-    <Project Path="tests/Sample.FunctionApp.Worker.NUnit.Tests/Sample.FunctionApp.Worker.NUnit.Tests.csproj" />
-    <Project Path="tests/Sample.FunctionApp.Worker.Tests/Sample.FunctionApp.Worker.Tests.csproj" />
-    <Project Path="tests/Sample.FunctionApp.Worker.TUnit.Tests/Sample.FunctionApp.Worker.TUnit.Tests.csproj" />
     <Project Path="tests/TestProject.HostBuilder.Tests/TestProject.HostBuilder.Tests.csproj" />
     <Project Path="tests/TestProject.HostBuilder.AspNetCore.Tests/TestProject.HostBuilder.AspNetCore.Tests.csproj" />
     <Project Path="tests/TestProject.HostApplicationBuilder.Tests/TestProject.HostApplicationBuilder.Tests.csproj" />

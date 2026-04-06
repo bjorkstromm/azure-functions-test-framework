@@ -76,4 +76,32 @@ public abstract class TriggerTestsBase : TestHostTestBase
         Assert.NotNull(messages);
         Assert.Equal(2, messages.Length);
     }
+
+    [Fact]
+    public async Task InvokeQueueAsync_CapturesBlobOutputBindingData()
+    {
+        var messageText = "Hello blob output!";
+        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
+
+        var result = await TestHost.InvokeQueueAsync("CreateBlobOutputDocument", message, TestCancellation);
+
+        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
+        var content = result.ReadOutputAs<string>("Content");
+        Assert.Equal($"blob:{messageText}", content);
+    }
+
+    [Fact]
+    public async Task InvokeQueueAsync_CapturesTableOutputBindingData()
+    {
+        var messageText = "Hello table output!";
+        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
+
+        var result = await TestHost.InvokeQueueAsync("CreateTableOutputEntity", message, TestCancellation);
+
+        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
+        var entity = result.ReadOutputAs<CapturedTableEntity>("Entity");
+        Assert.NotNull(entity);
+        Assert.Equal("captured", entity.PartitionKey);
+        Assert.Equal($"table:{messageText}", entity.Payload);
+    }
 }

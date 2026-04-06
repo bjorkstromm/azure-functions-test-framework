@@ -27,6 +27,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 | **NuGet packaging** | ✅ `net8.0;net10.0`, Source Link, symbol packages, central package management |
 | **CI** | ✅ xUnit + NUnit + TUnit, push + PR |
 
+
 ## Goals
 
 This framework aims to provide:
@@ -81,18 +82,11 @@ dotnet test tests/TestProject.HostBuilder.AspNetCore.Tests --no-build --configur
 dotnet test tests/TestProject.HostApplicationBuilder.Tests --no-build --configuration Release
 dotnet test tests/TestProject.HostApplicationBuilder.AspNetCore.Tests --no-build --configuration Release
 
-# Worker SDK 2.x tests — xUnit (direct gRPC and ASP.NET Core / Kestrel modes)
-dotnet test tests/Sample.FunctionApp.Worker.Tests --no-build --configuration Release
-
-# Worker SDK 2.x tests — NUnit
-dotnet test tests/Sample.FunctionApp.Worker.NUnit.Tests --no-build --configuration Release
-
-# Durable Functions tests
-dotnet test tests/Sample.FunctionApp.Durable.Tests --no-build --configuration Release
-
-# Custom route prefix tests
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.Tests --no-build --configuration Release
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests --no-build --configuration Release
+# Sample tests (Worker SDK 2.x, Durable, Custom route prefix)
+dotnet test samples/Sample.FunctionApp.Worker.Tests --no-build --configuration Release
+dotnet test samples/Sample.FunctionApp.Durable.Tests --no-build --configuration Release
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.Tests --no-build --configuration Release
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests --no-build --configuration Release
 
 # Pack NuGet packages locally
 dotnet pack --configuration Release --output ./artifacts
@@ -246,7 +240,7 @@ _testHost = await new FunctionsTestHostBuilder()
 
 **Service access + configuration overrides** — `FunctionsTestHost.Services` exposes the worker DI container after startup, and `FunctionsTestHostBuilder.ConfigureSetting("Demo:Message", "configured-value")` lets tests overlay configuration values that functions can read through `IConfiguration`.
 
-**Optional shared-host pattern** — if a test class can safely reset mutable app state between tests, it can amortize worker startup with an `IClassFixture`. See `tests/Sample.FunctionApp.Worker.Tests/SharedFunctionsTestHostFixture.cs` and `FunctionsTestHostReuseFixtureTests.cs` for a concrete example.
+**Optional shared-host pattern** — if a test class can safely reset mutable app state between tests, it can amortize worker startup with an `IClassFixture`. See `samples/Sample.FunctionApp.Worker.Tests/SharedFunctionsTestHostFixture.cs` and `FunctionsTestHostReuseFixtureTests.cs` for a concrete example.
 
 ### 3. Timer Trigger Invocation
 
@@ -528,9 +522,13 @@ samples/
   Sample.FunctionApp.Tests.NUnit/            # NUnit sample test project
   Sample.FunctionApp.Tests.TUnit/            # TUnit sample test project
   Sample.FunctionApp.Worker/                 # Worker SDK 2.x (net10.0) — TodoAPI, middleware, triggers
+  Sample.FunctionApp.Worker.Tests/           # xUnit — both direct gRPC and ASP.NET Core / Kestrel mode (~7 tests)
   Sample.FunctionApp.Durable/               # Durable Functions sample — HTTP starter + orchestrator + activity
+  Sample.FunctionApp.Durable.Tests/          # xUnit — Durable Functions (~25 tests)
   Sample.FunctionApp.CustomRoutePrefix/      # Custom route prefix with ConfigureFunctionsWorkerDefaults()
-  Sample.FunctionApp.CustomRoutePrefix.AspNetCore/ # Custom route prefix with ConfigureFunctionsWebApplication()
+  Sample.FunctionApp.CustomRoutePrefix.Tests/              # xUnit — custom prefix via direct gRPC (2 tests)
+  Sample.FunctionApp.CustomRoutePrefix.AspNetCore/         # Custom route prefix with ConfigureFunctionsWebApplication()
+  Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/   # xUnit — custom prefix via ASP.NET Core / Kestrel (3 tests)
 
 tests/
   # 4-flavour test matrix — all share logic from tests/Shared/
@@ -544,13 +542,6 @@ tests/
   TestProject.HostApplicationBuilder.AspNetCore.Tests/  # xUnit — ASP.NET Core / Kestrel, FunctionsApplicationBuilder
   Shared/                                               # Shared test base classes + shared function implementations
   TestProject.Shared/                                   # Shared project consumed by all four test projects
-
-  # Existing test suites
-  Sample.FunctionApp.Worker.Tests/                         # xUnit — both direct gRPC and ASP.NET Core / Kestrel mode (Worker SDK 2.x)
-  Sample.FunctionApp.Worker.NUnit.Tests/                   # NUnit — both direct gRPC and ASP.NET Core / Kestrel mode (Worker SDK 2.x)
-  Sample.FunctionApp.Durable.Tests/                        # xUnit — Durable Functions (fully in-process)
-  Sample.FunctionApp.CustomRoutePrefix.Tests/              # xUnit — custom prefix via direct gRPC (ConfigureFunctionsWorkerDefaults)
-  Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/   # xUnit — custom prefix via ASP.NET Core / Kestrel mode (ConfigureFunctionsWebApplication)
 ```
 
 ## Building
@@ -572,18 +563,11 @@ dotnet test tests/TestProject.HostBuilder.AspNetCore.Tests
 dotnet test tests/TestProject.HostApplicationBuilder.Tests
 dotnet test tests/TestProject.HostApplicationBuilder.AspNetCore.Tests
 
-# Worker SDK 2.x tests (xUnit) — direct gRPC and ASP.NET Core / Kestrel mode
-dotnet test tests/Sample.FunctionApp.Worker.Tests
-
-# Worker SDK 2.x tests (NUnit) — direct gRPC and ASP.NET Core / Kestrel mode
-dotnet test tests/Sample.FunctionApp.Worker.NUnit.Tests
-
-# Durable Functions tests
-dotnet test tests/Sample.FunctionApp.Durable.Tests
-
-# Custom route prefix tests
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.Tests
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests
+# Sample tests (Worker SDK 2.x, Durable, Custom route prefix)
+dotnet test samples/Sample.FunctionApp.Worker.Tests
+dotnet test samples/Sample.FunctionApp.Durable.Tests
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.Tests
+dotnet test samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests
 
 # Single test with detailed logging
 dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
