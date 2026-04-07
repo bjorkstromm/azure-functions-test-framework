@@ -13,9 +13,18 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 - `AzureFunctions.TestFramework.Http` is still a minimal package with little public surface area today; it is packed/published so the package set stays stable while HTTP-specific helpers are added later.
 - When using `FunctionsApplicationBuilder` with `ConfigureFunctionsWebApplication()`, call `ConfigureFunctionsWebApplication()` **before** any `UseMiddleware<T>()` calls. The SDK's `FunctionsHttpProxyingMiddleware` must run first to populate `FunctionContext.Items["HttpRequestContext"]`; otherwise user middleware calling `GetHttpRequestDataAsync()` poisons the SDK's internal binding cache. The framework includes a cache-clearing middleware as a safety net, but correct ordering ensures the user middleware sees the `HttpContext` it expects.
 - **Worker-side logging is suppressed by default.** The worker host's minimum log level is set to `Warning` to keep output clean. If your function code uses `ILogger` and you want to see those logs in test results, use `ConfigureWorkerLogging(logging => { logging.SetMinimumLevel(LogLevel.Information); logging.AddProvider(yourProvider); })`. See the "Worker-side Logging" section in `README.md`.
+- **`DurableClientBindingDefaults` moved to the Durable package.** If you previously referenced `AzureFunctions.TestFramework.Core.DurableClientBindingDefaults`, update the `using` directive to `AzureFunctions.TestFramework.Durable.DurableClientBindingDefaults`. This type was only intended for Durable-specific scenarios.
 
 ## Design constraints
 
 ### One function-app project per test project
 
 The framework enforces a **one function-app project per test project** constraint. When multiple function-app projects compile to the same output directory, the last-built `host.json` overwrites the others. The Azure Functions SDK reads `host.json` from `FUNCTIONS_APPLICATION_DIRECTORY` at runtime, so the "winning" file determines settings like `extensions.http.routePrefix` for **all** test hosts sharing that output directory. Keep a 1:1 mapping between test projects and function-app projects to avoid this.
+
+### Adding a new trigger type
+
+To add support for an additional trigger type without modifying Core:
+
+1. Add a class implementing `ITriggerBinding` (from `AzureFunctions.TestFramework.Core`) in your new package.
+2. In the `InvokeXxxAsync` extension method, call `host.Invoker.RegisterTriggerBinding(new MyTriggerBinding())` before invoking (idempotent — safe to call on every invocation).
+3. If the trigger requires non-trigger input bindings injected synthetically (like `durableClient`), implement `ISyntheticBindingProvider` and register it via `builder.WithSyntheticBindingProvider(...)` in the builder-level extension method.
