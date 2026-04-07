@@ -14,6 +14,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- TestServer: TFM-aligned — 8.x ships only lib/net8.0, 10.x ships only lib/net10.0 -->
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" Condition="'$(TargetFramework)' == 'net8.0'" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" VersionOverride="10.0.5" Condition="'$(TargetFramework)' == 'net10.0'" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Grpc.AspNetCore" />
     <PackageReference Include="Grpc.Tools">
       <PrivateAssets>all</PrivateAssets>

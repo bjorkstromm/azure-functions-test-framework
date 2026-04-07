@@ -63,11 +63,24 @@ public class FunctionsTestHost : IFunctionsTestHost
             throw new InvalidOperationException("Test host must be started before creating HTTP client");
         }
 
-        // ASP.NET Core integration mode: forward HTTP requests to the worker's Kestrel server.
-        // The worker's startup filters handle x-ms-invocation-id injection and gRPC correlation.
-        if (_workerHostService.HttpPort.HasValue)
+        // ASP.NET Core integration mode: forward HTTP requests to the worker's HTTP server.
+        // Prefer in-memory TestServer handler; fall back to port-based Kestrel.
+        var workerHttpHandler = _workerHostService.WorkerHttpHandler;
+        var workerHttpPort = _workerHostService.HttpPort;
+
+        if (workerHttpHandler != null)
         {
-            var handler = _cachedHandler ??= new AspNetCoreForwardingHandler(_workerHostService.HttpPort.Value);
+            var handler = _cachedHandler ??= new AspNetCoreForwardingHandler(workerHttpHandler);
+            return new HttpClient(handler, disposeHandler: false)
+            {
+                BaseAddress = new Uri("http://localhost/"),
+                Timeout = _invocationTimeout
+            };
+        }
+
+        if (workerHttpPort.HasValue)
+        {
+            var handler = _cachedHandler ??= new AspNetCoreForwardingHandler(workerHttpPort.Value);
             return new HttpClient(handler, disposeHandler: false)
             {
                 BaseAddress = new Uri("http://localhost/"),
@@ -301,18 +314,17 @@ internal class FunctionInvoker : IFunctionInvoker
 /// ASP.NET Core HTTP server (used when the worker is started with
 /// <c>ConfigureFunctionsWebApplication()</c>).
 /// <para>
-/// The handler rewrites the request URI to point to <c>http://127.0.0.1:{httpPort}</c> and
-/// injects a synthetic <c>x-ms-invocation-id</c> header when absent.  The worker's
-/// <c>InvocationIdStartupFilter</c> and <c>GrpcInvocationBridgeStartupFilter</c> then
-/// correlate the request with a gRPC <c>InvocationRequest</c> so that
-/// <c>WorkerRequestServicesMiddleware</c> can unblock and execute the function.
+/// When an in-memory handler is provided (TestServer mode) the URI is passed through
+/// unchanged (TestServer routes by path). When a port is provided, the URI is rewritten to
+/// <c>http://127.0.0.1:{httpPort}</c>. A synthetic <c>x-ms-invocation-id</c> header is
+/// injected when absent in both cases.
 /// </para>
 /// </summary>
 internal sealed class AspNetCoreForwardingHandler : HttpMessageHandler
 {
     private const string InvocationIdHeader = "x-ms-invocation-id";
 
-    private readonly Uri _workerBaseUri;
+    private readonly Uri? _workerBaseUri;
     private readonly HttpMessageInvoker _inner;
 
     public AspNetCoreForwardingHandler(int httpPort)
@@ -325,17 +337,26 @@ internal sealed class AspNetCoreForwardingHandler : HttpMessageHandler
         });
     }
 
+    public AspNetCoreForwardingHandler(HttpMessageHandler testServerHandler)
+    {
+        _workerBaseUri = null;
+        _inner = new HttpMessageInvoker(testServerHandler, disposeHandler: false);
+    }
+
     protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        // Rewrite URI to target the worker's Kestrel server while preserving path + query.
-        var original = request.RequestUri!;
-        request.RequestUri = new UriBuilder(_workerBaseUri)
+        // Rewrite URI only for the port-based (Kestrel) path.
+        if (_workerBaseUri != null)
         {
-            Path = original.AbsolutePath,
-            Query = original.Query.TrimStart('?')
-        }.Uri;
+            var original = request.RequestUri!;
+            request.RequestUri = new UriBuilder(_workerBaseUri)
+            {
+                Path = original.AbsolutePath,
+                Query = original.Query.TrimStart('?')
+            }.Uri;
+        }
 
         // Inject a synthetic invocation ID if the caller didn't provide one.
         if (!request.Headers.Contains(InvocationIdHeader))

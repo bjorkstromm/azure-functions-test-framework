@@ -1,9 +1,7 @@
 using Grpc.AspNetCore.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Hosting.Server;
-using Microsoft.AspNetCore.Hosting.Server.Features;
-using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -12,13 +10,15 @@ namespace AzureFunctions.TestFramework.Core.Grpc;
 
 /// <summary>
 /// Manages the gRPC server that the Functions worker connects to.
+/// Uses <see cref="TestServer"/> (in-memory) instead of Kestrel so no TCP port is bound
+/// and there are no Windows Firewall prompts.
 /// </summary>
 public class GrpcServerManager : IAsyncDisposable
 {
     private readonly ILogger<GrpcServerManager> _logger;
     private readonly GrpcHostService _hostService;
     private IHost? _grpcHost;
-    private int _port;
+    private HttpMessageHandler? _handler;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="GrpcServerManager"/> class.
@@ -34,9 +34,12 @@ public class GrpcServerManager : IAsyncDisposable
     }
 
     /// <summary>
-    /// Gets the port the gRPC server is listening on.
+    /// Gets the in-memory <see cref="HttpMessageHandler"/> that routes gRPC traffic to the
+    /// in-process server without a TCP connection.
+    /// Available after <see cref="StartAsync"/> completes.
     /// </summary>
-    public int Port => _port;
+    public HttpMessageHandler Handler => _handler
+        ?? throw new InvalidOperationException("GrpcServerManager has not been started");
 
     /// <summary>
     /// Gets the gRPC host service.
@@ -44,79 +47,64 @@ public class GrpcServerManager : IAsyncDisposable
     public GrpcHostService HostService => _hostService;
 
     /// <summary>
-    /// Starts the gRPC server.
+    /// Starts the in-memory gRPC server backed by <see cref="TestServer"/>.
     /// </summary>
     public async Task StartAsync(CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("Starting gRPC server on an ephemeral port");
+        _logger.LogInformation("Starting in-memory gRPC server (TestServer)");
 
-        _grpcHost = Host.CreateDefaultBuilder()
-            .ConfigureWebHostDefaults(webBuilder =>
+        var hostService = _hostService;
+
+        _grpcHost = await new HostBuilder()
+            .ConfigureWebHost(wb =>
             {
-                webBuilder
-                    .UseKestrel(options =>
+                wb.UseTestServer();
+                wb.ConfigureServices(services =>
+                {
+                    services.AddGrpc(options =>
                     {
-                        // Bind to loopback (127.0.0.1) port 0 so the OS assigns a free port
-                        // atomically, avoiding the TOCTOU race of FindAvailablePort + manual bind.
-                        // Using IPAddress.Loopback prevents Windows Firewall prompts that
-                        // occur with ListenAnyIP (0.0.0.0) since only loopback is needed.
-                        options.Listen(System.Net.IPAddress.Loopback, 0, listenOptions =>
-                        {
-                            listenOptions.Protocols = HttpProtocols.Http2;
-                        });
-                    })
-                    .ConfigureServices(services =>
-                    {
-                        services.AddGrpc(options =>
-                        {
-                            options.Interceptors.Add<GrpcLoggingInterceptor>();
-                        });
-                        services.AddSingleton(_hostService);
-                        services.AddSingleton<GrpcLoggingInterceptor>();
-                    })
-                    .Configure(app =>
-                    {
-                        app.UseRouting();
-                        app.UseEndpoints(endpoints =>
-                        {
-                            endpoints.MapGrpcService<GrpcHostService>();
-                        });
+                        options.Interceptors.Add<GrpcLoggingInterceptor>();
                     });
+                    services.AddSingleton(hostService);
+                    services.AddSingleton<GrpcLoggingInterceptor>();
+                });
+                wb.Configure(app =>
+                {
+                    app.UseRouting();
+                    app.UseEndpoints(endpoints =>
+                    {
+                        endpoints.MapGrpcService<GrpcHostService>();
+                    });
+                });
+                wb.ConfigureLogging(logging =>
+                {
+                    logging.SetMinimumLevel(LogLevel.Warning);
+                    logging.AddFilter("Grpc", LogLevel.Warning);
+                    logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
+                });
             })
-            .ConfigureLogging(logging =>
-            {
-                logging.SetMinimumLevel(LogLevel.Warning);
-                logging.AddFilter("Grpc", LogLevel.Warning);
-                logging.AddFilter("Microsoft.AspNetCore", LogLevel.Warning);
-            })
-            .Build();
+            .StartAsync(cancellationToken);
 
-        await _grpcHost.StartAsync(cancellationToken);
+        _handler = _grpcHost.GetTestServer().CreateHandler();
 
-        // Read the port assigned by the OS (port 0 binding).
-        var server = _grpcHost.Services.GetRequiredService<IServer>();
-        var addressesFeature = server.Features.Get<IServerAddressesFeature>();
-        var address = addressesFeature!.Addresses.First();
-        _port = new Uri(address).Port;
-
-        _logger.LogInformation("gRPC server started on port {Port}", _port);
+        _logger.LogInformation("In-memory gRPC server started");
     }
 
     /// <summary>
-    /// Stops the gRPC server.
+    /// Stops the in-memory gRPC server.
     /// </summary>
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("Stopping in-memory gRPC server");
         if (_grpcHost != null)
         {
-            _logger.LogInformation("Stopping gRPC server");
             await _grpcHost.StopAsync(cancellationToken);
-            _logger.LogInformation("gRPC server stopped");
         }
+        _logger.LogInformation("In-memory gRPC server stopped");
     }
 
     /// <summary>
-    /// Asynchronously stops and disposes the underlying gRPC host.
+    /// Asynchronously disposes the server.
     /// </summary>
     public async ValueTask DisposeAsync()
     {
@@ -125,6 +113,8 @@ public class GrpcServerManager : IAsyncDisposable
             await _grpcHost.StopAsync();
             _grpcHost.Dispose();
         }
+        GC.SuppressFinalize(this);
     }
-
 }
+
+
