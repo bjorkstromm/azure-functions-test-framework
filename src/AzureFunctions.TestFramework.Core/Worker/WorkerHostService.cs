@@ -638,9 +638,34 @@ public class WorkerHostService : IAsyncDisposable
         // so our AddSingleton wins over the SDK's TryAddSingleton.
         InMemoryGrpcClientFactory.TryRegister(appBuilder.Services, _grpcHandler, _logger);
 
-        // Phase 2 (UseTestServer for ASP.NET Core mode) is handled via the IHostBuilder path.
-        // FunctionsApplicationBuilder does not expose ConfigureWebHost via IHostApplicationBuilder
-        // in the current SDK version; in-memory worker HTTP is not yet supported for this path.
+        // Phase 2: replace the worker's Kestrel IServer with TestServer (in-memory) when
+        // ConfigureFunctionsWebApplication() was used.
+        // FunctionsApplicationBuilder.HostBuilder is internal, so we access it via reflection
+        // (same pattern used throughout the framework for internal SDK types).
+        try
+        {
+            var hostBuilderProp = appBuilder.GetType()
+                .GetProperty("HostBuilder", BindingFlags.Instance | BindingFlags.NonPublic | BindingFlags.Public);
+            if (hostBuilderProp?.GetValue(appBuilder) is IHostBuilder hostBuilder)
+            {
+                var hasWebHostConfiguration = hostBuilder.Properties.ContainsKey(
+                    "GenericWebHostBuilder.HostBuilderResolveKey");
+                if (hasWebHostConfiguration)
+                {
+                    hostBuilder.ConfigureWebHost(wb =>
+                    {
+                        wb.UseTestServer();
+                    });
+                    _logger.LogDebug(
+                        "Replaced Kestrel with TestServer in FunctionsApplicationBuilder ASP.NET Core path");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex,
+                "Failed to inject TestServer into FunctionsApplicationBuilder; falling back to Kestrel port detection");
+        }
 
         return appBuilder.Build();
     }
