@@ -17,6 +17,4 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 
 ### One function-app project per test project
 
-Each test project should reference **exactly one** function-app project. When multiple function-app projects compile to the same output directory, the last-built `host.json` overwrites the others. The Azure Functions SDK reads `host.json` from `FUNCTIONS_APPLICATION_DIRECTORY` at runtime, so the "winning" file determines settings like `extensions.http.routePrefix` for **all** test hosts sharing that output directory.
-
-The framework mitigates this via `ResolveFunctionAppDirectory()`: if an assembly-specific `{AssemblyName}.host.json` exists alongside the generic `host.json`, a temporary directory is created with the correct file. However, this is a workaround — the clean solution is to keep the 1:1 mapping between test projects and function-app projects.
+The framework enforces a **one function-app project per test project** constraint. When multiple function-app projects compile to the same output directory, the last-built `host.json` overwrites the others. The Azure Functions SDK reads `host.json` from `FUNCTIONS_APPLICATION_DIRECTORY` at runtime, so the "winning" file determines settings like `extensions.http.routePrefix` for **all** test hosts sharing that output directory. Keep a 1:1 mapping between test projects and function-app projects to avoid this.

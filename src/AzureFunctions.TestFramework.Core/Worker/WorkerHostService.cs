@@ -39,7 +39,6 @@ public class WorkerHostService : IAsyncDisposable
     private bool _isInitialized;
     private int? _httpPort;
     private readonly int _allocatedHttpPort;
-    private string? _tempAppDirectory;
 
     /// <summary>
     /// The port on which the worker's ASP.NET Core HTTP server is listening, or <c>null</c>
@@ -204,13 +203,6 @@ public class WorkerHostService : IAsyncDisposable
         {
             await _workerHost.StopAsync();
             _workerHost.Dispose();
-        }
-
-        // Clean up temporary app directory created by ResolveFunctionAppDirectory.
-        if (_tempAppDirectory != null)
-        {
-            try { Directory.Delete(_tempAppDirectory, recursive: true); }
-            catch { /* best-effort cleanup */ }
         }
     }
 
@@ -641,56 +633,10 @@ public class WorkerHostService : IAsyncDisposable
 
     /// <summary>
     /// Returns the directory to use as <c>FUNCTIONS_APPLICATION_DIRECTORY</c>.
-    /// When multiple function app assemblies share the same output directory, the generic
-    /// <c>host.json</c> may belong to a different assembly.  If an assembly-specific
-    /// <c>{AssemblyName}.host.json</c> exists, a temporary directory is created containing
-    /// a <c>host.json</c> copied from the named file plus symlinks to all other content from
-    /// the original directory, ensuring the SDK reads the correct route prefix while still
-    /// finding all required assemblies and metadata.
     /// </summary>
     private string ResolveFunctionAppDirectory()
     {
-        var assemblyDir = Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory;
-        var assemblyName = _functionsAssembly.GetName().Name;
-        if (string.IsNullOrEmpty(assemblyName)) return assemblyDir;
-
-        var namedHostJson = Path.Combine(assemblyDir, $"{assemblyName}.host.json");
-        if (!File.Exists(namedHostJson)) return assemblyDir;
-
-        // The named host.json exists — create a temp directory so the SDK's
-        // GetRoutePrefixFromHostJson reads the correct file.
-        var tempDir = Path.Combine(Path.GetTempPath(), $"aftf-{Guid.NewGuid():N}");
-        Directory.CreateDirectory(tempDir);
-        _tempAppDirectory = tempDir;
-
-        // Copy the named host.json as the generic host.json.
-        File.Copy(namedHostJson, Path.Combine(tempDir, "host.json"), overwrite: true);
-
-        // Symlink everything else from the original directory so the worker can find
-        // assemblies, metadata, extensions, etc.
-        foreach (var entry in Directory.EnumerateFileSystemEntries(assemblyDir))
-        {
-            var name = Path.GetFileName(entry);
-            if (string.Equals(name, "host.json", StringComparison.OrdinalIgnoreCase)) continue;
-            var target = Path.Combine(tempDir, name);
-            if (!File.Exists(target) && !Directory.Exists(target))
-            {
-                try
-                {
-                    File.CreateSymbolicLink(target, entry);
-                }
-                catch
-                {
-                    // Symlinks may not be supported; fall back to copying the host.json approach.
-                    // The worker should still find assemblies through AppDomain paths.
-                }
-            }
-        }
-
-        _logger.LogDebug("Created temporary app directory {TempDir} with host.json from {NamedHostJson}",
-            tempDir, namedHostJson);
-
-        return tempDir;
+        return Path.GetDirectoryName(_functionsAssembly.Location) ?? AppContext.BaseDirectory;
     }
 
     /// <summary>
