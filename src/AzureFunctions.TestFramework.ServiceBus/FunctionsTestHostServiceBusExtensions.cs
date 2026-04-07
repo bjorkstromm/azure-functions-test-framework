@@ -50,6 +50,8 @@ public static class FunctionsTestHostServiceBusExtensions
         };
         var triggerMetadataJson = JsonSerializer.Serialize(metadata, _jsonOptions);
 
+        host.Invoker.RegisterTriggerBinding(new ServiceBusTriggerBinding());
+
         var context = new FunctionInvocationContext
         {
             TriggerType = "serviceBusTrigger",

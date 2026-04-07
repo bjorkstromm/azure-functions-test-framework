@@ -29,6 +29,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         set => _invocationTimeout = value;
     }
 
+    private readonly List<ISyntheticBindingProvider> _syntheticBindingProviders;
     private readonly Dictionary<string, TaskCompletionSource<StreamingMessage>> _pendingRequests = new();
     private readonly object _lock = new();
     private readonly object _connectionLock = new();
@@ -42,23 +43,11 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private int _connectionVersion;
     // Key format: "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}"
     private readonly Dictionary<string, string> _functionRouteToId = new(StringComparer.OrdinalIgnoreCase);
-    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
-    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _timerFunctionMap
+    // Key: function name (case-insensitive); Value: FunctionRegistration
+    private readonly Dictionary<string, FunctionRegistration> _functionsByName
         = new(StringComparer.OrdinalIgnoreCase);
-    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
-    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _serviceBusFunctionMap
-        = new(StringComparer.OrdinalIgnoreCase);
-    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
-    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _queueFunctionMap
-        = new(StringComparer.OrdinalIgnoreCase);
-    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
-    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _blobFunctionMap
-        = new(StringComparer.OrdinalIgnoreCase);
-    // Key: function name (case-insensitive); Value: (FunctionId, BindingParameterName)
-    private readonly Dictionary<string, (string FunctionId, string ParameterName)> _eventGridFunctionMap
-        = new(StringComparer.OrdinalIgnoreCase);
-    // Key: function ID; Value: synthetic input bindings that should be added by the test host.
-    private readonly Dictionary<string, List<ParameterBinding>> _syntheticInputBindingsByFunctionId
+    // Key: function ID; Value: synthetic input parameters injected by ISyntheticBindingProvider.
+    private readonly Dictionary<string, List<FunctionBindingData>> _syntheticInputByFunctionId
         = new(StringComparer.OrdinalIgnoreCase);
     // Key: function ID; Value: the HTTP trigger binding parameter name (e.g. "req", "request").
     private readonly Dictionary<string, string> _httpBindingNameByFunctionId
@@ -72,10 +61,19 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// </summary>
     /// <param name="logger">The logger used for host/worker protocol events.</param>
     /// <param name="functionsAssembly">The assembly containing the functions under test.</param>
-    public GrpcHostService(ILogger<GrpcHostService> logger, Assembly functionsAssembly)
+    /// <param name="syntheticBindingProviders">
+    /// Optional collection of <see cref="ISyntheticBindingProvider"/> implementations that inject
+    /// synthetic input bindings (e.g. a <c>durableClient</c> payload) into every invocation of
+    /// functions that declare the corresponding binding attribute.
+    /// </param>
+    public GrpcHostService(
+        ILogger<GrpcHostService> logger,
+        Assembly functionsAssembly,
+        IEnumerable<ISyntheticBindingProvider>? syntheticBindingProviders = null)
     {
         _logger = logger;
         _functionsAssembly = functionsAssembly;
+        _syntheticBindingProviders = syntheticBindingProviders?.ToList() ?? [];
     }
 
     /// <summary>
@@ -119,14 +117,38 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// </summary>
     public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions() => _functionMetadataMap;
 
-    internal IReadOnlyList<ParameterBinding> GetSyntheticInputBindings(string functionId)
+    /// <summary>
+    /// Returns the <see cref="FunctionRegistration"/> for a non-HTTP function by name,
+    /// or <see langword="null"/> if the function is not found or is an HTTP trigger.
+    /// </summary>
+    public FunctionRegistration? GetFunctionRegistration(string functionName)
+        => _functionsByName.TryGetValue(functionName, out var reg) ? reg : null;
+
+    internal IReadOnlyList<FunctionBindingData> GetSyntheticInputParameters(string functionId)
     {
-        if (_syntheticInputBindingsByFunctionId.TryGetValue(functionId, out var bindings))
+        if (_syntheticInputByFunctionId.TryGetValue(functionId, out var bindings))
         {
             return bindings;
         }
 
         return [];
+    }
+
+    /// <summary>
+    /// Converts a <see cref="FunctionBindingData"/> value to a gRPC <c>ParameterBinding</c>.
+    /// </summary>
+    internal static ParameterBinding ToParameterBinding(FunctionBindingData data)
+        => new() { Name = data.Name, Data = ToTypedData(data) };
+
+    private static TypedData ToTypedData(FunctionBindingData data)
+    {
+        if (data.Bytes != null)
+            return new TypedData { Bytes = ByteString.CopyFrom(data.Bytes) };
+        if (data.Json != null)
+            return new TypedData { Json = data.Json };
+        if (data.StringValue != null)
+            return new TypedData { String = data.StringValue };
+        return new TypedData();
     }
 
     /// <summary>
@@ -387,210 +409,30 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     }
 
     /// <summary>
-    /// Invokes a timer-triggered function by name, passing <paramref name="timerInfoJson"/> as the
-    /// timer input binding data.  Unlike <see cref="SendInvocationRequestAsync"/> (which is
-    /// fire-and-forget), this method awaits the <see cref="InvocationResponse"/> and returns a
-    /// <see cref="FunctionInvocationResult"/> describing success or failure.
-    /// </summary>
-    /// <param name="functionName">The name of the timer function (case-insensitive).</param>
-    /// <param name="timerInfoJson">JSON-serialized timer info to pass as the trigger input.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task<FunctionInvocationResult> InvokeTimerFunctionAsync(
-        string functionName,
-        string timerInfoJson,
-        CancellationToken cancellationToken = default)
-    {
-        if (!_timerFunctionMap.TryGetValue(functionName, out var entry))
-        {
-            var available = string.Join(", ", _timerFunctionMap.Keys);
-            throw new InvalidOperationException(
-                $"No timer function '{functionName}' found. Available timer functions: [{available}]");
-        }
-
-        var invocationId = Guid.NewGuid().ToString();
-        var invocationRequest = new InvocationRequest
-        {
-            InvocationId = invocationId,
-            FunctionId = entry.FunctionId,
-            TraceContext = new RpcTraceContext
-            {
-                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
-                TraceState = string.Empty
-            }
-        };
-
-        invocationRequest.InputData.Add(new ParameterBinding
-        {
-            Name = entry.ParameterName,
-            Data = new TypedData { Json = timerInfoJson }
-        });
-
-        var message = new StreamingMessage
-        {
-            RequestId = invocationId,
-            InvocationRequest = invocationRequest
-        };
-
-        var response = await SendMessageAsync(message, cancellationToken);
-        var invResponse = response.InvocationResponse;
-        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
-
-        _logger.LogDebug("Timer invocation {InvocationId} for '{FunctionName}' {Result}",
-            invocationId, functionName, success ? "succeeded" : "failed");
-
-        return CreateInvocationResult(invocationId, invResponse);
-    }
-
-    /// <summary>
-    /// Invokes a Service Bus–triggered function by name, passing <paramref name="bodyBytes"/> as the
-    /// message body and optional <paramref name="triggerMetadataJson"/> as trigger metadata.
-    /// Unlike <see cref="SendInvocationRequestAsync"/> this method awaits the
-    /// <see cref="InvocationResponse"/> and returns a <see cref="FunctionInvocationResult"/>.
-    /// </summary>
-    /// <param name="functionName">The name of the Service Bus function (case-insensitive).</param>
-    /// <param name="bodyBytes">The raw message body bytes to pass as the trigger input.</param>
-    /// <param name="triggerMetadataJson">
-    /// Optional JSON string containing message metadata (MessageId, ContentType, etc.)
-    /// used by the worker to bind <c>ServiceBusReceivedMessage</c> parameters.
-    /// </param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task<FunctionInvocationResult> InvokeServiceBusFunctionAsync(
-        string functionName,
-        byte[] bodyBytes,
-        string? triggerMetadataJson = null,
-        CancellationToken cancellationToken = default)
-    {
-        if (!_serviceBusFunctionMap.TryGetValue(functionName, out var entry))
-        {
-            var available = string.Join(", ", _serviceBusFunctionMap.Keys);
-            throw new InvalidOperationException(
-                $"No Service Bus function '{functionName}' found. Available Service Bus functions: [{available}]");
-        }
-
-        var invocationId = Guid.NewGuid().ToString();
-        var invocationRequest = new InvocationRequest
-        {
-            InvocationId = invocationId,
-            FunctionId = entry.FunctionId,
-            TraceContext = new RpcTraceContext
-            {
-                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
-                TraceState = string.Empty
-            }
-        };
-
-        invocationRequest.InputData.Add(new ParameterBinding
-        {
-            Name = entry.ParameterName,
-            Data = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFrom(bodyBytes) }
-        });
-
-        if (!string.IsNullOrEmpty(triggerMetadataJson))
-        {
-            invocationRequest.TriggerMetadata.Add(
-                entry.ParameterName,
-                new TypedData { Json = triggerMetadataJson });
-        }
-
-        var message = new StreamingMessage
-        {
-            RequestId = invocationId,
-            InvocationRequest = invocationRequest
-        };
-
-        var response = await SendMessageAsync(message, cancellationToken);
-        var invResponse = response.InvocationResponse;
-        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
-
-        _logger.LogDebug("Service Bus invocation {InvocationId} for '{FunctionName}' {Result}",
-            invocationId, functionName, success ? "succeeded" : "failed");
-
-        return CreateInvocationResult(invocationId, invResponse);
-    }
-
-    /// <summary>
-    /// Invokes a queue-triggered function by name, passing <paramref name="messageBytes"/> as the
-    /// queue message body.  Returns a <see cref="FunctionInvocationResult"/> describing success or failure.
-    /// </summary>
-    /// <param name="functionName">The name of the queue function (case-insensitive).</param>
-    /// <param name="messageBytes">The raw bytes of the queue message body.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task<FunctionInvocationResult> InvokeQueueFunctionAsync(
-        string functionName,
-        ReadOnlyMemory<byte> messageBytes,
-        CancellationToken cancellationToken = default)
-    {
-        if (!_queueFunctionMap.TryGetValue(functionName, out var entry))
-        {
-            var available = string.Join(", ", _queueFunctionMap.Keys);
-            throw new InvalidOperationException(
-                $"No queue function '{functionName}' found. Available queue functions: [{available}]");
-        }
-
-        var invocationId = Guid.NewGuid().ToString();
-        var invocationRequest = new InvocationRequest
-        {
-            InvocationId = invocationId,
-            FunctionId = entry.FunctionId,
-            TraceContext = new RpcTraceContext
-            {
-                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
-                TraceState = string.Empty
-            }
-        };
-
-        invocationRequest.InputData.Add(new ParameterBinding
-        {
-            Name = entry.ParameterName,
-            Data = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFrom(messageBytes.Span) }
-        });
-
-        var message = new StreamingMessage
-        {
-            RequestId = invocationId,
-            InvocationRequest = invocationRequest
-        };
-
-        var response = await SendMessageAsync(message, cancellationToken);
-        var invResponse = response.InvocationResponse;
-        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
-
-        _logger.LogDebug("Queue invocation {InvocationId} for '{FunctionName}' {Result}",
-            invocationId, functionName, success ? "succeeded" : "failed");
-
-        return CreateInvocationResult(invocationId, invResponse);
-    }
-
-    /// <summary>
-    /// Invokes a blob-triggered function by name, passing <paramref name="contentBytes"/> as the
-    /// blob content and optional <paramref name="triggerMetadataJson"/> as trigger metadata.
+    /// Invokes a non-HTTP triggered function by name using the pre-built binding data provided
+    /// by an <see cref="ITriggerBinding"/> implementation.
     /// Returns a <see cref="FunctionInvocationResult"/> describing success or failure.
     /// </summary>
-    /// <param name="functionName">The name of the blob function (case-insensitive).</param>
-    /// <param name="contentBytes">The raw bytes of the blob content.</param>
-    /// <param name="triggerMetadataJson">
-    /// Optional JSON string containing blob metadata (BlobName, ContainerName, etc.)
-    /// used by the worker to bind blob-related parameters.
-    /// </param>
+    /// <param name="functionName">The name of the function (case-insensitive).</param>
+    /// <param name="bindingData">The input parameters and optional trigger metadata built by the trigger binding.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task<FunctionInvocationResult> InvokeBlobFunctionAsync(
+    public async Task<FunctionInvocationResult> InvokeFunctionAsync(
         string functionName,
-        ReadOnlyMemory<byte> contentBytes,
-        string? triggerMetadataJson = null,
+        TriggerBindingData bindingData,
         CancellationToken cancellationToken = default)
     {
-        if (!_blobFunctionMap.TryGetValue(functionName, out var entry))
+        if (!_functionsByName.TryGetValue(functionName, out var registration))
         {
-            var available = string.Join(", ", _blobFunctionMap.Keys);
+            var available = string.Join(", ", _functionsByName.Keys);
             throw new InvalidOperationException(
-                $"No blob function '{functionName}' found. Available blob functions: [{available}]");
+                $"No function '{functionName}' found. Available functions: [{available}]");
         }
 
         var invocationId = Guid.NewGuid().ToString();
         var invocationRequest = new InvocationRequest
         {
             InvocationId = invocationId,
-            FunctionId = entry.FunctionId,
+            FunctionId = registration.FunctionId,
             TraceContext = new RpcTraceContext
             {
                 TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
@@ -598,17 +440,24 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             }
         };
 
-        invocationRequest.InputData.Add(new ParameterBinding
+        foreach (var param in bindingData.InputData)
         {
-            Name = entry.ParameterName,
-            Data = new TypedData { Bytes = Google.Protobuf.ByteString.CopyFrom(contentBytes.Span) }
-        });
+            invocationRequest.InputData.Add(ToParameterBinding(param));
+        }
 
-        if (!string.IsNullOrEmpty(triggerMetadataJson))
+        if (bindingData.TriggerMetadataJson != null)
         {
-            invocationRequest.TriggerMetadata.Add(
-                entry.ParameterName,
-                new TypedData { Json = triggerMetadataJson });
+            foreach (var (key, jsonValue) in bindingData.TriggerMetadataJson)
+            {
+                invocationRequest.TriggerMetadata[key] = new TypedData { Json = jsonValue };
+            }
+        }
+
+        // Inject synthetic input bindings (e.g. durable client payload) registered by
+        // ISyntheticBindingProvider implementations.
+        foreach (var syntheticParam in GetSyntheticInputParameters(registration.FunctionId))
+        {
+            invocationRequest.InputData.Add(ToParameterBinding(syntheticParam));
         }
 
         var message = new StreamingMessage
@@ -621,60 +470,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         var invResponse = response.InvocationResponse;
         var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
 
-        _logger.LogDebug("Blob invocation {InvocationId} for '{FunctionName}' {Result}",
-            invocationId, functionName, success ? "succeeded" : "failed");
-
-        return CreateInvocationResult(invocationId, invResponse);
-    }
-
-    /// <summary>
-    /// Invokes an Event Grid–triggered function by name, passing <paramref name="eventJson"/> as the
-    /// serialized event data.  Returns a <see cref="FunctionInvocationResult"/> describing success or failure.
-    /// </summary>
-    /// <param name="functionName">The name of the Event Grid function (case-insensitive).</param>
-    /// <param name="eventJson">JSON-serialized event (EventGridEvent or CloudEvent schema).</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    public async Task<FunctionInvocationResult> InvokeEventGridFunctionAsync(
-        string functionName,
-        string eventJson,
-        CancellationToken cancellationToken = default)
-    {
-        if (!_eventGridFunctionMap.TryGetValue(functionName, out var entry))
-        {
-            var available = string.Join(", ", _eventGridFunctionMap.Keys);
-            throw new InvalidOperationException(
-                $"No Event Grid function '{functionName}' found. Available Event Grid functions: [{available}]");
-        }
-
-        var invocationId = Guid.NewGuid().ToString();
-        var invocationRequest = new InvocationRequest
-        {
-            InvocationId = invocationId,
-            FunctionId = entry.FunctionId,
-            TraceContext = new RpcTraceContext
-            {
-                TraceParent = $"00-{Guid.NewGuid():N}-{Guid.NewGuid().ToString("N")[..16]}-00",
-                TraceState = string.Empty
-            }
-        };
-
-        invocationRequest.InputData.Add(new ParameterBinding
-        {
-            Name = entry.ParameterName,
-            Data = new TypedData { Json = eventJson }
-        });
-
-        var message = new StreamingMessage
-        {
-            RequestId = invocationId,
-            InvocationRequest = invocationRequest
-        };
-
-        var response = await SendMessageAsync(message, cancellationToken);
-        var invResponse = response.InvocationResponse;
-        var success = invResponse?.Result?.Status == StatusResult.Types.Status.Success;
-
-        _logger.LogDebug("Event Grid invocation {InvocationId} for '{FunctionName}' {Result}",
+        _logger.LogDebug("Invocation {InvocationId} for '{FunctionName}' {Result}",
             invocationId, functionName, success ? "succeeded" : "failed");
 
         return CreateInvocationResult(invocationId, invResponse);
@@ -969,149 +765,105 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                         continue;
                     }
 
-                    // Extract HTTP route from raw bindings and build the method-aware route map
+                    // Parse raw bindings to populate route maps and unified function registry
                     foreach (var rawBinding in functionMetadata.RawBindings)
                     {
                         try
                         {
                             using var doc = JsonDocument.Parse(rawBinding);
                             var root = doc.RootElement;
-                            if (root.TryGetProperty("type", out var typeProp))
+                            if (!root.TryGetProperty("type", out var typeProp)) continue;
+
+                            var bindingType = typeProp.GetString() ?? string.Empty;
+
+                            if (bindingType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase))
                             {
-                                var triggerType = typeProp.GetString() ?? string.Empty;
+                                // When Route is not explicitly set on [HttpTrigger], the source-generated
+                                // binding JSON omits the "route" property or sets it to null.
+                                // Azure Functions defaults the route to the function name in that case.
+                                var route = root.TryGetProperty("route", out var routeProp)
+                                    ? routeProp.GetString()
+                                    : null;
 
-                                if (triggerType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase))
+                                if (string.IsNullOrEmpty(route))
                                 {
-                                    // When Route is not explicitly set on [HttpTrigger], the source-generated
-                                    // binding JSON omits the "route" property or sets it to null.
-                                    // Azure Functions defaults the route to the function name in that case.
-                                    var route = root.TryGetProperty("route", out var routeProp)
-                                        ? routeProp.GetString()
-                                        : null;
+                                    route = functionMetadata.Name;
+                                }
 
-                                    if (string.IsNullOrEmpty(route))
+                                // Store the actual HTTP trigger binding parameter name so callers can
+                                // use it in InputData (instead of the hardcoded default "req").
+                                var httpBindingName = root.TryGetProperty("name", out var httpNameProp)
+                                    ? httpNameProp.GetString() ?? "req"
+                                    : "req";
+                                _httpBindingNameByFunctionId[functionMetadata.FunctionId] = httpBindingName;
+
+                                // Extract accepted HTTP methods; default to all if not specified
+                                var methods = new List<string>();
+                                if (root.TryGetProperty("methods", out var methodsProp) &&
+                                    methodsProp.ValueKind == JsonValueKind.Array)
+                                {
+                                    foreach (var m in methodsProp.EnumerateArray())
                                     {
-                                        route = functionMetadata.Name;
-                                    }
-
-                                    // Store the actual HTTP trigger binding parameter name so callers can
-                                    // use it in InputData (instead of the hardcoded default "req").
-                                    var httpBindingName = root.TryGetProperty("name", out var httpNameProp)
-                                        ? httpNameProp.GetString() ?? "req"
-                                        : "req";
-                                    _httpBindingNameByFunctionId[functionMetadata.FunctionId] = httpBindingName;
-
-                                    // Extract accepted HTTP methods; default to all if not specified
-                                    var methods = new List<string>();
-                                    if (root.TryGetProperty("methods", out var methodsProp) &&
-                                        methodsProp.ValueKind == JsonValueKind.Array)
-                                    {
-                                        foreach (var m in methodsProp.EnumerateArray())
+                                        var methodStr = m.GetString();
+                                        if (!string.IsNullOrEmpty(methodStr))
                                         {
-                                            var methodStr = m.GetString();
-                                            if (!string.IsNullOrEmpty(methodStr))
-                                            {
-                                                methods.Add(methodStr.ToUpperInvariant());
-                                            }
+                                            methods.Add(methodStr.ToUpperInvariant());
                                         }
                                     }
+                                }
 
-                                    if (methods.Count == 0)
-                                    {
-                                        // No methods specified means all methods are accepted; use wildcard
-                                        methods.AddRange(new[] { "GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS" });
-                                    }
+                                if (methods.Count == 0)
+                                {
+                                    // No methods specified means all methods are accepted; use wildcard
+                                    methods.AddRange(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
+                                }
 
-                                    foreach (var httpMethod in methods)
-                                    {
-                                        var key = $"{httpMethod}:{route}";
-                                        _functionRouteToId[key] = functionMetadata.FunctionId;
-                                        _logger.LogDebug("Mapped '{Key}' to function ID '{FunctionId}'",
-                                            key, functionMetadata.FunctionId);
-                                    }
-                                }
-                                else if (triggerType.Equals("timerTrigger", StringComparison.OrdinalIgnoreCase))
+                                foreach (var httpMethod in methods)
                                 {
-                                    // The "name" field is the function parameter name for the timer binding.
-                                    var paramName = root.TryGetProperty("name", out var nameProp)
-                                        ? nameProp.GetString() ?? "myTimer"
-                                        : "myTimer";
-                                    _timerFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
-                                    _logger.LogDebug("Mapped timer function '{Name}' (param '{Param}') to ID '{FunctionId}'",
-                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
+                                    var key = $"{httpMethod}:{route}";
+                                    _functionRouteToId[key] = functionMetadata.FunctionId;
+                                    _logger.LogDebug("Mapped '{Key}' to function ID '{FunctionId}'",
+                                        key, functionMetadata.FunctionId);
                                 }
-                                else if (triggerType.Equals("serviceBusTrigger", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    // The "name" field is the function parameter name for the service bus binding.
-                                    var paramName = root.TryGetProperty("name", out var nameProp)
-                                        ? nameProp.GetString() ?? "message"
-                                        : "message";
-                                    _serviceBusFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
-                                    _logger.LogDebug("Mapped Service Bus function '{Name}' (param '{Param}') to ID '{FunctionId}'",
-                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
-                                }
-                                else if (triggerType.Equals("queueTrigger", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    // The "name" field is the function parameter name for the queue binding.
-                                    var paramName = root.TryGetProperty("name", out var nameProp)
-                                        ? nameProp.GetString() ?? "myQueueItem"
-                                        : "myQueueItem";
-                                    _queueFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
-                                    _logger.LogDebug("Mapped queue function '{Name}' (param '{Param}') to ID '{FunctionId}'",
-                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
-                                }
-                                else if (triggerType.Equals("blobTrigger", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    // The "name" field is the function parameter name for the blob binding.
-                                    var paramName = root.TryGetProperty("name", out var nameProp)
-                                        ? nameProp.GetString() ?? "myBlob"
-                                        : "myBlob";
-                                    _blobFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
-                                    _logger.LogDebug("Mapped blob function '{Name}' (param '{Param}') to ID '{FunctionId}'",
-                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
-                                }
-                                else if (triggerType.Equals("eventGridTrigger", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    // The "name" field is the function parameter name for the Event Grid binding.
-                                    var paramName = root.TryGetProperty("name", out var nameProp)
-                                        ? nameProp.GetString() ?? "eventGridEvent"
-                                        : "eventGridEvent";
-                                    _eventGridFunctionMap[functionMetadata.Name] = (functionMetadata.FunctionId, paramName);
-                                    _logger.LogDebug("Mapped Event Grid function '{Name}' (param '{Param}') to ID '{FunctionId}'",
-                                        functionMetadata.Name, paramName, functionMetadata.FunctionId);
-                                }
-                                else if (triggerType.Equals("durableClient", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    var paramName = root.TryGetProperty("name", out var nameProp)
-                                        ? nameProp.GetString() ?? "durableClient"
-                                        : "durableClient";
-                                    var taskHub = root.TryGetProperty("taskHub", out var taskHubProp)
-                                        ? taskHubProp.GetString()
-                                        : null;
-                                    var connectionName = root.TryGetProperty("connectionName", out var connectionNameProp)
-                                        ? connectionNameProp.GetString()
-                                        : null;
+                            }
+                            else if (bindingType.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
+                            {
+                                // All non-HTTP triggers: populate the unified function registry.
+                                // The "name" field is the binding parameter name in the function signature.
+                                var paramName = root.TryGetProperty("name", out var nameProp)
+                                    ? nameProp.GetString() ?? string.Empty
+                                    : string.Empty;
+                                _functionsByName[functionMetadata.Name] = new FunctionRegistration(
+                                    functionMetadata.FunctionId,
+                                    functionMetadata.Name,
+                                    bindingType,
+                                    paramName);
+                                _logger.LogDebug(
+                                    "Mapped {TriggerType} function '{Name}' (param '{Param}') to ID '{FunctionId}'",
+                                    bindingType, functionMetadata.Name, paramName, functionMetadata.FunctionId);
+                            }
 
-                                    if (!_syntheticInputBindingsByFunctionId.TryGetValue(functionMetadata.FunctionId, out var bindings))
-                                    {
-                                        bindings = [];
-                                        _syntheticInputBindingsByFunctionId[functionMetadata.FunctionId] = bindings;
-                                    }
+                            // Allow registered ISyntheticBindingProvider implementations to inject
+                            // synthetic input bindings for any binding type (e.g. durableClient).
+                            foreach (var provider in _syntheticBindingProviders)
+                            {
+                                if (!bindingType.Equals(provider.BindingType, StringComparison.OrdinalIgnoreCase))
+                                    continue;
 
-                                    bindings.Add(new ParameterBinding
-                                    {
-                                        Name = paramName,
-                                        Data = new TypedData
-                                        {
-                                            String = DurableClientBindingDefaults.CreatePayload(taskHub, connectionName)
-                                        }
-                                    });
+                                var providerParamName = root.TryGetProperty("name", out var providerNameProp)
+                                    ? providerNameProp.GetString() ?? provider.BindingType
+                                    : provider.BindingType;
 
-                                    _logger.LogDebug(
-                                        "Mapped durable client binding '{BindingName}' for function '{Name}' to synthetic payload",
-                                        paramName,
-                                        functionMetadata.Name);
+                                if (!_syntheticInputByFunctionId.TryGetValue(functionMetadata.FunctionId, out var bindings))
+                                {
+                                    bindings = [];
+                                    _syntheticInputByFunctionId[functionMetadata.FunctionId] = bindings;
                                 }
+
+                                bindings.Add(provider.CreateSyntheticParameter(providerParamName, root));
+                                _logger.LogDebug(
+                                    "Added synthetic '{BindingType}' binding '{BindingName}' for function '{Name}'",
+                                    provider.BindingType, providerParamName, functionMetadata.Name);
                             }
                         }
                         catch (JsonException)

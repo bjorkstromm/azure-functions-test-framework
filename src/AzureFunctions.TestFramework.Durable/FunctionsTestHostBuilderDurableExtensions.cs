@@ -29,33 +29,35 @@ public static class FunctionsTestHostBuilderDurableExtensions
         ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(functionsAssembly);
 
-        return builder.ConfigureServices(services =>
-        {
-            var durableBindingConfigurations = DiscoverDurableClientBindings(functionsAssembly);
+        return builder
+            .WithSyntheticBindingProvider(new DurableClientSyntheticBindingProvider())
+            .ConfigureServices(services =>
+            {
+                var durableBindingConfigurations = DiscoverDurableClientBindings(functionsAssembly);
 
-            services.TryAddSingleton(new FakeDurableFunctionCatalog(functionsAssembly));
-            services.TryAddSingleton<FakeDurableExternalEventHub>();
-            services.TryAddSingleton<FakeDurableEntityRunner>();
-            services.TryAddSingleton<FakeDurableEntityClient>();
-            services.TryAddSingleton<FakeDurableOrchestrationRunner>();
-            services.TryAddSingleton<FakeDurableTaskClient>();
-            services.TryAddSingleton<DurableTaskClient>(provider => provider.GetRequiredService<FakeDurableTaskClient>());
-            services.TryAddSingleton<FunctionsDurableClientProvider>();
+                services.TryAddSingleton(new FakeDurableFunctionCatalog(functionsAssembly));
+                services.TryAddSingleton<FakeDurableExternalEventHub>();
+                services.TryAddSingleton<FakeDurableEntityRunner>();
+                services.TryAddSingleton<FakeDurableEntityClient>();
+                services.TryAddSingleton<FakeDurableOrchestrationRunner>();
+                services.TryAddSingleton<FakeDurableTaskClient>();
+                services.TryAddSingleton<DurableTaskClient>(provider => provider.GetRequiredService<FakeDurableTaskClient>());
+                services.TryAddSingleton<FunctionsDurableClientProvider>();
 
-            // Register our fake input converter and alias it as the real DurableTaskClientConverter
-            // type in DI. The SDK's DefaultInputConverterProvider.GetOrCreateConverterInstance calls
-            // ActivatorUtilities.GetServiceOrCreateInstance(sp, converterType) which checks DI first.
-            // By registering our fake for the real converter's type, the SDK resolves our fake instead
-            // of creating the real converter — which would fail because it expects a JSON binding
-            // payload (rpcBaseUrl, taskHubName, etc.) that is only present in the gRPC-direct path.
-            services.TryAddSingleton<FakeDurableTaskClientInputConverter>();
-            var realConverterType = typeof(DurableClientAttribute).Assembly.GetType(
-                "Microsoft.Azure.Functions.Worker.Extensions.DurableTask.DurableTaskClientConverter",
-                throwOnError: true)!;
-            services.AddSingleton(realConverterType, sp => sp.GetRequiredService<FakeDurableTaskClientInputConverter>());
+                // Register our fake input converter and alias it as the real DurableTaskClientConverter
+                // type in DI. The SDK's DefaultInputConverterProvider.GetOrCreateConverterInstance calls
+                // ActivatorUtilities.GetServiceOrCreateInstance(sp, converterType) which checks DI first.
+                // By registering our fake for the real converter's type, the SDK resolves our fake instead
+                // of creating the real converter — which would fail because it expects a JSON binding
+                // payload (rpcBaseUrl, taskHubName, etc.) that is only present in the gRPC-direct path.
+                services.TryAddSingleton<FakeDurableTaskClientInputConverter>();
+                var realConverterType = typeof(DurableClientAttribute).Assembly.GetType(
+                    "Microsoft.Azure.Functions.Worker.Extensions.DurableTask.DurableTaskClientConverter",
+                    throwOnError: true)!;
+                services.AddSingleton(realConverterType, sp => sp.GetRequiredService<FakeDurableTaskClientInputConverter>());
 
-            RegisterInternalDurableClientProvider(services, durableBindingConfigurations);
-        });
+                RegisterInternalDurableClientProvider(services, durableBindingConfigurations);
+            });
     }
 
     private static void RegisterInternalDurableClientProvider(

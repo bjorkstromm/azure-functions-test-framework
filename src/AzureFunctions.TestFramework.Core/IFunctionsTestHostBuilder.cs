@@ -165,6 +165,19 @@ public interface IFunctionsTestHostBuilder
     IFunctionsTestHostBuilder WithInvocationTimeout(TimeSpan timeout);
 
     /// <summary>
+    /// Registers an <see cref="ISyntheticBindingProvider"/> that injects synthetic input
+    /// bindings into every function invocation that declares the matching binding attribute.
+    /// <para>
+    /// The canonical use case is the <c>[DurableClient]</c> binding: the test framework must
+    /// synthesise the JSON payload (<c>rpcBaseUrl</c>, <c>taskHubName</c>, …) that the real
+    /// Azure Functions host normally provides so that the worker's converter can construct
+    /// the <c>DurableTaskClient</c> object.
+    /// </para>
+    /// </summary>
+    /// <param name="provider">The synthetic binding provider to register.</param>
+    IFunctionsTestHostBuilder WithSyntheticBindingProvider(ISyntheticBindingProvider provider);
+
+    /// <summary>
     /// Builds and returns the configured test host.
     /// </summary>
     IFunctionsTestHost Build();

@@ -26,6 +26,8 @@ public static class FunctionsTestHostQueueExtensions
 
         var body = message.Body?.ToArray() ?? [];
 
+        host.Invoker.RegisterTriggerBinding(new QueueTriggerBinding());
+
         var context = new FunctionInvocationContext
         {
             TriggerType = "queueTrigger",

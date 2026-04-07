@@ -45,6 +45,8 @@ public static class FunctionsTestHostBlobExtensions
             });
         }
 
+        host.Invoker.RegisterTriggerBinding(new BlobTriggerBinding());
+
         var context = new FunctionInvocationContext
         {
             TriggerType = "blobTrigger",

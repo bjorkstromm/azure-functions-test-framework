@@ -45,6 +45,8 @@ public static class FunctionsTestHostEventGridExtensions
             topic = string.Empty
         }, _jsonOptions);
 
+        host.Invoker.RegisterTriggerBinding(new EventGridTriggerBinding());
+
         var context = new FunctionInvocationContext
         {
             TriggerType = "eventGridTrigger",
@@ -83,6 +85,8 @@ public static class FunctionsTestHostEventGridExtensions
             datacontenttype = cloudEvent.DataContentType,
             data
         }, _jsonOptions);
+
+        host.Invoker.RegisterTriggerBinding(new EventGridTriggerBinding());
 
         var context = new FunctionInvocationContext
         {

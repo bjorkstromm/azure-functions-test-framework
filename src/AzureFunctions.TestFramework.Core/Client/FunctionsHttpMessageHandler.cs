@@ -118,9 +118,9 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                 grpcRequest.InvocationRequest.TriggerMetadata[paramName] = new TypedData { String = paramValue };
             }
 
-            foreach (var binding in _grpcHostService.GetSyntheticInputBindings(functionId))
+            foreach (var binding in _grpcHostService.GetSyntheticInputParameters(functionId))
             {
-                grpcRequest.InvocationRequest.InputData.Add(binding);
+                grpcRequest.InvocationRequest.InputData.Add(GrpcHostService.ToParameterBinding(binding));
             }
 
             // 5. Send to worker via gRPC (in-process)

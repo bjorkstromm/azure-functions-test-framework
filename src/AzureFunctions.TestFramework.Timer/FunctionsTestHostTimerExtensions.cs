@@ -36,6 +36,8 @@ public static class FunctionsTestHostTimerExtensions
         var info = timerInfo ?? new TimerInfo();
         var json = JsonSerializer.Serialize(info, _jsonOptions);
 
+        host.Invoker.RegisterTriggerBinding(new TimerTriggerBinding());
+
         var context = new FunctionInvocationContext
         {
             TriggerType = "timerTrigger",

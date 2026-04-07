@@ -23,6 +23,8 @@ public class FunctionsTestHost : IFunctionsTestHost
     private HttpMessageHandler? _cachedHandler;
     private bool _isStarted;
 
+    private readonly IFunctionInvoker _invoker;
+
     internal FunctionsTestHost(
         ILogger<FunctionsTestHost> logger,
         GrpcServerManager grpcServerManager,
@@ -37,6 +39,7 @@ public class FunctionsTestHost : IFunctionsTestHost
         _grpcHostService = grpcHostService;
         _routePrefix = routePrefix.Trim('/');
         _invocationTimeout = invocationTimeout == default ? TimeSpan.FromSeconds(120) : invocationTimeout;
+        _invoker = new FunctionInvoker(_grpcHostService);
     }
 
     /// <summary>
@@ -47,7 +50,7 @@ public class FunctionsTestHost : IFunctionsTestHost
     /// <summary>
     /// Gets the function invoker for executing functions.
     /// </summary>
-    public IFunctionInvoker Invoker => new FunctionInvoker(_grpcHostService);
+    public IFunctionInvoker Invoker => _invoker;
 
     /// <summary>
     /// Creates an HttpClient configured to invoke functions in-process.
@@ -200,15 +203,24 @@ public class FunctionsTestHost : IFunctionsTestHost
 }
 
 /// <summary>
-/// Simple function invoker implementation.
+/// Default function invoker that dispatches non-HTTP invocations via a registry of
+/// <see cref="ITriggerBinding"/> implementations, one per trigger type.
 /// </summary>
 internal class FunctionInvoker : IFunctionInvoker
 {
     private readonly GrpcHostService _grpcHostService;
+    private readonly Dictionary<string, ITriggerBinding> _bindings
+        = new(StringComparer.OrdinalIgnoreCase);
 
     public FunctionInvoker(GrpcHostService grpcHostService)
     {
         _grpcHostService = grpcHostService;
+    }
+
+    public void RegisterTriggerBinding(ITriggerBinding binding)
+    {
+        ArgumentNullException.ThrowIfNull(binding);
+        _bindings.TryAdd(binding.TriggerType, binding);
     }
 
     public Task<FunctionInvocationResult> InvokeAsync(
@@ -216,78 +228,21 @@ internal class FunctionInvoker : IFunctionInvoker
         FunctionInvocationContext context,
         CancellationToken cancellationToken = default)
     {
-        return context.TriggerType switch
+        if (!_bindings.TryGetValue(context.TriggerType, out var binding))
         {
-            "timerTrigger" => InvokeTimerAsync(functionName, context, cancellationToken),
-            "serviceBusTrigger" => InvokeServiceBusAsync(functionName, context, cancellationToken),
-            "queueTrigger" => InvokeQueueAsync(functionName, context, cancellationToken),
-            "blobTrigger" => InvokeBlobAsync(functionName, context, cancellationToken),
-            "eventGridTrigger" => InvokeEventGridAsync(functionName, context, cancellationToken),
-            _ => throw new NotSupportedException(
+            throw new NotSupportedException(
                 $"Trigger type '{context.TriggerType}' is not supported by this invoker. " +
-                $"Use a trigger-specific extension package (e.g. AzureFunctions.TestFramework.Timer).")
-        };
-    }
+                $"Ensure the corresponding extension package is referenced and that its " +
+                $"ITriggerBinding is registered via IFunctionInvoker.RegisterTriggerBinding.");
+        }
 
-    private Task<FunctionInvocationResult> InvokeTimerAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var timerJson = context.InputData.TryGetValue("$timerJson", out var j)
-            ? j?.ToString() ?? "{}"
-            : "{}";
-        return _grpcHostService.InvokeTimerFunctionAsync(functionName, timerJson, cancellationToken);
-    }
+        var registration = _grpcHostService.GetFunctionRegistration(functionName)
+            ?? throw new InvalidOperationException(
+                $"Function '{functionName}' was not found or is not a non-HTTP trigger function. " +
+                $"Available non-HTTP functions: [{string.Join(", ", _grpcHostService.GetFunctions().Keys)}]");
 
-    private Task<FunctionInvocationResult> InvokeServiceBusAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var bodyBytes = context.InputData.TryGetValue("$messageBodyBytes", out var b) && b is byte[] bytes
-            ? bytes
-            : Array.Empty<byte>();
-        var triggerMetadata = context.InputData.TryGetValue("$triggerMetadata", out var m)
-            ? m?.ToString()
-            : null;
-        return _grpcHostService.InvokeServiceBusFunctionAsync(functionName, bodyBytes, triggerMetadata, cancellationToken);
-    }
-
-    private Task<FunctionInvocationResult> InvokeQueueAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var messageBytes = context.InputData.TryGetValue("$queueMessageBytes", out var b) && b is byte[] bytes
-            ? new ReadOnlyMemory<byte>(bytes)
-            : ReadOnlyMemory<byte>.Empty;
-        return _grpcHostService.InvokeQueueFunctionAsync(functionName, messageBytes, cancellationToken);
-    }
-
-    private Task<FunctionInvocationResult> InvokeBlobAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var contentBytes = context.InputData.TryGetValue("$blobContentBytes", out var b) && b is byte[] bytes
-            ? new ReadOnlyMemory<byte>(bytes)
-            : ReadOnlyMemory<byte>.Empty;
-        var triggerMetadata = context.InputData.TryGetValue("$triggerMetadata", out var m)
-            ? m?.ToString()
-            : null;
-        return _grpcHostService.InvokeBlobFunctionAsync(functionName, contentBytes, triggerMetadata, cancellationToken);
-    }
-
-    private Task<FunctionInvocationResult> InvokeEventGridAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var eventJson = context.InputData.TryGetValue("$eventJson", out var j)
-            ? j?.ToString() ?? "{}"
-            : "{}";
-        return _grpcHostService.InvokeEventGridFunctionAsync(functionName, eventJson, cancellationToken);
+        var bindingData = binding.CreateBindingData(context, registration);
+        return _grpcHostService.InvokeFunctionAsync(functionName, bindingData, cancellationToken);
     }
 
     public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions()
