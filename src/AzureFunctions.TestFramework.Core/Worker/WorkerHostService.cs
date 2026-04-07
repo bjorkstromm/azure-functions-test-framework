@@ -3,13 +3,13 @@ using AzureFunctions.TestFramework.Core.Worker.Converters;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
-using System.Net;
 using System.Reflection;
 
 namespace AzureFunctions.TestFramework.Core.Worker;
@@ -26,7 +26,7 @@ public class WorkerHostService : IAsyncDisposable
     private static readonly SemaphoreSlim s_envLock = new(1, 1);
 
     private readonly ILogger<WorkerHostService> _logger;
-    private readonly int _grpcPort;
+    private readonly HttpMessageHandler _grpcHandler;
     private readonly Assembly _functionsAssembly;
     private readonly Func<string[], IHostBuilder>? _hostBuilderFactory;
     private readonly Func<string[], FunctionsApplicationBuilder>? _hostApplicationBuilderFactory;
@@ -38,16 +38,14 @@ public class WorkerHostService : IAsyncDisposable
     private readonly Action<ILoggingBuilder>? _workerLoggingConfigurator;
     private IHost? _workerHost;
     private bool _isInitialized;
-    private int? _httpPort;
-    private readonly int _allocatedHttpPort;
+    private HttpMessageHandler? _workerHttpHandler;
 
     /// <summary>
-    /// The port on which the worker's ASP.NET Core HTTP server is listening, or <c>null</c>
-    /// when the worker is using <c>ConfigureFunctionsWorkerDefaults()</c> (gRPC-direct mode).
-    /// Populated after <see cref="StartAsync"/> when the worker has started successfully and
-    /// an ASP.NET Core HTTP server (<c>IServer</c>) is detected in its service container.
+    /// The in-memory <see cref="HttpMessageHandler"/> for the worker's ASP.NET Core HTTP server,
+    /// available when the worker uses <c>ConfigureFunctionsWebApplication()</c> and the host was
+    /// started with <c>UseTestServer()</c>.
     /// </summary>
-    public int? HttpPort => _httpPort;
+    public HttpMessageHandler? WorkerHttpHandler => _workerHttpHandler;
 
     /// <inheritdoc />
     public IServiceProvider Services => _workerHost?.Services
@@ -57,7 +55,7 @@ public class WorkerHostService : IAsyncDisposable
     /// Initializes a new instance of the <see cref="WorkerHostService"/> class.
     /// </summary>
     /// <param name="logger">The logger used for worker lifecycle messages.</param>
-    /// <param name="grpcPort">The gRPC port exposed by the in-process host.</param>
+    /// <param name="grpcHandler">The in-memory gRPC handler connecting to the test host's gRPC server.</param>
     /// <param name="functionsAssembly">The assembly containing the functions under test.</param>
     /// <param name="grpcHostService">The gRPC host service coordinating worker communication.</param>
     /// <param name="hostBuilderFactory">Optional factory for creating the worker host builder (<see cref="IHostBuilder"/>).</param>
@@ -71,7 +69,7 @@ public class WorkerHostService : IAsyncDisposable
     /// logging pipeline (applied after default suppression rules).</param>
     public WorkerHostService(
         ILogger<WorkerHostService> logger,
-        int grpcPort,
+        HttpMessageHandler grpcHandler,
         Assembly functionsAssembly,
         GrpcHostService grpcHostService,
         Func<string[], IHostBuilder>? hostBuilderFactory = null,
@@ -82,7 +80,7 @@ public class WorkerHostService : IAsyncDisposable
         Action<ILoggingBuilder>? workerLoggingConfigurator = null)
     {
         _logger = logger;
-        _grpcPort = grpcPort;
+        _grpcHandler = grpcHandler;
         _functionsAssembly = functionsAssembly;
         _grpcHostService = grpcHostService;
         _hostBuilderFactory = hostBuilderFactory;
@@ -90,7 +88,6 @@ public class WorkerHostService : IAsyncDisposable
         _settings = settings ?? new Dictionary<string, string>();
         _environmentVariables = environmentVariables ?? new Dictionary<string, string>();
         _routePrefix = routePrefix;
-        _allocatedHttpPort = FindAvailablePort();
         _workerLoggingConfigurator = workerLoggingConfigurator;
     }
 
@@ -123,12 +120,12 @@ public class WorkerHostService : IAsyncDisposable
         try
         {
             // Create the worker host with Azure Functions infrastructure.
-            // Environment variables (FUNCTIONS_APPLICATION_DIRECTORY, ASPNETCORE_URLS, etc.)
-            // are process-global. To avoid races when tests run in parallel, serialize the
+            // Environment variables (FUNCTIONS_APPLICATION_DIRECTORY, etc.) are process-global.
+            // To avoid races when tests run in parallel, serialize the
             // env-var-set → builder-create → host-build → host-start sequence so each host
             // reads its own values.  The lock must cover StartAsync because the SDK's
             // FunctionsEndpointDataSource reads FUNCTIONS_APPLICATION_DIRECTORY directly from
-            // the environment at endpoint build time (during Kestrel startup).
+            // the environment at endpoint build time (during host startup).
             await s_envLock.WaitAsync(cancellationToken);
             try
             {
@@ -142,37 +139,23 @@ public class WorkerHostService : IAsyncDisposable
 
             // Auto-detect ASP.NET Core integration mode: if an IServer is registered in the
             // worker's DI container, the factory used ConfigureFunctionsWebApplication().
-            // Read the ACTUAL port from Kestrel because ConfigureFunctionsWebApplication()
-            // calls UseUrls(HttpUriProvider.HttpUriString) with its own random port, which
-            // overrides ASPNETCORE_URLS and configuration-based URLs.
+            // TestServer must have been injected; real Kestrel is not supported.
             var server = _workerHost.Services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
-            if (server == null && _hostApplicationBuilderFactory != null)
-            {
-                // FunctionsApplicationBuilder may register IServer in the root container under
-                // a different mechanism. Fall back to discovering the address via the generic host's
-                // IHostedService that manages the Kestrel lifetime.
-                server = TryResolveServerFromGenericHost(_workerHost.Services);
-            }
 
             if (server != null)
             {
-                var addressFeature = server.Features
-                    .Get<Microsoft.AspNetCore.Hosting.Server.Features.IServerAddressesFeature>();
-                if (addressFeature?.Addresses is { Count: > 0 } addresses)
+                if (server is Microsoft.AspNetCore.TestHost.TestServer testServer)
                 {
-                    var uri = new Uri(addresses.First());
-                    _httpPort = uri.Port;
+                    _workerHttpHandler = testServer.CreateHandler();
+                    _logger.LogInformation(
+                        "ASP.NET Core integration detected; worker HTTP server running in-memory (TestServer)");
                 }
                 else
                 {
-                    _httpPort = _allocatedHttpPort;
+                    throw new FunctionsTestHostException(
+                        $"Expected TestServer as IServer but found {server.GetType().FullName}. " +
+                        "Real Kestrel is not supported — ensure UseTestServer() was applied.");
                 }
-                _logger.LogInformation(
-                    "ASP.NET Core integration detected; worker HTTP server on port {HttpPort}", _httpPort);
-            }
-            else if (_hostApplicationBuilderFactory != null)
-            {
-                _logger.LogDebug("IServer not found in services after FunctionsApplicationBuilder start; running in gRPC mode");
             }
 
             _isInitialized = true;
@@ -211,57 +194,6 @@ public class WorkerHostService : IAsyncDisposable
         }
     }
 
-    /// <summary>
-    /// When using <c>FunctionsApplicationBuilder</c>, the Kestrel <c>IServer</c> may be registered
-    /// in a child container (e.g. inside the generic host's <c>IWebHostBuilder</c>-backed hosted
-    /// service).  This helper attempts to find the server via the <c>IHostedService</c> collection
-    /// so the ASP.NET Core port can be read back after the host has started.
-    /// </summary>
-    private static Microsoft.AspNetCore.Hosting.Server.IServer? TryResolveServerFromGenericHost(
-        IServiceProvider services)
-    {
-        // WebApplication (used by FunctionsApplicationBuilder internally) exposes IServer directly.
-        // Try the root container first; it's usually there for WebApplication/WebApplicationBuilder.
-        var direct = services.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
-        if (direct != null) return direct;
-
-        // Walk the IHostedService list — one of them is typically Microsoft.AspNetCore.Hosting.GenericWebHostService
-        // which holds a reference to the inner IWebHost whose service provider has IServer.
-        foreach (var hostedService in services.GetServices<IHostedService>())
-        {
-            // Avoid reflection failures on sealed types.
-            try
-            {
-                var webHostProp = hostedService.GetType()
-                    .GetProperty("Application", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic);
-                if (webHostProp?.GetValue(hostedService) is IServiceProvider innerSp)
-                {
-                    var innerServer = innerSp.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
-                    if (innerServer != null) return innerServer;
-                }
-
-                var webHostField = hostedService.GetType()
-                    .GetField("_webHost", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-                if (webHostField?.GetValue(hostedService) is { } webHost)
-                {
-                    var servicesProp = webHost.GetType()
-                        .GetProperty("Services", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-                    if (servicesProp?.GetValue(webHost) is IServiceProvider webHostSp)
-                    {
-                        var innerServer = webHostSp.GetService<Microsoft.AspNetCore.Hosting.Server.IServer>();
-                        if (innerServer != null) return innerServer;
-                    }
-                }
-            }
-            catch
-            {
-                // Ignore reflection failures — best effort.
-            }
-        }
-
-        return null;
-    }
-
     private IHost CreateWorkerHost()
     {
         if (_hostApplicationBuilderFactory != null)
@@ -269,11 +201,9 @@ public class WorkerHostService : IAsyncDisposable
             return CreateWorkerHostFromApplicationBuilder();
         }
 
-        // Use 127.0.0.1 explicitly to avoid DNS resolution issues
-        var grpcUri = $"http://127.0.0.1:{_grpcPort}";
+        var grpcUri = "http://localhost";
         var workerId = Guid.NewGuid().ToString();
         var requestId = Guid.NewGuid().ToString();
-        var httpUri = $"http://127.0.0.1:{_allocatedHttpPort}";
         
         _logger.LogInformation("Configuring worker to connect to {GrpcUri}", grpcUri);
         
@@ -283,25 +213,19 @@ public class WorkerHostService : IAsyncDisposable
             workerId,
             requestId,
             functionAppDirectory,
-            httpUri,
-            includeFunctionDirectories: false,
-            includeUrls: true);
+            includeFunctionDirectories: false);
         var appConfigurationValues = CreateConfigurationValues(
             grpcUri,
             workerId,
             requestId,
             functionAppDirectory,
-            httpUri,
-            includeFunctionDirectories: true,
-            includeUrls: false);
+            includeFunctionDirectories: true);
         var overrideConfigurationValues = CreateConfigurationValues(
             grpcUri,
             workerId,
             requestId,
             functionAppDirectory,
-            httpUri,
-            includeFunctionDirectories: false,
-            includeUrls: false);
+            includeFunctionDirectories: false);
 
         // IMPORTANT: Set environment variables BEFORE creating HostBuilder!
         // ConfigureFunctionsWorkerDefaults calls AddEnvironmentVariables() which will read these
@@ -309,10 +233,8 @@ public class WorkerHostService : IAsyncDisposable
         Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", $"{Environment.Version.Major}.0");
         Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("FUNCTIONS_APPLICATION_DIRECTORY", functionAppDirectory);
-        // Pre-configure the ASP.NET Core server URL so that when ConfigureFunctionsWebApplication()
-        // is used the worker's Kestrel server listens on the allocated HTTP port.
-        // Ignored when ConfigureFunctionsWorkerDefaults() is used (no Kestrel is started).
-        Environment.SetEnvironmentVariable("ASPNETCORE_URLS", httpUri);
+        // Clear any stale ASPNETCORE_URLS from prior runs — TestServer doesn't bind to a port.
+        Environment.SetEnvironmentVariable("ASPNETCORE_URLS", null);
 
         // Apply user-configured environment variables (set BEFORE HostBuilder is created so they
         // are picked up by ConfigureFunctionsWorkerDefaults/AddEnvironmentVariables).
@@ -461,6 +383,38 @@ public class WorkerHostService : IAsyncDisposable
             hostBuilder.ConfigureLogging(_workerLoggingConfigurator);
         }
 
+        // Register the in-memory IWorkerClientFactory AFTER all other service registrations
+        // (including those from ConfigureFunctionsWorkerDefaults/ConfigureFunctionsWebApplication)
+        // so our AddSingleton wins over the SDK's TryAddSingleton.
+        var grpcHandlerForFactory = _grpcHandler;
+        var loggerForFactory = _logger;
+        hostBuilder.ConfigureServices(services =>
+        {
+            InMemoryGrpcClientFactory.TryRegister(services, grpcHandlerForFactory, loggerForFactory);
+        });
+
+        // Phase 2: replace the worker's Kestrel IServer with TestServer (in-memory) when
+        // ConfigureFunctionsWebApplication() was used.  We detect web host mode by looking
+        // for an IServer registration in the service collection (added by UseKestrel).
+        // Direct gRPC mode (ConfigureFunctionsWorkerDefaults) has no IServer.
+        hostBuilder.ConfigureServices(services =>
+        {
+            var serverDescriptors = services
+                .Where(d => d.ServiceType == typeof(Microsoft.AspNetCore.Hosting.Server.IServer))
+                .ToList();
+
+            if (serverDescriptors.Count > 0)
+            {
+                // Remove ALL existing IServer registrations (Kestrel) and replace with TestServer.
+                foreach (var descriptor in serverDescriptors)
+                {
+                    services.Remove(descriptor);
+                }
+                services.AddSingleton<Microsoft.AspNetCore.Hosting.Server.IServer, TestServer>();
+                _logger.LogDebug("Replaced {Count} IServer registration(s) with TestServer", serverDescriptors.Count);
+            }
+        });
+
         return hostBuilder.Build();
     }
 
@@ -471,10 +425,9 @@ public class WorkerHostService : IAsyncDisposable
     /// </summary>
     private IHost CreateWorkerHostFromApplicationBuilder()
     {
-        var grpcUri = $"http://127.0.0.1:{_grpcPort}";
+        var grpcUri = "http://localhost";
         var workerId = Guid.NewGuid().ToString();
         var requestId = Guid.NewGuid().ToString();
-        var httpUri = $"http://127.0.0.1:{_allocatedHttpPort}";
 
         var functionAppDirectory = ResolveFunctionAppDirectory();
 
@@ -486,7 +439,8 @@ public class WorkerHostService : IAsyncDisposable
         Environment.SetEnvironmentVariable("FUNCTIONS_WORKER_RUNTIME_VERSION", $"{Environment.Version.Major}.0");
         Environment.SetEnvironmentVariable("AZURE_FUNCTIONS_ENVIRONMENT", "Development");
         Environment.SetEnvironmentVariable("FUNCTIONS_APPLICATION_DIRECTORY", functionAppDirectory);
-        Environment.SetEnvironmentVariable("ASPNETCORE_URLS", httpUri);
+        // Clear any stale ASPNETCORE_URLS from prior runs — TestServer doesn't bind to a port.
+        Environment.SetEnvironmentVariable("ASPNETCORE_URLS", null);
 
         foreach (var (name, value) in _environmentVariables)
         {
@@ -505,9 +459,7 @@ public class WorkerHostService : IAsyncDisposable
             workerId,
             requestId,
             functionAppDirectory,
-            httpUri,
-            includeFunctionDirectories: true,
-            includeUrls: true);
+            includeFunctionDirectories: true);
         appBuilder.Configuration.AddInMemoryCollection(allConfigValues);
 
         // Add high-priority overrides (same pattern as IHostBuilder path).
@@ -516,9 +468,7 @@ public class WorkerHostService : IAsyncDisposable
             workerId,
             requestId,
             functionAppDirectory,
-            httpUri,
-            includeFunctionDirectories: false,
-            includeUrls: false);
+            includeFunctionDirectories: false);
         appBuilder.Configuration.AddInMemoryCollection(overrideValues);
 
         // Apply user service configurators (test doubles may override production services).
@@ -592,6 +542,28 @@ public class WorkerHostService : IAsyncDisposable
         // Apply user's worker logging configuration (runs after defaults so overrides take precedence)
         _workerLoggingConfigurator?.Invoke(appBuilder.Logging);
 
+        // Register the in-memory IWorkerClientFactory AFTER all services from the user factory
+        // so our AddSingleton wins over the SDK's TryAddSingleton.
+        InMemoryGrpcClientFactory.TryRegister(appBuilder.Services, _grpcHandler, _logger);
+
+        // Phase 2: replace the worker's Kestrel IServer with TestServer (in-memory) when
+        // ConfigureFunctionsWebApplication() was used.  We detect web host mode by checking
+        // for IServer registrations in the service collection.
+        var fabServerDescriptors = appBuilder.Services
+            .Where(d => d.ServiceType == typeof(Microsoft.AspNetCore.Hosting.Server.IServer))
+            .ToList();
+        if (fabServerDescriptors.Count > 0)
+        {
+            foreach (var descriptor in fabServerDescriptors)
+            {
+                appBuilder.Services.Remove(descriptor);
+            }
+            appBuilder.Services.AddSingleton<Microsoft.AspNetCore.Hosting.Server.IServer, TestServer>();
+            _logger.LogDebug(
+                "Replaced {Count} IServer registration(s) with TestServer in FunctionsApplicationBuilder path",
+                fabServerDescriptors.Count);
+        }
+
         return appBuilder.Build();
     }
 
@@ -600,9 +572,7 @@ public class WorkerHostService : IAsyncDisposable
         string workerId,
         string requestId,
         string functionAppDirectory,
-        string httpUri,
-        bool includeFunctionDirectories,
-        bool includeUrls)
+        bool includeFunctionDirectories)
     {
         var configValues = new Dictionary<string, string?>
         {
@@ -618,31 +588,12 @@ public class WorkerHostService : IAsyncDisposable
             configValues["FUNCTIONS_WORKER_DIRECTORY"] = functionAppDirectory;
         }
 
-        if (includeUrls)
-        {
-            configValues["urls"] = httpUri;
-        }
-
         foreach (var setting in _settings)
         {
             configValues[setting.Key] = setting.Value;
         }
 
         return configValues;
-    }
-
-    private static int FindAvailablePort()
-    {
-        // Bind to port 0 so the OS assigns a free port, then read it back.
-        // The socket is closed before the caller uses the port, leaving a small window for
-        // another process to claim it.  This is an accepted trade-off in test utilities; the
-        // probability of collision is very low in practice.
-        using var socket = new System.Net.Sockets.Socket(
-            System.Net.Sockets.AddressFamily.InterNetwork,
-            System.Net.Sockets.SocketType.Stream,
-            System.Net.Sockets.ProtocolType.Tcp);
-        socket.Bind(new IPEndPoint(IPAddress.Loopback, 0));
-        return ((IPEndPoint)socket.LocalEndPoint!).Port;
     }
 
     /// <summary>

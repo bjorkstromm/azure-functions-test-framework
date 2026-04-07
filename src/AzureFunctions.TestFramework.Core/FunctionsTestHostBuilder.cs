@@ -135,21 +135,21 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
         var grpcServerLogger = loggerFactory.CreateLogger<GrpcServerManager>();
         var grpcServerManager = new GrpcServerManager(grpcServerLogger, grpcHostService);
 
-        // Start the gRPC server during Build() to get the actual port
-        // This ensures WorkerHostService uses the correct port
+        // Start the gRPC server during Build() to get the in-memory handler
+        // This ensures WorkerHostService uses the in-memory gRPC handler
         grpcServerManager.StartAsync().GetAwaiter().GetResult();
-        var actualPort = grpcServerManager.Port;
+        var grpcHandler = grpcServerManager.Handler;
 
         // Read route prefix early so WorkerHostService can propagate it to GrpcInvocationBridgeStartupFilter.
         // The filter calls SendInvocationRequestAsync and must strip the correct prefix from the
         // request path when matching routes (e.g. "storage" instead of the default "api").
         var routePrefix = ReadRoutePrefixFromHostJson(_functionsAssembly);
 
-        // Create worker host service with the actual gRPC port
+        // Create worker host service with the in-memory gRPC handler
         var workerLogger = loggerFactory.CreateLogger<WorkerHostService>();
         var workerHostService = new WorkerHostService(
             workerLogger,
-            actualPort,
+            grpcHandler,
             _functionsAssembly,
             grpcHostService,
             _hostBuilderFactory,
