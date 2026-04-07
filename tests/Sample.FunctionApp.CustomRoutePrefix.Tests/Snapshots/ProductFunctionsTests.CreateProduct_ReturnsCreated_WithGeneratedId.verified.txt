@@ -1,5 +1,0 @@
-﻿{
-  Id: Guid_1,
-  Name: Widget,
-  Price: 9.99
-}

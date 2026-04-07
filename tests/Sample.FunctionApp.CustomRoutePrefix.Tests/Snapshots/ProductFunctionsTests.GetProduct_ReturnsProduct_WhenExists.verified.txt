@@ -1,5 +1,0 @@
-﻿{
-  Id: Guid_1,
-  Name: Gadget,
-  Price: 19.99
-}

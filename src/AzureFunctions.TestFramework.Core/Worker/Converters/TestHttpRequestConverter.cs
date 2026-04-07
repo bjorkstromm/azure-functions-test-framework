@@ -6,23 +6,18 @@ namespace AzureFunctions.TestFramework.Core.Worker.Converters;
 /// Workaround input converter for <c>HttpRequest</c> parameters in ASP.NET Core integration mode
 /// (<c>ConfigureFunctionsWebApplication</c>).
 ///
-/// In the normal Azure Functions host the worker runs as a separate process, so all
-/// ASP.NET Core types share a single assembly identity. When the worker is hosted
-/// in-process (as this test framework does), the test runner and the worker may resolve
-/// <c>Microsoft.AspNetCore.Http.Abstractions</c> types from different copies of the assembly,
-/// causing the <c>requestContext is HttpContext</c> type-identity check in
-/// <c>FunctionContextExtensions.TryGetRequest</c> (inside the production
-/// <c>HttpContextConverter</c>) to return <c>false</c> at runtime even though the object
-/// is clearly a <c>DefaultHttpContext</c> in the debugger.
+/// <para><b>Root cause</b>: when the worker middleware runs inside the test framework's
+/// in-process host, the SDK's <c>IBindingCache</c> may be populated before
+/// <c>FunctionsHttpProxyingMiddleware</c> has added the <c>HttpContext</c> to
+/// <c>FunctionContext.Items</c>.  As a result the production
+/// <c>HttpContextConverter</c> cannot resolve the <c>HttpRequest</c> from Items and the
+/// generated <c>DirectFunctionExecutor</c> falls back to the raw
+/// <c>GrpcHttpRequestData</c>, which cannot be cast to <c>HttpRequest</c>.</para>
 ///
-/// This converter bypasses the problematic <c>is</c> check by:
-/// 1. Using <c>FullName</c> string comparison instead of a runtime type-identity check.
-/// 2. Accessing the <c>Request</c> property via reflection, which avoids any cast through
-///    the potentially mismatched <c>HttpContext</c> reference.
-///
-/// The returned <c>HttpRequest</c> object is from Kestrel's own <c>DefaultHttpContext</c>
-/// and therefore has the correct assembly identity for the cast in the generated
-/// <c>DirectFunctionExecutor</c>.
+/// <para>This converter is registered in the converter pipeline (appended).
+/// When <c>Items["HttpRequestContext"]</c> contains a valid <c>HttpContext</c>, it
+/// extracts the <c>Request</c> property via reflection (avoiding any <c>is</c>-check
+/// that could theoretically fail under assembly-load-context mismatch) and returns it.</para>
 /// </summary>
 internal sealed class TestHttpRequestConverter : IInputConverter
 {

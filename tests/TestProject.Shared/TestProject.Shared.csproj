@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>TestProject</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Shared domain types used by both the main and custom-route-prefix function app projects. -->
+    <Compile Include="..\Shared\Functions\IItemService.cs" LinkBase="Shared" />
+    <Compile Include="..\Shared\Functions\InMemoryItemService.cs" LinkBase="Shared" />
+    <Compile Include="..\Shared\Functions\IProcessedItemsService.cs" LinkBase="Shared" />
+  </ItemGroup>
+</Project>

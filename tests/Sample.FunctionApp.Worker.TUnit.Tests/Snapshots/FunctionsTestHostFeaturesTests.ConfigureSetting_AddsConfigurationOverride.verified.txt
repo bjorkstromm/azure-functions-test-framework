@@ -1,4 +1,0 @@
-﻿{
-  Key: Demo:Message,
-  Value: configured-value
-}

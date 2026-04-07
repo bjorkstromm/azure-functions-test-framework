@@ -1,5 +1,0 @@
-﻿{
-  Id: Guid_1,
-  Title: Updated,
-  IsCompleted: true
-}

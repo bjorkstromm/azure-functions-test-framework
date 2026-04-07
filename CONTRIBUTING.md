@@ -29,16 +29,30 @@ dotnet build
 # All tests
 dotnet test
 
-# Specific test suites
-dotnet test tests/Sample.FunctionApp.Worker.Tests          # xUnit — gRPC
-dotnet test tests/Sample.FunctionApp.Worker.WAF.Tests      # xUnit — WAF
-dotnet test tests/Sample.FunctionApp.Worker.NUnit.Tests    # NUnit — gRPC
-dotnet test tests/Sample.FunctionApp.Worker.WAF.NUnit.Tests # NUnit — WAF
-dotnet test tests/Sample.FunctionApp.Durable.Tests         # Durable Functions
-dotnet test tests/Sample.FunctionApp.CustomRoutePrefix.Tests # Custom route prefix
+# 4-flavour test matrix (IHostBuilder / FunctionsApplicationBuilder × direct gRPC / ASP.NET Core)
+dotnet test --project tests/TestProject.HostBuilder.Tests
+dotnet test --project tests/TestProject.HostBuilder.AspNetCore.Tests
+dotnet test --project tests/TestProject.HostApplicationBuilder.Tests
+dotnet test --project tests/TestProject.HostApplicationBuilder.AspNetCore.Tests
 
-# Single test with detailed logging
-dotnet test --filter "GetTodos_ReturnsEmptyList" --logger "console;verbosity=detailed"
+# Custom route prefix tests (4-flavour)
+dotnet test --project tests/TestProject.CustomRoutePrefix.HostBuilder.Tests
+dotnet test --project tests/TestProject.CustomRoutePrefix.HostBuilder.AspNetCore.Tests
+dotnet test --project tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.Tests
+dotnet test --project tests/TestProject.CustomRoutePrefix.HostApplicationBuilder.AspNetCore.Tests
+
+# Worker SDK 2.x sample tests
+dotnet test --project samples/Sample.FunctionApp.Worker.Tests
+dotnet test --project samples/Sample.FunctionApp.Tests.XUnit
+dotnet test --project samples/Sample.FunctionApp.Tests.NUnit
+dotnet test --project samples/Sample.FunctionApp.Tests.TUnit
+
+# Durable Functions tests
+dotnet test --project samples/Sample.FunctionApp.Durable.Tests
+
+# Custom route prefix sample tests
+dotnet test --project samples/Sample.FunctionApp.CustomRoutePrefix.Tests
+dotnet test --project samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests
 ```
 
 ## Architecture Overview
@@ -52,7 +66,10 @@ For a detailed architecture walkthrough, see [.github/copilot-instructions.md](.
 - `src/AzureFunctions.TestFramework.Core/Grpc/GrpcHostService.cs` — gRPC protocol handler + route matching
 - `src/AzureFunctions.TestFramework.Core/Worker/WorkerHostService.cs` — Worker lifecycle management
 - `src/AzureFunctions.TestFramework.Core/Worker/InProcessMethodInfoLocator.cs` — ALC isolation fix
-- `src/AzureFunctions.TestFramework.Http.AspNetCore/FunctionsWebApplicationFactory.cs` — WAF integration
+
+### Project Layout
+
+Each test project references exactly one function-app project. See [KNOWN_ISSUES.md](KNOWN_ISSUES.md#one-function-app-project-per-test-project) for why.
 
 ## Coding Guidelines
 

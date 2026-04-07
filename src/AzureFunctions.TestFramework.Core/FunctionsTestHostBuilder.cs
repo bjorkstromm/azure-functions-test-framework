@@ -1,5 +1,6 @@
 using AzureFunctions.TestFramework.Core.Grpc;
 using AzureFunctions.TestFramework.Core.Worker;
+using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -18,18 +19,8 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private readonly Dictionary<string, string> _settings = new();
     private readonly Dictionary<string, string> _environmentVariables = new();
     private Func<string[], IHostBuilder>? _hostBuilderFactory;
+    private Func<string[], FunctionsApplicationBuilder>? _hostApplicationBuilderFactory;
     private ILoggerFactory? _loggerFactory;
-
-    /// <summary>
-    /// Sets the function application assembly to load into the test host.
-    /// </summary>
-    /// <param name="assembly">The function application assembly.</param>
-    /// <returns>The current builder.</returns>
-    public IFunctionsTestHostBuilder WithFunctionAppAssembly(Assembly assembly)
-    {
-        _functionsAssembly = assembly;
-        return this;
-    }
 
     /// <summary>
     /// Adds a service-configuration callback that runs when the worker host is built.
@@ -51,17 +42,6 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     {
         _functionsAssembly = assembly;
         return this;
-    }
-
-    /// <summary>
-    /// Sets the functions worker assembly to load into the test host.
-    /// </summary>
-    /// <param name="assembly">The assembly containing the worker functions.</param>
-    /// <returns>The current builder.</returns>
-    public IFunctionsTestHostBuilder WithFunctionsWorkerAssembly(Assembly assembly)
-    {
-        // For now, same as WithFunctionsAssembly
-        return WithFunctionsAssembly(assembly);
     }
 
     /// <summary>
@@ -102,14 +82,12 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
         return this;
     }
 
-    /// <summary>
-    /// Builds and starts the test host asynchronously.
-    /// </summary>
-    public async Task<IFunctionsTestHost> BuildAndStartAsync(CancellationToken cancellationToken = default)
+    /// <inheritdoc/>
+    public IFunctionsTestHostBuilder WithHostApplicationBuilderFactory(
+        Func<string[], FunctionsApplicationBuilder> factory)
     {
-        var host = Build();
-        await host.StartAsync(cancellationToken);
-        return host;
+        _hostApplicationBuilderFactory = factory;
+        return this;
     }
 
     /// <summary>
@@ -158,7 +136,8 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
             _hostBuilderFactory,
             _settings,
             _environmentVariables,
-            routePrefix);
+            routePrefix,
+            _hostApplicationBuilderFactory);
 
         // Apply service configurators
         foreach (var configurator in _serviceConfigurators)
@@ -183,36 +162,27 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
         if (assemblyDir == null) return "api";
 
         var hostJsonPath = Path.Combine(assemblyDir, "host.json");
-        if (!File.Exists(hostJsonPath)) return "api";
+        return TryReadRoutePrefixFromFile(hostJsonPath) ?? "api";
+    }
 
+    private static string? TryReadRoutePrefixFromFile(string path)
+    {
+        if (!File.Exists(path)) return null;
         try
         {
-            using var stream = File.OpenRead(hostJsonPath);
+            using var stream = File.OpenRead(path);
             using var doc = JsonDocument.Parse(stream);
             if (doc.RootElement.TryGetProperty("extensions", out var extensions) &&
                 extensions.TryGetProperty("http", out var http) &&
                 http.TryGetProperty("routePrefix", out var prefix))
             {
-                return prefix.GetString() ?? "api";
+                return prefix.GetString();
             }
         }
         catch
         {
-            // Ignore parse errors and fall back to the default.
+            // Ignore parse errors and fall back.
         }
-
-        return "api";
-    }
-
-    private static int FindAvailablePort()
-    {
-        using var socket = new System.Net.Sockets.Socket(
-            System.Net.Sockets.AddressFamily.InterNetwork,
-            System.Net.Sockets.SocketType.Stream,
-            System.Net.Sockets.ProtocolType.Tcp);
-        
-        socket.Bind(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0));
-        var port = ((System.Net.IPEndPoint)socket.LocalEndPoint!).Port;
-        return port;
+        return null;
     }
 }
