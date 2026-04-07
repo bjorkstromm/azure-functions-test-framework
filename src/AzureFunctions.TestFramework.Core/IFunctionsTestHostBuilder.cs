@@ -156,6 +156,15 @@ public interface IFunctionsTestHostBuilder
     IFunctionsTestHostBuilder ConfigureWorkerLogging(Action<Microsoft.Extensions.Logging.ILoggingBuilder> configure);
 
     /// <summary>
+    /// Sets the timeout for each gRPC function invocation.
+    /// Use <see cref="Timeout.InfiniteTimeSpan"/> to disable the timeout, which is useful when
+    /// debugging to prevent the invocation from timing out while paused at a breakpoint.
+    /// Defaults to 120 seconds.
+    /// </summary>
+    /// <param name="timeout">The invocation timeout.</param>
+    IFunctionsTestHostBuilder WithInvocationTimeout(TimeSpan timeout);
+
+    /// <summary>
     /// Builds and returns the configured test host.
     /// </summary>
     IFunctionsTestHost Build();

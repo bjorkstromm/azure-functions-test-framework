@@ -16,6 +16,19 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
 {
     private readonly ILogger<GrpcHostService> _logger;
     private readonly Assembly _functionsAssembly;
+    private TimeSpan _invocationTimeout = TimeSpan.FromSeconds(120);
+
+    /// <summary>
+    /// Gets or sets the timeout applied to each gRPC function invocation.
+    /// Set to <see cref="Timeout.InfiniteTimeSpan"/> to disable the timeout (useful when debugging).
+    /// Defaults to 120 seconds.
+    /// </summary>
+    public TimeSpan InvocationTimeout
+    {
+        get => _invocationTimeout;
+        set => _invocationTimeout = value;
+    }
+
     private readonly Dictionary<string, TaskCompletionSource<StreamingMessage>> _pendingRequests = new();
     private readonly object _lock = new();
     private readonly object _connectionLock = new();
@@ -271,7 +284,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 GetMessageType(message), requestId);
 
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-            cts.CancelAfter(TimeSpan.FromSeconds(30));
+            cts.CancelAfter(_invocationTimeout);
 
             return await tcs.Task.WaitAsync(cts.Token);
         }

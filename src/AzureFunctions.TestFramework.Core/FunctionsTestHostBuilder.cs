@@ -22,6 +22,7 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private Func<string[], FunctionsApplicationBuilder>? _hostApplicationBuilderFactory;
     private ILoggerFactory? _loggerFactory;
     private Action<ILoggingBuilder>? _workerLoggingConfigurator;
+    private TimeSpan _invocationTimeout = TimeSpan.FromSeconds(120);
 
     /// <summary>
     /// Adds a service-configuration callback that runs when the worker host is built.
@@ -84,6 +85,13 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     }
 
     /// <inheritdoc/>
+    public IFunctionsTestHostBuilder WithInvocationTimeout(TimeSpan timeout)
+    {
+        _invocationTimeout = timeout;
+        return this;
+    }
+
+    /// <inheritdoc/>
     public IFunctionsTestHostBuilder WithHostBuilderFactory(Func<string[], IHostBuilder> factory)
     {
         _hostBuilderFactory = factory;
@@ -119,7 +127,10 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
 
         // Create gRPC components
         var grpcHostServiceLogger = loggerFactory.CreateLogger<GrpcHostService>();
-        var grpcHostService = new GrpcHostService(grpcHostServiceLogger, _functionsAssembly);
+        var grpcHostService = new GrpcHostService(grpcHostServiceLogger, _functionsAssembly)
+        {
+            InvocationTimeout = _invocationTimeout
+        };
 
         var grpcServerLogger = loggerFactory.CreateLogger<GrpcServerManager>();
         var grpcServerManager = new GrpcServerManager(grpcServerLogger, grpcHostService);
@@ -162,7 +173,8 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
             grpcServerManager,
             workerHostService,
             grpcHostService,
-            routePrefix);
+            routePrefix,
+            _invocationTimeout);
     }
 
     private static string ReadRoutePrefixFromHostJson(Assembly functionsAssembly)
