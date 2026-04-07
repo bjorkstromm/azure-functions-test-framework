@@ -35,6 +35,7 @@ public class WorkerHostService : IAsyncDisposable
     private readonly IReadOnlyDictionary<string, string> _environmentVariables;
     private readonly string _routePrefix;
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = new();
+    private readonly Action<ILoggingBuilder>? _workerLoggingConfigurator;
     private IHost? _workerHost;
     private bool _isInitialized;
     private int? _httpPort;
@@ -66,6 +67,8 @@ public class WorkerHostService : IAsyncDisposable
     /// <see cref="GrpcInvocationBridgeStartupFilter"/> so it can match incoming paths correctly.</param>
     /// <param name="hostApplicationBuilderFactory">Optional factory for creating the worker host using
     /// <see cref="FunctionsApplicationBuilder"/> (<c>IHostApplicationBuilder</c> style).</param>
+    /// <param name="workerLoggingConfigurator">Optional callback to configure the worker host's
+    /// logging pipeline (applied after default suppression rules).</param>
     public WorkerHostService(
         ILogger<WorkerHostService> logger,
         int grpcPort,
@@ -75,7 +78,8 @@ public class WorkerHostService : IAsyncDisposable
         IReadOnlyDictionary<string, string>? settings = null,
         IReadOnlyDictionary<string, string>? environmentVariables = null,
         string routePrefix = "api",
-        Func<string[], FunctionsApplicationBuilder>? hostApplicationBuilderFactory = null)
+        Func<string[], FunctionsApplicationBuilder>? hostApplicationBuilderFactory = null,
+        Action<ILoggingBuilder>? workerLoggingConfigurator = null)
     {
         _logger = logger;
         _grpcPort = grpcPort;
@@ -87,6 +91,7 @@ public class WorkerHostService : IAsyncDisposable
         _environmentVariables = environmentVariables ?? new Dictionary<string, string>();
         _routePrefix = routePrefix;
         _allocatedHttpPort = FindAvailablePort();
+        _workerLoggingConfigurator = workerLoggingConfigurator;
     }
 
     /// <summary>
@@ -450,6 +455,12 @@ public class WorkerHostService : IAsyncDisposable
             logging.AddFilter("Azure.Core", LogLevel.Warning);
         });
 
+        // Apply user's worker logging configuration (runs after defaults so overrides take precedence)
+        if (_workerLoggingConfigurator != null)
+        {
+            hostBuilder.ConfigureLogging(_workerLoggingConfigurator);
+        }
+
         return hostBuilder.Build();
     }
 
@@ -577,6 +588,9 @@ public class WorkerHostService : IAsyncDisposable
         appBuilder.Logging.AddFilter("Microsoft.Azure.Functions.Worker", LogLevel.Warning);
         appBuilder.Logging.AddFilter("Azure.Core", LogLevel.Warning);
         appBuilder.Logging.AddFilter("AzureFunctions.TestFramework", LogLevel.Information);
+
+        // Apply user's worker logging configuration (runs after defaults so overrides take precedence)
+        _workerLoggingConfigurator?.Invoke(appBuilder.Logging);
 
         return appBuilder.Build();
     }

@@ -1162,7 +1162,8 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             _ => LogLevel.None
         };
 
-        _logger.Log(logLevel, "[Worker] {Message}", log.Message);
+        var category = string.IsNullOrEmpty(log.Category) ? "Worker" : log.Category;
+        _logger.Log(logLevel, "[{Category}] {Message}", category, log.Message);
     }
 
     private static string GetMessageType(StreamingMessage message)

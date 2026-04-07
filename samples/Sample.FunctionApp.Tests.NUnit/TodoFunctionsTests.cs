@@ -21,9 +21,15 @@ public class TodoFunctionsTests
     [SetUp]
     public async Task SetUp()
     {
+        var loggerProvider = new NUnitLoggerProvider();
         _host = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
-            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new NUnitLoggerProvider())))
+            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(loggerProvider)))
+            .ConfigureWorkerLogging(logging =>
+            {
+                logging.SetMinimumLevel(LogLevel.Information);
+                logging.AddProvider(loggerProvider);
+            })
             .ConfigureServices(services => services.AddSingleton<ITodoService, InMemoryTodoService>())
             .BuildAndStartAsync();
         _client = _host.CreateHttpClient();

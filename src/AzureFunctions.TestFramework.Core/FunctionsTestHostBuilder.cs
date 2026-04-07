@@ -21,6 +21,7 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private Func<string[], IHostBuilder>? _hostBuilderFactory;
     private Func<string[], FunctionsApplicationBuilder>? _hostApplicationBuilderFactory;
     private ILoggerFactory? _loggerFactory;
+    private Action<ILoggingBuilder>? _workerLoggingConfigurator;
 
     /// <summary>
     /// Adds a service-configuration callback that runs when the worker host is built.
@@ -72,6 +73,13 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     public IFunctionsTestHostBuilder WithLoggerFactory(ILoggerFactory loggerFactory)
     {
         _loggerFactory = loggerFactory;
+        return this;
+    }
+
+    /// <inheritdoc/>
+    public IFunctionsTestHostBuilder ConfigureWorkerLogging(Action<ILoggingBuilder> configure)
+    {
+        _workerLoggingConfigurator = configure;
         return this;
     }
 
@@ -137,7 +145,8 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
             _settings,
             _environmentVariables,
             routePrefix,
-            _hostApplicationBuilderFactory);
+            _hostApplicationBuilderFactory,
+            _workerLoggingConfigurator);
 
         // Apply service configurators
         foreach (var configurator in _serviceConfigurators)

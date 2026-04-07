@@ -323,3 +323,4 @@ tests/
 ✅ Output binding capture (queue, blob, table)
 ✅ Durable Functions (starter, orchestrator, activity, sub-orchestrator, external events)
 ✅ NuGet packaging with MinVer, Source Link, symbol packages
+✅ Worker-side logging configurable via `ConfigureWorkerLogging` (routes function `ILogger` output to test output)
