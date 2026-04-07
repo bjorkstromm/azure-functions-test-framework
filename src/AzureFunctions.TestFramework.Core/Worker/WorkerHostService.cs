@@ -489,8 +489,13 @@ public class WorkerHostService : IAsyncDisposable
         });
 
         // Phase 2: replace the worker's Kestrel IServer with TestServer (in-memory) when
-        // ConfigureFunctionsWebApplication() was used (factory provided).
-        if (_hostBuilderFactory != null)
+        // ConfigureFunctionsWebApplication() was used.  ConfigureFunctionsWebApplication()
+        // calls ConfigureWebHostDefaults() which creates a GenericWebHostBuilder and sets
+        // this well-known property.  Direct gRPC mode (ConfigureFunctionsWorkerDefaults)
+        // does NOT set it, so UseTestServer() is only applied when a web host exists.
+        var hasWebHostConfiguration = hostBuilder.Properties.ContainsKey(
+            "GenericWebHostBuilder.HostBuilderResolveKey");
+        if (hasWebHostConfiguration)
         {
             hostBuilder.ConfigureWebHost(wb =>
             {
