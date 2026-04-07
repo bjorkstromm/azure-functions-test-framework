@@ -12,7 +12,7 @@ namespace AzureFunctions.TestFramework.Core.Grpc;
 /// <see cref="GrpcHostService"/> is routed through a <see cref="System.Net.Http.HttpMessageHandler"/>
 /// obtained from <c>TestServer.CreateHandler()</c> — no TCP socket is opened.
 /// </summary>
-internal sealed class InMemoryGrpcClientFactory : DispatchProxy
+public class InMemoryGrpcClientFactory : DispatchProxy
 {
     private HttpMessageHandler _handler = null!;
     private Type _workerClientInterface = null!;
@@ -152,7 +152,7 @@ internal sealed class InMemoryGrpcClientFactory : DispatchProxy
 /// Drives the bidirectional gRPC <c>EventStream</c> over the in-memory
 /// <see cref="System.Net.Http.HttpMessageHandler"/> without opening a TCP socket.
 /// </summary>
-internal sealed class InMemoryGrpcWorkerClient : DispatchProxy
+public class InMemoryGrpcWorkerClient : DispatchProxy
 {
     private object _rpcClient = null!;
     private object _processor = null!;
