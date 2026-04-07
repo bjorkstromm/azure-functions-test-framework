@@ -53,7 +53,7 @@ public class FunctionsTestHost : IFunctionsTestHost
     /// Creates an HttpClient configured to invoke functions in-process.
     /// Similar to WebApplicationFactory.CreateClient().
     /// When the worker uses <c>ConfigureFunctionsWebApplication()</c>, requests are forwarded
-    /// to the worker's internal Kestrel HTTP server (ASP.NET Core integration mode).
+    /// to the worker's in-memory TestServer (ASP.NET Core integration mode).
     /// Otherwise requests are dispatched directly via the gRPC InvocationRequest channel.
     /// </summary>
     public HttpClient CreateHttpClient()
@@ -63,24 +63,12 @@ public class FunctionsTestHost : IFunctionsTestHost
             throw new InvalidOperationException("Test host must be started before creating HTTP client");
         }
 
-        // ASP.NET Core integration mode: forward HTTP requests to the worker's HTTP server.
-        // Prefer in-memory TestServer handler; fall back to port-based Kestrel.
+        // ASP.NET Core integration mode: forward HTTP requests to the worker's HTTP server (in-memory TestServer).
         var workerHttpHandler = _workerHostService.WorkerHttpHandler;
-        var workerHttpPort = _workerHostService.HttpPort;
 
         if (workerHttpHandler != null)
         {
             var handler = _cachedHandler ??= new AspNetCoreForwardingHandler(workerHttpHandler);
-            return new HttpClient(handler, disposeHandler: false)
-            {
-                BaseAddress = new Uri("http://localhost/"),
-                Timeout = _invocationTimeout
-            };
-        }
-
-        if (workerHttpPort.HasValue)
-        {
-            var handler = _cachedHandler ??= new AspNetCoreForwardingHandler(workerHttpPort.Value);
             return new HttpClient(handler, disposeHandler: false)
             {
                 BaseAddress = new Uri("http://localhost/"),
@@ -314,32 +302,19 @@ internal class FunctionInvoker : IFunctionInvoker
 /// ASP.NET Core HTTP server (used when the worker is started with
 /// <c>ConfigureFunctionsWebApplication()</c>).
 /// <para>
-/// When an in-memory handler is provided (TestServer mode) the URI is passed through
-/// unchanged (TestServer routes by path). When a port is provided, the URI is rewritten to
-/// <c>http://127.0.0.1:{httpPort}</c>. A synthetic <c>x-ms-invocation-id</c> header is
-/// injected when absent in both cases.
+/// The in-memory TestServer handler is used; the URI is passed through unchanged
+/// (TestServer routes by path). A synthetic <c>x-ms-invocation-id</c> header is
+/// injected when absent.
 /// </para>
 /// </summary>
 internal sealed class AspNetCoreForwardingHandler : HttpMessageHandler
 {
     private const string InvocationIdHeader = "x-ms-invocation-id";
 
-    private readonly Uri? _workerBaseUri;
     private readonly HttpMessageInvoker _inner;
-
-    public AspNetCoreForwardingHandler(int httpPort)
-    {
-        _workerBaseUri = new Uri($"http://127.0.0.1:{httpPort}");
-        _inner = new HttpMessageInvoker(new SocketsHttpHandler
-        {
-            AllowAutoRedirect = false,
-            UseProxy = false
-        });
-    }
 
     public AspNetCoreForwardingHandler(HttpMessageHandler testServerHandler)
     {
-        _workerBaseUri = null;
         _inner = new HttpMessageInvoker(testServerHandler, disposeHandler: false);
     }
 
@@ -347,17 +322,6 @@ internal sealed class AspNetCoreForwardingHandler : HttpMessageHandler
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
-        // Rewrite URI only for the port-based (Kestrel) path.
-        if (_workerBaseUri != null)
-        {
-            var original = request.RequestUri!;
-            request.RequestUri = new UriBuilder(_workerBaseUri)
-            {
-                Path = original.AbsolutePath,
-                Query = original.Query.TrimStart('?')
-            }.Uri;
-        }
-
         // Inject a synthetic invocation ID if the caller didn't provide one.
         if (!request.Headers.Contains(InvocationIdHeader))
         {
