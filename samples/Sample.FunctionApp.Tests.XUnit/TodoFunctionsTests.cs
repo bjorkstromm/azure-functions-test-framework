@@ -23,9 +23,15 @@ public class TodoFunctionsTests : IAsyncLifetime
 
     public async ValueTask InitializeAsync()
     {
+        var loggerProvider = new XUnitLoggerProvider(_output);
         _host = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TodoFunctions).Assembly)
-            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(new XUnitLoggerProvider(_output))))
+            .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(loggerProvider)))
+            .ConfigureWorkerLogging(logging =>
+            {
+                logging.SetMinimumLevel(LogLevel.Information);
+                logging.AddProvider(loggerProvider);
+            })
             .ConfigureServices(services => services.AddSingleton<ITodoService, InMemoryTodoService>())
             .BuildAndStartAsync(TestCancellation);
         _client = _host.CreateHttpClient();

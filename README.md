@@ -23,7 +23,8 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 | **Middleware testing** | ✅ End-to-end in both modes |
 | **Output binding capture** | ✅ `ReadReturnValueAs<T>()`, `ReadOutputAs<T>(bindingName)` |
 | **Service access / configuration overrides** | ✅ `Services`, `ConfigureSetting`, `ConfigureEnvironmentVariable` |
-| **Metadata discovery** | ✅ `IFunctionInvoker.GetFunctions()` |
+| **Worker-side logging** | ✅ `ConfigureWorkerLogging` routes function `ILogger` output to test output |
+| **Metadata discovery** | ✅ `IFunctionsTestHost.GetFunctions()` |
 | **NuGet packaging** | ✅ `net8.0;net10.0`, Source Link, symbol packages, central package management |
 | **CI** | ✅ xUnit + NUnit + TUnit, push + PR |
 
@@ -466,6 +467,53 @@ _testHost = await new FunctionsTestHostBuilder()
 - Custom status via `SetCustomStatus(...)` and `OrchestrationMetadata.ReadCustomStatusAs<T>()`
 - External events: both wait-then-raise and buffered raise-before-wait flows
 - `FunctionsDurableClientProvider` resolution from `FunctionsTestHost.Services`
+
+## Worker-side Logging
+
+By default the framework suppresses the worker host's logging below `Warning` to keep test output clean. If you want to see `ILogger` output from inside your function code (e.g. `_logger.LogInformation("Processing order...")`) in the test results, use `ConfigureWorkerLogging`:
+
+**xUnit:**
+
+```csharp
+public async ValueTask InitializeAsync()
+{
+    var loggerProvider = new XUnitLoggerProvider(_output);
+    _host = await new FunctionsTestHostBuilder()
+        .WithFunctionsAssembly(typeof(MyFunctions).Assembly)
+        .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(loggerProvider)))
+        .ConfigureWorkerLogging(logging =>
+        {
+            logging.SetMinimumLevel(LogLevel.Information);
+            logging.AddProvider(loggerProvider);
+        })
+        .BuildAndStartAsync();
+}
+```
+
+**NUnit:**
+
+```csharp
+[SetUp]
+public async Task SetUp()
+{
+    var loggerProvider = new NUnitLoggerProvider();
+    _host = await new FunctionsTestHostBuilder()
+        .WithFunctionsAssembly(typeof(MyFunctions).Assembly)
+        .WithLoggerFactory(LoggerFactory.Create(b => b.AddProvider(loggerProvider)))
+        .ConfigureWorkerLogging(logging =>
+        {
+            logging.SetMinimumLevel(LogLevel.Information);
+            logging.AddProvider(loggerProvider);
+        })
+        .BuildAndStartAsync();
+}
+```
+
+**Key points:**
+- `WithLoggerFactory` controls framework infrastructure logs (gRPC, host lifecycle, etc.)
+- `ConfigureWorkerLogging` controls the worker host's logging pipeline — this is where function-side `ILogger` calls flow
+- Category-specific filters override the global minimum, so you can selectively enable logging for your namespace while keeping SDK noise quiet: `logging.AddFilter("MyApp.Functions", LogLevel.Debug)`
+- The same `ILoggerProvider` instance can be shared between both
 
 ## Architecture & Design Decisions
 

@@ -12,6 +12,7 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 - The durable support package currently uses a framework-owned fake path (`ConfigureFakeDurableSupport(...)` + `FunctionsDurableClientProvider`) instead of the real Durable runtime and execution engine.
 - `AzureFunctions.TestFramework.Http` is still a minimal package with little public surface area today; it is packed/published so the package set stays stable while HTTP-specific helpers are added later.
 - When using `FunctionsApplicationBuilder` with `ConfigureFunctionsWebApplication()`, call `ConfigureFunctionsWebApplication()` **before** any `UseMiddleware<T>()` calls. The SDK's `FunctionsHttpProxyingMiddleware` must run first to populate `FunctionContext.Items["HttpRequestContext"]`; otherwise user middleware calling `GetHttpRequestDataAsync()` poisons the SDK's internal binding cache. The framework includes a cache-clearing middleware as a safety net, but correct ordering ensures the user middleware sees the `HttpContext` it expects.
+- **Worker-side logging is suppressed by default.** The worker host's minimum log level is set to `Warning` to keep output clean. If your function code uses `ILogger` and you want to see those logs in test results, use `ConfigureWorkerLogging(logging => { logging.SetMinimumLevel(LogLevel.Information); logging.AddProvider(yourProvider); })`. See the "Worker-side Logging" section in `README.md`.
 
 ## Design constraints
 

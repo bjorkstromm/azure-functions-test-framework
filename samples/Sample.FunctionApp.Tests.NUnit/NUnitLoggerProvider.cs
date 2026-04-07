@@ -29,9 +29,9 @@ public sealed class NUnitLoggerProvider : ILoggerProvider
             if (!IsEnabled(logLevel)) return;
             try
             {
-                TestContext.Progress.WriteLine($"[{logLevel,-11}] {_category}: {formatter(state, exception)}");
+                TestContext.Out.WriteLine($"[{logLevel,-11}] {_category}: {formatter(state, exception)}");
                 if (exception != null)
-                    TestContext.Progress.WriteLine(exception.ToString());
+                    TestContext.Out.WriteLine(exception.ToString());
             }
             catch (Exception)
             {

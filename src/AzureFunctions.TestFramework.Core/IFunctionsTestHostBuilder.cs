@@ -129,6 +129,33 @@ public interface IFunctionsTestHostBuilder
     IFunctionsTestHostBuilder WithLoggerFactory(Microsoft.Extensions.Logging.ILoggerFactory loggerFactory);
 
     /// <summary>
+    /// Configures the logging pipeline of the in-process Azure Functions worker host.
+    /// <para>
+    /// By default the framework suppresses worker-side logging below <c>Warning</c> to keep test
+    /// output clean.  Use this method to override those defaults — for example to enable
+    /// <c>Information</c>-level logs from your function code so they appear in the test output:
+    /// </para>
+    /// <code>
+    /// .ConfigureWorkerLogging(logging =&gt;
+    /// {
+    ///     logging.SetMinimumLevel(LogLevel.Information);
+    ///     logging.AddProvider(myTestLoggerProvider);
+    /// })
+    /// </code>
+    /// <para>
+    /// The callback runs <em>after</em> the framework's default suppression rules, so
+    /// category-specific <see cref="Microsoft.Extensions.Logging.LoggerFilterOptions"/> added here
+    /// take precedence.  You can selectively enable logging for specific namespaces while keeping
+    /// SDK noise quiet:
+    /// </para>
+    /// <code>
+    /// logging.AddFilter("MyApp.Functions", LogLevel.Debug);
+    /// </code>
+    /// </summary>
+    /// <param name="configure">A callback that configures the worker host's <see cref="Microsoft.Extensions.Logging.ILoggingBuilder"/>.</param>
+    IFunctionsTestHostBuilder ConfigureWorkerLogging(Action<Microsoft.Extensions.Logging.ILoggingBuilder> configure);
+
+    /// <summary>
     /// Builds and returns the configured test host.
     /// </summary>
     IFunctionsTestHost Build();
