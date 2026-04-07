@@ -56,9 +56,11 @@ public class GrpcServerManager : IAsyncDisposable
                 webBuilder
                     .UseKestrel(options =>
                     {
-                        // Bind to port 0 so the OS assigns a free port atomically,
-                        // avoiding the TOCTOU race of FindAvailablePort + manual bind.
-                        options.ListenAnyIP(0, listenOptions =>
+                        // Bind to loopback (127.0.0.1) port 0 so the OS assigns a free port
+                        // atomically, avoiding the TOCTOU race of FindAvailablePort + manual bind.
+                        // Using IPAddress.Loopback prevents Windows Firewall prompts that
+                        // occur with ListenAnyIP (0.0.0.0) since only loopback is needed.
+                        options.Listen(System.Net.IPAddress.Loopback, 0, listenOptions =>
                         {
                             listenOptions.Protocols = HttpProtocols.Http2;
                         });

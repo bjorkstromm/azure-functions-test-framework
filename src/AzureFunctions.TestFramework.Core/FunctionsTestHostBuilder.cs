@@ -23,17 +23,6 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private ILoggerFactory? _loggerFactory;
 
     /// <summary>
-    /// Sets the function application assembly to load into the test host.
-    /// </summary>
-    /// <param name="assembly">The function application assembly.</param>
-    /// <returns>The current builder.</returns>
-    public IFunctionsTestHostBuilder WithFunctionAppAssembly(Assembly assembly)
-    {
-        _functionsAssembly = assembly;
-        return this;
-    }
-
-    /// <summary>
     /// Adds a service-configuration callback that runs when the worker host is built.
     /// </summary>
     /// <param name="configure">The callback used to register or override services.</param>
@@ -53,17 +42,6 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     {
         _functionsAssembly = assembly;
         return this;
-    }
-
-    /// <summary>
-    /// Sets the functions worker assembly to load into the test host.
-    /// </summary>
-    /// <param name="assembly">The assembly containing the worker functions.</param>
-    /// <returns>The current builder.</returns>
-    public IFunctionsTestHostBuilder WithFunctionsWorkerAssembly(Assembly assembly)
-    {
-        // For now, same as WithFunctionsAssembly
-        return WithFunctionsAssembly(assembly);
     }
 
     /// <summary>
@@ -110,16 +88,6 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     {
         _hostApplicationBuilderFactory = factory;
         return this;
-    }
-
-    /// <summary>
-    /// Builds and starts the test host asynchronously.
-    /// </summary>
-    public async Task<IFunctionsTestHost> BuildAndStartAsync(CancellationToken cancellationToken = default)
-    {
-        var host = Build();
-        await host.StartAsync(cancellationToken);
-        return host;
     }
 
     /// <summary>
@@ -216,17 +184,5 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
             // Ignore parse errors and fall back.
         }
         return null;
-    }
-
-    private static int FindAvailablePort()
-    {
-        using var socket = new System.Net.Sockets.Socket(
-            System.Net.Sockets.AddressFamily.InterNetwork,
-            System.Net.Sockets.SocketType.Stream,
-            System.Net.Sockets.ProtocolType.Tcp);
-        
-        socket.Bind(new System.Net.IPEndPoint(System.Net.IPAddress.Loopback, 0));
-        var port = ((System.Net.IPEndPoint)socket.LocalEndPoint!).Port;
-        return port;
     }
 }

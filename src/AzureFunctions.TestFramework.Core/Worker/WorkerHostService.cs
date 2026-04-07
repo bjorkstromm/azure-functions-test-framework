@@ -19,7 +19,7 @@ namespace AzureFunctions.TestFramework.Core.Worker;
 /// Similar to WebApplicationFactory, this starts the Functions worker infrastructure
 /// in the same process and connects it to our test gRPC server.
 /// </summary>
-public class WorkerHostService : IWorkerHost
+public class WorkerHostService : IAsyncDisposable
 {
     // Serializes environment variable changes and host creation across parallel test instances
     // to avoid race conditions where concurrent hosts overwrite each other's env vars.
@@ -193,18 +193,6 @@ public class WorkerHostService : IWorkerHost
             _isInitialized = false;
             _logger.LogInformation("In-process Functions worker stopped");
         }
-    }
-
-    /// <summary>
-    /// Not used in in-process mode - worker communicates via the gRPC server directly.
-    /// </summary>
-    public Task<WorkerMessage> SendMessageAsync(
-        WorkerMessage message,
-        CancellationToken cancellationToken = default)
-    {
-        throw new NotSupportedException(
-            "Direct message sending is not supported in in-process mode. " +
-            "The worker communicates via the gRPC server.");
     }
 
     /// <summary>
@@ -555,7 +543,7 @@ public class WorkerHostService : IWorkerHost
         {
             appBuilder.Services.PostConfigure<WorkerOptions>(options =>
             {
-                options.InputConverters.RegisterAt<TestHttpRequestConverter>(0);
+                options.InputConverters.Register<TestHttpRequestConverter>();
                 options.InputConverters.Register<TestFunctionContextConverter>();
             });
         }

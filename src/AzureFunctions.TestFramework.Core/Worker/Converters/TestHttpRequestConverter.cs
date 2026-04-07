@@ -14,7 +14,7 @@ namespace AzureFunctions.TestFramework.Core.Worker.Converters;
 /// generated <c>DirectFunctionExecutor</c> falls back to the raw
 /// <c>GrpcHttpRequestData</c>, which cannot be cast to <c>HttpRequest</c>.</para>
 ///
-/// <para>This converter is registered at position 0 in the converter pipeline.
+/// <para>This converter is registered in the converter pipeline (appended).
 /// When <c>Items["HttpRequestContext"]</c> contains a valid <c>HttpContext</c>, it
 /// extracts the <c>Request</c> property via reflection (avoiding any <c>is</c>-check
 /// that could theoretically fail under assembly-load-context mismatch) and returns it.</para>

@@ -21,11 +21,6 @@ public interface IFunctionsTestHostBuilder
     IFunctionsTestHostBuilder WithFunctionsAssembly(Assembly assembly);
 
     /// <summary>
-    /// Specifies the Functions worker assembly type.
-    /// </summary>
-    IFunctionsTestHostBuilder WithFunctionsWorkerAssembly(Assembly assembly);
-
-    /// <summary>
     /// Configures a configuration value that will be added to the worker host's configuration.
     /// Supports simple keys and hierarchical keys such as <c>Section:Key</c>.
     /// </summary>
