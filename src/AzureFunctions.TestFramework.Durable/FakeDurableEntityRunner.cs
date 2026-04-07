@@ -75,8 +75,8 @@ internal sealed class FakeDurableEntityRunner : IDisposable
         if (!_entities.TryGetValue(entityId, out var instance) || !instance.EntityState.HasState)
         {
             // Entities always exist (virtual-actor model). Return default state for uninitialized entities.
-            // For value types this is 0/false/etc.; for reference types this is null (suppressed with !).
-            return new EntityMetadata<TState>(entityId, default!);
+            // Use Activator for reference types so EntityMetadata.IncludesState is true (it checks "state is not null").
+            return new EntityMetadata<TState>(entityId, CreateDefaultState<TState>());
         }
 
         return new EntityMetadata<TState>(entityId, instance.EntityState.GetState<TState>()!)
@@ -105,6 +105,30 @@ internal sealed class FakeDurableEntityRunner : IDisposable
 
         _logger.LogInformation("Completed entity operation {Operation} on {EntityId}", operationName, entityId);
         return result;
+    }
+
+    /// <summary>
+    /// Creates a default state value for <typeparamref name="TState"/>.
+    /// For value types, returns <c>default</c> (e.g. 0, false).
+    /// For reference types, creates a new instance via <see cref="Activator"/> so that
+    /// <see cref="EntityMetadata{TState}.IncludesState"/> is <c>true</c>.
+    /// </summary>
+    private static TState CreateDefaultState<TState>()
+    {
+        if (typeof(TState).IsValueType)
+        {
+            return default!;
+        }
+
+        try
+        {
+            return Activator.CreateInstance<TState>();
+        }
+        catch (MissingMethodException)
+        {
+            // Type has no parameterless constructor; fall back to null.
+            return default!;
+        }
     }
 
     private sealed class FakeEntityInstanceState : IDisposable

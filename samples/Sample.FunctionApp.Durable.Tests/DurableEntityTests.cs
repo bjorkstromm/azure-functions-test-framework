@@ -80,7 +80,25 @@ public sealed class DurableEntityTests
 
         // Assert
         Assert.NotNull(metadata);
+        Assert.True(metadata.IncludesState);
         Assert.Equal(0, metadata.State);
+    }
+
+    [Fact]
+    public async Task GetEntity_WithReferenceTypeState_ReturnsNonNullDefault()
+    {
+        // Arrange — reference-type TState must not result in IncludesState=false
+        await using var host = await CreateHostAsync();
+        var entityId = new EntityInstanceId(nameof(Counter), "ref-type-test");
+
+        // Act
+        var metadata = host.GetEntity<List<string>>(entityId);
+
+        // Assert
+        Assert.NotNull(metadata);
+        Assert.True(metadata.IncludesState);
+        Assert.NotNull(metadata.State);
+        Assert.Empty(metadata.State);
     }
 
     [Fact]
