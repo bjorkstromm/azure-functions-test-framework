@@ -19,6 +19,7 @@ public class FunctionsTestHost : IFunctionsTestHost
     private readonly WorkerHostService _workerHostService;
     private readonly GrpcHostService _grpcHostService;
     private readonly string _routePrefix;
+    private readonly TimeSpan _invocationTimeout;
     private HttpMessageHandler? _cachedHandler;
     private bool _isStarted;
 
@@ -27,13 +28,15 @@ public class FunctionsTestHost : IFunctionsTestHost
         GrpcServerManager grpcServerManager,
         WorkerHostService workerHostService,
         GrpcHostService grpcHostService,
-        string routePrefix = "api")
+        string routePrefix = "api",
+        TimeSpan invocationTimeout = default)
     {
         _logger = logger;
         _grpcServerManager = grpcServerManager;
         _workerHostService = workerHostService;
         _grpcHostService = grpcHostService;
         _routePrefix = routePrefix.Trim('/');
+        _invocationTimeout = invocationTimeout == default ? TimeSpan.FromSeconds(120) : invocationTimeout;
     }
 
     /// <summary>
@@ -67,7 +70,8 @@ public class FunctionsTestHost : IFunctionsTestHost
             var handler = _cachedHandler ??= new AspNetCoreForwardingHandler(_workerHostService.HttpPort.Value);
             return new HttpClient(handler, disposeHandler: false)
             {
-                BaseAddress = new Uri("http://localhost/")
+                BaseAddress = new Uri("http://localhost/"),
+                Timeout = _invocationTimeout
             };
         }
 
@@ -78,7 +82,8 @@ public class FunctionsTestHost : IFunctionsTestHost
             _routePrefix);
         return new HttpClient(grpcHandler, disposeHandler: false)
         {
-            BaseAddress = new Uri($"http://localhost/{_routePrefix}/")
+            BaseAddress = new Uri($"http://localhost/{_routePrefix}/"),
+            Timeout = _invocationTimeout
         };
     }
 
