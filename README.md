@@ -3,17 +3,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![NuGet](https://img.shields.io/nuget/v/AzureFunctions.TestFramework.Core.svg)](https://www.nuget.org/packages/AzureFunctions.TestFramework.Core)
 
-An integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience.
+An integration testing framework for Azure Functions (dotnet-isolated) that provides a `TestServer`/`WebApplicationFactory`-like experience. Under the hood, the framework uses ASP.NET Core's `TestServer` for both the gRPC communication channel and the worker's HTTP server — no TCP ports are opened and no firewall rules are needed.
 
 ## Project Status: Preview (pre-1.0)
 
-`FunctionsTestHost` — the single unified test host — is **fully functional** for the Worker SDK 2.x (.NET 10) samples and test suites. It supports both **direct gRPC mode** (`ConfigureFunctionsWorkerDefaults()`) and **ASP.NET Core / Kestrel mode** (`ConfigureFunctionsWebApplication()`), and works with both the classic `IHostBuilder` API and the newer `IHostApplicationBuilder` / `FunctionsApplicationBuilder` API introduced in Worker SDK 2.x. No active blockers.
+`FunctionsTestHost` — the single unified test host — is **fully functional** for the Worker SDK 2.x (.NET 10) samples and test suites. It supports both **direct gRPC mode** (`ConfigureFunctionsWorkerDefaults()`) and **ASP.NET Core integration mode** (`ConfigureFunctionsWebApplication()`), and works with both the classic `IHostBuilder` API and the newer `IHostApplicationBuilder` / `FunctionsApplicationBuilder` API introduced in Worker SDK 2.x. No active blockers.
 
 ### Capabilities
 
 | Area | Status |
 |------|--------|
-| **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core / Kestrel modes |
+| **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core integration modes |
 | **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid) | ✅ Extension methods + result capture |
 | **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events) | ✅ Fake-backed in-process |
 | **ASP.NET Core integration** (`ConfigureFunctionsWebApplication`) | ✅ Full parameter binding incl. `HttpRequest`, `FunctionContext`, typed route params, `CancellationToken` |
@@ -32,9 +32,9 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 ## Goals
 
 This framework aims to provide:
-- **In-process testing**: No func.exe or external processes required
+- **In-process testing**: No func.exe, no external processes, no open TCP ports — everything runs in-memory via ASP.NET Core `TestServer`
 - **Fast execution**: Similar performance to ASP.NET Core TestServer
-- **Single unified test host**: `FunctionsTestHost` handles both direct gRPC mode and ASP.NET Core / Kestrel mode
+- **Single unified test host**: `FunctionsTestHost` handles both direct gRPC mode and ASP.NET Core integration mode
 - **Full DI control**: Override services for testing
 - **Middleware support**: Test middleware registered in `Program.cs`
 
@@ -43,7 +43,7 @@ This framework aims to provide:
 The shipping package set is currently:
 
 - `AzureFunctions.TestFramework.Core` — gRPC-based in-process test host, metadata inspection, and shared invocation result types. Exposes `ISyntheticBindingProvider` and the `IFunctionInvoker.InvokeAsync` trigger binding factory callback so new trigger types can be supported in external packages without modifying Core.
-- `AzureFunctions.TestFramework.Http` — HTTP client support (`CreateHttpClient()` extension on `IFunctionsTestHost`), HTTP request/response mapping, and forwarding handlers for both direct gRPC and ASP.NET Core / Kestrel modes.
+- `AzureFunctions.TestFramework.Http` — HTTP client support (`CreateHttpClient()` extension on `IFunctionsTestHost`), HTTP request/response mapping, and forwarding handlers for both direct gRPC and ASP.NET Core integration modes.
 - `AzureFunctions.TestFramework.Timer` — `InvokeTimerAsync(...)`
 - `AzureFunctions.TestFramework.Queue` — `InvokeQueueAsync(...)`
 - `AzureFunctions.TestFramework.ServiceBus` — `InvokeServiceBusAsync(...)`
@@ -178,14 +178,14 @@ _testHost = await new FunctionsTestHostBuilder()
 
 > ⚠️ `UseMiddleware<T>()` is an extension method from `MiddlewareWorkerApplicationBuilderExtensions` in the `Microsoft.Extensions.Hosting` namespace. Add `using Microsoft.Extensions.Hosting;` to any file that calls it on a `FunctionsApplicationBuilder`.
 
-### 2. FunctionsTestHost — ASP.NET Core / Kestrel mode
+### 2. FunctionsTestHost — ASP.NET Core integration mode
 
-The same `FunctionsTestHost` automatically detects when the worker uses `ConfigureFunctionsWebApplication()` and routes `HttpClient` requests to the worker's real Kestrel server instead of dispatching over gRPC. The full ASP.NET Core middleware pipeline runs, and all ASP.NET Core-native binding types (`HttpRequest`, `FunctionContext`, Guid route params, `CancellationToken`) work correctly.
+The same `FunctionsTestHost` automatically detects when the worker uses `ConfigureFunctionsWebApplication()` and routes `HttpClient` requests to the worker's in-memory `TestServer` instead of dispatching over gRPC. The full ASP.NET Core middleware pipeline runs, and all ASP.NET Core-native binding types (`HttpRequest`, `FunctionContext`, Guid route params, `CancellationToken`) work correctly. No TCP port is opened — the worker's Kestrel `IServer` is replaced with `TestServer` at startup.
 
 **IHostBuilder style:**
 
 ```csharp
-// Program.cs — expose a host builder for ASP.NET Core / Kestrel mode testing
+// Program.cs — expose a host builder for ASP.NET Core integration mode testing
 public partial class Program
 {
     public static IHostBuilder CreateHostBuilder(string[] args) =>
@@ -194,7 +194,7 @@ public partial class Program
             .ConfigureServices(ConfigureServices);
 }
 
-// Test — framework auto-detects ASP.NET Core mode and routes requests to Kestrel
+// Test — framework auto-detects ASP.NET Core mode and routes requests to in-memory TestServer
 _testHost = await new FunctionsTestHostBuilder()
     .WithFunctionsAssembly(typeof(MyFunctions).Assembly)
     .WithHostBuilderFactory(Program.CreateHostBuilder)
@@ -204,7 +204,7 @@ _testHost = await new FunctionsTestHostBuilder()
 **FunctionsApplicationBuilder style:**
 
 ```csharp
-// Program.cs — expose a web-app builder for ASP.NET Core / Kestrel mode testing
+// Program.cs — expose a web-app builder for ASP.NET Core integration mode testing
 using Microsoft.Azure.Functions.Worker.Builder;
 using Microsoft.Extensions.Hosting;
 
@@ -213,7 +213,7 @@ public partial class Program
     public static FunctionsApplicationBuilder CreateWebApplicationBuilder(string[] args)
     {
         var builder = FunctionsApplication.CreateBuilder(args);
-        builder.ConfigureFunctionsWebApplication(); // enables ASP.NET Core / Kestrel mode — call before UseMiddleware
+        builder.ConfigureFunctionsWebApplication(); // enables ASP.NET Core integration mode — call before UseMiddleware
         builder.UseMiddleware<CorrelationMiddleware>();
         builder.Services.AddSingleton<IMyService, MyService>();
         return builder;
@@ -227,7 +227,7 @@ _testHost = await new FunctionsTestHostBuilder()
     .BuildAndStartAsync();
 ```
 
-> ℹ️ The framework auto-detects which mode is in use. With `ConfigureFunctionsWorkerDefaults()`, HTTP requests are dispatched via the gRPC `InvocationRequest` channel. With `ConfigureFunctionsWebApplication()`, the framework starts the worker's internal Kestrel server on an ephemeral port and routes `HttpClient` requests there.
+> ℹ️ The framework auto-detects which mode is in use. With `ConfigureFunctionsWorkerDefaults()`, HTTP requests are dispatched via the gRPC `InvocationRequest` channel. With `ConfigureFunctionsWebApplication()`, the framework replaces the worker's Kestrel `IServer` with an in-memory `TestServer` and routes `HttpClient` requests through it — no TCP port is opened.
 
 **Service overrides in either mode** — `ConfigureServices` on `FunctionsTestHostBuilder` lets tests swap out any registered service regardless of which mode is used:
 
@@ -535,7 +535,7 @@ This section explains *why* certain non-obvious implementation choices were made
 
 ### GrpcWorker.StopAsync() is a no-op
 
-The Azure Functions worker SDK's `GrpcWorker.StopAsync()` returns `Task.CompletedTask` immediately — it does **not** close the gRPC channel. `FunctionsTestHost` calls `_grpcHostService.SignalShutdownAsync()` before stopping `_grpcServerManager` to gracefully end the EventStream so Kestrel can stop instantly (no 5 s `ShutdownTimeout` wait).
+The Azure Functions worker SDK's `GrpcWorker.StopAsync()` returns `Task.CompletedTask` immediately — it does **not** close the gRPC channel. `FunctionsTestHost` calls `_grpcHostService.SignalShutdownAsync()` before stopping `_grpcServerManager` to gracefully end the EventStream so `TestServer` can stop instantly.
 
 ### Durable converter interception
 
@@ -561,8 +561,8 @@ The functions assembly contains source-generated classes (`FunctionMetadataProvi
 
 ```  
 src/
-  AzureFunctions.TestFramework.Core/         # gRPC host, worker hosting, HTTP invocation — both modes (net8.0;net10.0)
-  AzureFunctions.TestFramework.Http/         # HTTP-specific functionality placeholder (net8.0;net10.0)
+  AzureFunctions.TestFramework.Core/         # gRPC host (TestServer-backed), worker hosting, in-memory invocation — both modes (net8.0;net10.0)
+  AzureFunctions.TestFramework.Http/         # HTTP client support, request/response mapping, forwarding handlers (net8.0;net10.0)
   AzureFunctions.TestFramework.Timer/        # TimerTrigger invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.Queue/        # QueueTrigger invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.ServiceBus/   # ServiceBusTrigger invocation (net8.0;net10.0)
@@ -576,24 +576,24 @@ samples/
   Sample.FunctionApp.Tests.NUnit/            # NUnit sample test project
   Sample.FunctionApp.Tests.TUnit/            # TUnit sample test project
   Sample.FunctionApp.Worker/                 # Worker SDK 2.x (net10.0) — TodoAPI, middleware, triggers
-  Sample.FunctionApp.Worker.Tests/           # xUnit — both direct gRPC and ASP.NET Core / Kestrel mode (~7 tests)
+  Sample.FunctionApp.Worker.Tests/           # xUnit — both direct gRPC and ASP.NET Core integration mode (~7 tests)
   Sample.FunctionApp.Durable/               # Durable Functions sample — HTTP starter + orchestrator + activity
   Sample.FunctionApp.Durable.Tests/          # xUnit — Durable Functions (~25 tests)
   Sample.FunctionApp.CustomRoutePrefix/      # Custom route prefix with ConfigureFunctionsWorkerDefaults()
   Sample.FunctionApp.CustomRoutePrefix.Tests/              # xUnit — custom prefix via direct gRPC (2 tests)
   Sample.FunctionApp.CustomRoutePrefix.AspNetCore/         # Custom route prefix with ConfigureFunctionsWebApplication()
-  Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/   # xUnit — custom prefix via ASP.NET Core / Kestrel (3 tests)
+  Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/   # xUnit — custom prefix via ASP.NET Core integration (3 tests)
 
 tests/
   # 4-flavour test matrix — all share logic from tests/Shared/
   TestProject.HostBuilder/                              # Function app — IHostBuilder, ConfigureFunctionsWorkerDefaults
   TestProject.HostBuilder.Tests/                        # xUnit — direct gRPC, IHostBuilder
   TestProject.HostBuilder.AspNetCore/                   # Function app — IHostBuilder, ConfigureFunctionsWebApplication
-  TestProject.HostBuilder.AspNetCore.Tests/             # xUnit — ASP.NET Core / Kestrel, IHostBuilder
+  TestProject.HostBuilder.AspNetCore.Tests/             # xUnit — ASP.NET Core integration, IHostBuilder
   TestProject.HostApplicationBuilder/                   # Function app — FunctionsApplicationBuilder (direct gRPC)
   TestProject.HostApplicationBuilder.Tests/             # xUnit — direct gRPC, FunctionsApplicationBuilder
   TestProject.HostApplicationBuilder.AspNetCore/        # Function app — FunctionsApplicationBuilder + ConfigureFunctionsWebApplication
-  TestProject.HostApplicationBuilder.AspNetCore.Tests/  # xUnit — ASP.NET Core / Kestrel, FunctionsApplicationBuilder
+  TestProject.HostApplicationBuilder.AspNetCore.Tests/  # xUnit — ASP.NET Core integration, FunctionsApplicationBuilder
   # Custom route prefix 4-flavour matrix (one test project per function app)
   TestProject.CustomRoutePrefix.HostBuilder/            # CRP function app — IHostBuilder, gRPC
   TestProject.CustomRoutePrefix.HostBuilder.Tests/
