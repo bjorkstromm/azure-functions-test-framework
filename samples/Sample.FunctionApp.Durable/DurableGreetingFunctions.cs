@@ -149,6 +149,35 @@ public class DurableGreetingFunctions
         return $"Hello, {name}!";
     }
 
+    /// <summary>
+    /// Activity that accepts a [DurableClient] parameter — used to verify the test framework
+    /// correctly resolves the fake DurableTaskClient from DI instead of attempting JSON deserialization.
+    /// </summary>
+    [Function(nameof(CreateGreetingAndScheduleFollowUp))]
+    public static async Task<string> CreateGreetingAndScheduleFollowUp(
+        [ActivityTrigger] string name,
+        [DurableClient] DurableTaskClient durableClient,
+        CancellationToken cancellationToken)
+    {
+        var greeting = $"Hello, {name}!";
+
+        // Schedule a follow-up orchestration via the injected DurableClient.
+        var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
+            nameof(RunGreetingOrchestration),
+            name,
+            cancellation: cancellationToken);
+
+        return $"{greeting} (follow-up: {instanceId})";
+    }
+
+    [Function(nameof(RunGreetingWithClientActivity))]
+    public static async Task<string> RunGreetingWithClientActivity(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
+    {
+        var name = context.GetInput<string>() ?? string.Empty;
+        return await context.CallActivityAsync<string>(nameof(CreateGreetingAndScheduleFollowUp), name);
+    }
+
     private static DurableHttpManagementPayload CreateManagementPayload(string instanceId)
     {
         return new DurableHttpManagementPayload

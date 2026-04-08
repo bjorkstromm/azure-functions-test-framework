@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -81,7 +82,8 @@ internal sealed class FakeDurableOrchestrationRunner
             cancellationToken,
             input,
             orchestrationContext: null,
-            triggerAttributeType: typeof(ActivityTriggerAttribute));
+            triggerAttributeType: typeof(ActivityTriggerAttribute),
+            serviceProvider: scope.ServiceProvider);
 
         var result = await InvokeMethodAsync(activity.Method, target, arguments);
         _logger.LogInformation("Completed fake durable activity {ActivityName}", activityName.Name);
@@ -145,7 +147,8 @@ internal sealed class FakeDurableOrchestrationRunner
             cancellationToken,
             input,
             orchestrationContext,
-            triggerAttributeType: typeof(OrchestrationTriggerAttribute));
+            triggerAttributeType: typeof(OrchestrationTriggerAttribute),
+            serviceProvider: scope.ServiceProvider);
 
         var result = await InvokeMethodAsync(orchestrator.Method, target, arguments);
         _logger.LogInformation("Completed fake durable orchestrator {OrchestratorName} for instance {InstanceId}", orchestratorName, instanceId);
@@ -174,7 +177,8 @@ internal sealed class FakeDurableOrchestrationRunner
         CancellationToken cancellationToken,
         object? input,
         TaskOrchestrationContext? orchestrationContext,
-        Type triggerAttributeType)
+        Type triggerAttributeType,
+        IServiceProvider serviceProvider)
     {
         var parameters = method.GetParameters();
         var arguments = new object?[parameters.Length];
@@ -200,6 +204,15 @@ internal sealed class FakeDurableOrchestrationRunner
             if (parameter.ParameterType == typeof(CancellationToken))
             {
                 arguments[i] = cancellationToken;
+                continue;
+            }
+
+            // [DurableClient] parameters resolve from DI — DurableTaskClient is an abstract class
+            // and cannot be deserialized from JSON.
+            if (parameter.GetCustomAttribute<DurableClientAttribute>() is not null
+                && typeof(DurableTaskClient).IsAssignableFrom(parameter.ParameterType))
+            {
+                arguments[i] = serviceProvider.GetRequiredService<DurableTaskClient>();
                 continue;
             }
 
