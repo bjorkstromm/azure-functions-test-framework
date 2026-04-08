@@ -9,8 +9,8 @@ namespace AzureFunctions.TestFramework.Core;
 public interface IHttpSupportedTestHost
 {
     /// <summary>
-    /// Gets the worker's HTTP message handler when running in ASP.NET Core / Kestrel mode,
-    /// or <see langword="null"/> when running in direct gRPC mode.
+    /// Gets the worker's HTTP message handler when running in ASP.NET Core integration mode
+    /// (backed by in-memory <c>TestServer</c>), or <see langword="null"/> when running in direct gRPC mode.
     /// </summary>
     HttpMessageHandler? WorkerHttpHandler { get; }
 
