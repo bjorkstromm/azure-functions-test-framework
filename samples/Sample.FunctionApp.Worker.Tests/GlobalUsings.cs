@@ -3,6 +3,7 @@
 global using System.Net;
 global using System.Net.Http.Json;
 global using AzureFunctions.TestFramework.Core;
+global using AzureFunctions.TestFramework.Http;
 global using Sample.FunctionApp.Worker;
 global using Xunit;
 #pragma warning restore IDE0005

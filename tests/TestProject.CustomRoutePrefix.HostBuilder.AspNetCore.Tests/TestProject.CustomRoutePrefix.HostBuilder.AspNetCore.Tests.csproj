@@ -23,5 +23,6 @@
   <ItemGroup>
     <ProjectReference Include="..\TestProject.CustomRoutePrefix.HostBuilder.AspNetCore\TestProject.CustomRoutePrefix.HostBuilder.AspNetCore.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Http\AzureFunctions.TestFramework.Http.csproj" />
   </ItemGroup>
 </Project>

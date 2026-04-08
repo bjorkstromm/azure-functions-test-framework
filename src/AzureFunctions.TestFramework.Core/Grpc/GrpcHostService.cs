@@ -124,7 +124,10 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     public FunctionRegistration? GetFunctionRegistration(string functionName)
         => _functionsByName.TryGetValue(functionName, out var reg) ? reg : null;
 
-    internal IReadOnlyList<FunctionBindingData> GetSyntheticInputParameters(string functionId)
+    /// <summary>
+    /// Returns any synthetic input parameters registered for the given function ID.
+    /// </summary>
+    public IReadOnlyList<FunctionBindingData> GetSyntheticInputParameters(string functionId)
     {
         if (_syntheticInputByFunctionId.TryGetValue(functionId, out var bindings))
         {
@@ -137,10 +140,13 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// <summary>
     /// Converts a <see cref="FunctionBindingData"/> value to a gRPC <c>ParameterBinding</c>.
     /// </summary>
-    internal static ParameterBinding ToParameterBinding(FunctionBindingData data)
+    public static ParameterBinding ToParameterBinding(FunctionBindingData data)
         => new() { Name = data.Name, Data = ToTypedData(data) };
 
-    private static TypedData ToTypedData(FunctionBindingData data)
+    /// <summary>
+    /// Converts a <see cref="FunctionBindingData"/> value to a gRPC <c>TypedData</c>.
+    /// </summary>
+    public static TypedData ToTypedData(FunctionBindingData data)
     {
         if (data.Bytes != null)
             return new TypedData { Bytes = ByteString.CopyFrom(data.Bytes) };
@@ -554,7 +560,10 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         };
     }
 
-    internal string? FindFunctionId(string httpMethod, string requestPath, string routePrefix = "api")
+    /// <summary>
+    /// Returns the function ID for an HTTP trigger function matched by HTTP method and request path.
+    /// </summary>
+    public string? FindFunctionId(string httpMethod, string requestPath, string routePrefix = "api")
         => FindFunctionMatch(httpMethod, requestPath, routePrefix).FunctionId;
 
     /// <summary>
@@ -562,7 +571,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// for the given function ID, as declared in the function's source-generated metadata.
     /// Falls back to <c>"req"</c> if the function is not known or has no httpTrigger binding.
     /// </summary>
-    internal string GetHttpTriggerBindingName(string functionId)
+    public string GetHttpTriggerBindingName(string functionId)
         => _httpBindingNameByFunctionId.TryGetValue(functionId, out var name) ? name : "req";
 
     /// <summary>
@@ -570,7 +579,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// Returns the function ID and a dictionary of extracted route parameter values (e.g.
     /// <c>{"id": "abc123"}</c> for a route pattern <c>todos/{id}</c>).
     /// </summary>
-    internal (string? FunctionId, IReadOnlyDictionary<string, string> RouteParams) FindFunctionMatch(
+    public (string? FunctionId, IReadOnlyDictionary<string, string> RouteParams) FindFunctionMatch(
         string httpMethod, string requestPath, string routePrefix = "api")
     {
         static IReadOnlyDictionary<string, string> Empty() =>

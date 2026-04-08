@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Sample.FunctionApp.Durable\Sample.FunctionApp.Durable.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Http\AzureFunctions.TestFramework.Http.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Durable\AzureFunctions.TestFramework.Durable.csproj" />
   </ItemGroup>
 

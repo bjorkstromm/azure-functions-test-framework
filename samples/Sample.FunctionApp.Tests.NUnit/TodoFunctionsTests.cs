@@ -1,4 +1,5 @@
 using AzureFunctions.TestFramework.Core;
+using AzureFunctions.TestFramework.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NUnit.Framework;

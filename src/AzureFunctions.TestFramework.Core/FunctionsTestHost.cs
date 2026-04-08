@@ -12,7 +12,7 @@ namespace AzureFunctions.TestFramework.Core;
 /// Main test host for Azure Functions integration tests.
 /// Similar to WebApplicationFactory in ASP.NET Core.
 /// </summary>
-public class FunctionsTestHost : IFunctionsTestHost
+public class FunctionsTestHost : IFunctionsTestHost, IHttpSupportedTestHost
 {
     private readonly ILogger<FunctionsTestHost> _logger;
     private readonly GrpcServerManager _grpcServerManager;
@@ -20,7 +20,6 @@ public class FunctionsTestHost : IFunctionsTestHost
     private readonly GrpcHostService _grpcHostService;
     private readonly string _routePrefix;
     private readonly TimeSpan _invocationTimeout;
-    private HttpMessageHandler? _cachedHandler;
     private bool _isStarted;
 
     private readonly IFunctionInvoker _invoker;
@@ -52,44 +51,17 @@ public class FunctionsTestHost : IFunctionsTestHost
     /// </summary>
     public IFunctionInvoker Invoker => _invoker;
 
-    /// <summary>
-    /// Creates an HttpClient configured to invoke functions in-process.
-    /// Similar to WebApplicationFactory.CreateClient().
-    /// When the worker uses <c>ConfigureFunctionsWebApplication()</c>, requests are forwarded
-    /// to the worker's in-memory TestServer (ASP.NET Core integration mode).
-    /// Otherwise requests are dispatched directly via the gRPC InvocationRequest channel.
-    /// </summary>
-    public HttpClient CreateHttpClient()
-    {
-        if (!_isStarted)
-        {
-            throw new InvalidOperationException("Test host must be started before creating HTTP client");
-        }
+    /// <inheritdoc/>
+    public HttpMessageHandler? WorkerHttpHandler => _workerHostService.WorkerHttpHandler;
 
-        // ASP.NET Core integration mode: forward HTTP requests to the worker's HTTP server (in-memory TestServer).
-        var workerHttpHandler = _workerHostService.WorkerHttpHandler;
+    /// <inheritdoc/>
+    public GrpcHostService GrpcHostService => _grpcHostService;
 
-        if (workerHttpHandler != null)
-        {
-            var handler = _cachedHandler ??= new AspNetCoreForwardingHandler(workerHttpHandler);
-            return new HttpClient(handler, disposeHandler: false)
-            {
-                BaseAddress = new Uri("http://localhost/"),
-                Timeout = _invocationTimeout
-            };
-        }
+    /// <inheritdoc/>
+    public string RoutePrefix => _routePrefix;
 
-        // gRPC-direct mode (ConfigureFunctionsWorkerDefaults): dispatch via InvocationRequest.
-        var grpcHandler = _cachedHandler ??= new Client.FunctionsHttpMessageHandler(
-            _grpcHostService,
-            _grpcHostService.FunctionRouteMap,
-            _routePrefix);
-        return new HttpClient(grpcHandler, disposeHandler: false)
-        {
-            BaseAddress = new Uri($"http://localhost/{_routePrefix}/"),
-            Timeout = _invocationTimeout
-        };
-    }
+    /// <inheritdoc/>
+    public TimeSpan InvocationTimeout => _invocationTimeout;
 
     /// <summary>
     /// Starts the test host: gRPC server, then Functions worker.
@@ -169,7 +141,6 @@ public class FunctionsTestHost : IFunctionsTestHost
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
-        _cachedHandler?.Dispose();
         await _workerHostService.DisposeAsync();
         await _grpcServerManager.DisposeAsync();
 
@@ -251,47 +222,3 @@ internal class FunctionInvoker : IFunctionInvoker
     }
 }
 
-
-/// <summary>
-/// An <see cref="HttpMessageHandler"/> that forwards requests to the worker's internal
-/// ASP.NET Core HTTP server (used when the worker is started with
-/// <c>ConfigureFunctionsWebApplication()</c>).
-/// <para>
-/// The in-memory TestServer handler is used; the URI is passed through unchanged
-/// (TestServer routes by path). A synthetic <c>x-ms-invocation-id</c> header is
-/// injected when absent.
-/// </para>
-/// </summary>
-internal sealed class AspNetCoreForwardingHandler : HttpMessageHandler
-{
-    private const string InvocationIdHeader = "x-ms-invocation-id";
-
-    private readonly HttpMessageInvoker _inner;
-
-    public AspNetCoreForwardingHandler(HttpMessageHandler testServerHandler)
-    {
-        _inner = new HttpMessageInvoker(testServerHandler, disposeHandler: false);
-    }
-
-    protected override async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
-    {
-        // Inject a synthetic invocation ID if the caller didn't provide one.
-        if (!request.Headers.Contains(InvocationIdHeader))
-        {
-            request.Headers.TryAddWithoutValidation(InvocationIdHeader, Guid.NewGuid().ToString());
-        }
-
-        return await _inner.SendAsync(request, cancellationToken);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _inner.Dispose();
-        }
-        base.Dispose(disposing);
-    }
-}

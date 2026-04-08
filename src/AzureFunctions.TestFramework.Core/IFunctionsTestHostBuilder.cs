@@ -63,7 +63,7 @@ public interface IFunctionsTestHostBuilder
     ///   </description></item>
     ///   <item><description>
     ///     <c>ConfigureFunctionsWebApplication()</c> — the worker's ASP.NET Core HTTP server is
-    ///     started on an ephemeral port; <see cref="IFunctionsTestHost.CreateHttpClient"/> returns
+    ///     started on an ephemeral port; <c>FunctionsTestHostHttpExtensions.CreateHttpClient()</c> returns
     ///     a client that forwards requests to that server.
     ///   </description></item>
     /// </list>
@@ -97,7 +97,7 @@ public interface IFunctionsTestHostBuilder
     ///   </description></item>
     ///   <item><description>
     ///     With <c>ConfigureFunctionsWebApplication()</c> — the worker's ASP.NET Core HTTP server is
-    ///     started on an ephemeral port; <see cref="IFunctionsTestHost.CreateHttpClient"/> returns
+    ///     started on an ephemeral port; <c>FunctionsTestHostHttpExtensions.CreateHttpClient()</c> returns
     ///     a client that forwards requests to that server (ASP.NET Core / Kestrel mode).
     ///   </description></item>
     /// </list>

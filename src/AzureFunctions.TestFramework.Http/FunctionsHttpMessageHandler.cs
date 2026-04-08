@@ -1,9 +1,8 @@
 using AzureFunctions.TestFramework.Core.Grpc;
-using AzureFunctions.TestFramework.Core.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using System.Net;
 
-namespace AzureFunctions.TestFramework.Core.Client;
+namespace AzureFunctions.TestFramework.Http;
 
 /// <summary>
 /// Custom HttpMessageHandler that intercepts HTTP requests and routes them

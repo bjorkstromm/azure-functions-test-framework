@@ -18,6 +18,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Sample.FunctionApp.CustomRoutePrefix\Sample.FunctionApp.CustomRoutePrefix.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Http\AzureFunctions.TestFramework.Http.csproj" />
   </ItemGroup>
 
 </Project>
