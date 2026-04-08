@@ -12,7 +12,7 @@ namespace AzureFunctions.TestFramework.Core;
 /// Main test host for Azure Functions integration tests.
 /// Similar to WebApplicationFactory in ASP.NET Core.
 /// </summary>
-public class FunctionsTestHost : IFunctionsTestHost
+public class FunctionsTestHost : IFunctionsTestHost, IHttpSupportedTestHost
 {
     private readonly ILogger<FunctionsTestHost> _logger;
     private readonly GrpcServerManager _grpcServerManager;
@@ -20,8 +20,9 @@ public class FunctionsTestHost : IFunctionsTestHost
     private readonly GrpcHostService _grpcHostService;
     private readonly string _routePrefix;
     private readonly TimeSpan _invocationTimeout;
-    private HttpMessageHandler? _cachedHandler;
     private bool _isStarted;
+
+    private readonly IFunctionInvoker _invoker;
 
     internal FunctionsTestHost(
         ILogger<FunctionsTestHost> logger,
@@ -37,6 +38,7 @@ public class FunctionsTestHost : IFunctionsTestHost
         _grpcHostService = grpcHostService;
         _routePrefix = routePrefix.Trim('/');
         _invocationTimeout = invocationTimeout == default ? TimeSpan.FromSeconds(120) : invocationTimeout;
+        _invoker = new FunctionInvoker(_grpcHostService);
     }
 
     /// <summary>
@@ -47,46 +49,19 @@ public class FunctionsTestHost : IFunctionsTestHost
     /// <summary>
     /// Gets the function invoker for executing functions.
     /// </summary>
-    public IFunctionInvoker Invoker => new FunctionInvoker(_grpcHostService);
+    public IFunctionInvoker Invoker => _invoker;
 
-    /// <summary>
-    /// Creates an HttpClient configured to invoke functions in-process.
-    /// Similar to WebApplicationFactory.CreateClient().
-    /// When the worker uses <c>ConfigureFunctionsWebApplication()</c>, requests are forwarded
-    /// to the worker's in-memory TestServer (ASP.NET Core integration mode).
-    /// Otherwise requests are dispatched directly via the gRPC InvocationRequest channel.
-    /// </summary>
-    public HttpClient CreateHttpClient()
-    {
-        if (!_isStarted)
-        {
-            throw new InvalidOperationException("Test host must be started before creating HTTP client");
-        }
+    /// <inheritdoc/>
+    public HttpMessageHandler? WorkerHttpHandler => _workerHostService.WorkerHttpHandler;
 
-        // ASP.NET Core integration mode: forward HTTP requests to the worker's HTTP server (in-memory TestServer).
-        var workerHttpHandler = _workerHostService.WorkerHttpHandler;
+    /// <inheritdoc/>
+    public GrpcHostService GrpcHostService => _grpcHostService;
 
-        if (workerHttpHandler != null)
-        {
-            var handler = _cachedHandler ??= new AspNetCoreForwardingHandler(workerHttpHandler);
-            return new HttpClient(handler, disposeHandler: false)
-            {
-                BaseAddress = new Uri("http://localhost/"),
-                Timeout = _invocationTimeout
-            };
-        }
+    /// <inheritdoc/>
+    public string RoutePrefix => _routePrefix;
 
-        // gRPC-direct mode (ConfigureFunctionsWorkerDefaults): dispatch via InvocationRequest.
-        var grpcHandler = _cachedHandler ??= new Client.FunctionsHttpMessageHandler(
-            _grpcHostService,
-            _grpcHostService.FunctionRouteMap,
-            _routePrefix);
-        return new HttpClient(grpcHandler, disposeHandler: false)
-        {
-            BaseAddress = new Uri($"http://localhost/{_routePrefix}/"),
-            Timeout = _invocationTimeout
-        };
-    }
+    /// <inheritdoc/>
+    public TimeSpan InvocationTimeout => _invocationTimeout;
 
     /// <summary>
     /// Starts the test host: gRPC server, then Functions worker.
@@ -166,7 +141,6 @@ public class FunctionsTestHost : IFunctionsTestHost
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
-        _cachedHandler?.Dispose();
         await _workerHostService.DisposeAsync();
         await _grpcServerManager.DisposeAsync();
 
@@ -200,7 +174,8 @@ public class FunctionsTestHost : IFunctionsTestHost
 }
 
 /// <summary>
-/// Simple function invoker implementation.
+/// Default function invoker that dispatches non-HTTP invocations via a caller-supplied
+/// trigger binding factory.
 /// </summary>
 internal class FunctionInvoker : IFunctionInvoker
 {
@@ -214,80 +189,18 @@ internal class FunctionInvoker : IFunctionInvoker
     public Task<FunctionInvocationResult> InvokeAsync(
         string functionName,
         FunctionInvocationContext context,
+        Func<FunctionInvocationContext, FunctionRegistration, TriggerBindingData> triggerBindingFactory,
         CancellationToken cancellationToken = default)
     {
-        return context.TriggerType switch
-        {
-            "timerTrigger" => InvokeTimerAsync(functionName, context, cancellationToken),
-            "serviceBusTrigger" => InvokeServiceBusAsync(functionName, context, cancellationToken),
-            "queueTrigger" => InvokeQueueAsync(functionName, context, cancellationToken),
-            "blobTrigger" => InvokeBlobAsync(functionName, context, cancellationToken),
-            "eventGridTrigger" => InvokeEventGridAsync(functionName, context, cancellationToken),
-            _ => throw new NotSupportedException(
-                $"Trigger type '{context.TriggerType}' is not supported by this invoker. " +
-                $"Use a trigger-specific extension package (e.g. AzureFunctions.TestFramework.Timer).")
-        };
-    }
+        ArgumentNullException.ThrowIfNull(triggerBindingFactory);
 
-    private Task<FunctionInvocationResult> InvokeTimerAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var timerJson = context.InputData.TryGetValue("$timerJson", out var j)
-            ? j?.ToString() ?? "{}"
-            : "{}";
-        return _grpcHostService.InvokeTimerFunctionAsync(functionName, timerJson, cancellationToken);
-    }
+        var registration = _grpcHostService.GetFunctionRegistration(functionName)
+            ?? throw new InvalidOperationException(
+                $"Function '{functionName}' was not found or is not a non-HTTP trigger function. " +
+                $"Available non-HTTP functions: [{string.Join(", ", _grpcHostService.GetFunctions().Keys)}]");
 
-    private Task<FunctionInvocationResult> InvokeServiceBusAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var bodyBytes = context.InputData.TryGetValue("$messageBodyBytes", out var b) && b is byte[] bytes
-            ? bytes
-            : Array.Empty<byte>();
-        var triggerMetadata = context.InputData.TryGetValue("$triggerMetadata", out var m)
-            ? m?.ToString()
-            : null;
-        return _grpcHostService.InvokeServiceBusFunctionAsync(functionName, bodyBytes, triggerMetadata, cancellationToken);
-    }
-
-    private Task<FunctionInvocationResult> InvokeQueueAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var messageBytes = context.InputData.TryGetValue("$queueMessageBytes", out var b) && b is byte[] bytes
-            ? new ReadOnlyMemory<byte>(bytes)
-            : ReadOnlyMemory<byte>.Empty;
-        return _grpcHostService.InvokeQueueFunctionAsync(functionName, messageBytes, cancellationToken);
-    }
-
-    private Task<FunctionInvocationResult> InvokeBlobAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var contentBytes = context.InputData.TryGetValue("$blobContentBytes", out var b) && b is byte[] bytes
-            ? new ReadOnlyMemory<byte>(bytes)
-            : ReadOnlyMemory<byte>.Empty;
-        var triggerMetadata = context.InputData.TryGetValue("$triggerMetadata", out var m)
-            ? m?.ToString()
-            : null;
-        return _grpcHostService.InvokeBlobFunctionAsync(functionName, contentBytes, triggerMetadata, cancellationToken);
-    }
-
-    private Task<FunctionInvocationResult> InvokeEventGridAsync(
-        string functionName,
-        FunctionInvocationContext context,
-        CancellationToken cancellationToken)
-    {
-        var eventJson = context.InputData.TryGetValue("$eventJson", out var j)
-            ? j?.ToString() ?? "{}"
-            : "{}";
-        return _grpcHostService.InvokeEventGridFunctionAsync(functionName, eventJson, cancellationToken);
+        var bindingData = triggerBindingFactory(context, registration);
+        return _grpcHostService.InvokeFunctionAsync(functionName, bindingData, cancellationToken);
     }
 
     public IReadOnlyDictionary<string, IFunctionMetadata> GetFunctions()
@@ -296,47 +209,3 @@ internal class FunctionInvoker : IFunctionInvoker
     }
 }
 
-
-/// <summary>
-/// An <see cref="HttpMessageHandler"/> that forwards requests to the worker's internal
-/// ASP.NET Core HTTP server (used when the worker is started with
-/// <c>ConfigureFunctionsWebApplication()</c>).
-/// <para>
-/// The in-memory TestServer handler is used; the URI is passed through unchanged
-/// (TestServer routes by path). A synthetic <c>x-ms-invocation-id</c> header is
-/// injected when absent.
-/// </para>
-/// </summary>
-internal sealed class AspNetCoreForwardingHandler : HttpMessageHandler
-{
-    private const string InvocationIdHeader = "x-ms-invocation-id";
-
-    private readonly HttpMessageInvoker _inner;
-
-    public AspNetCoreForwardingHandler(HttpMessageHandler testServerHandler)
-    {
-        _inner = new HttpMessageInvoker(testServerHandler, disposeHandler: false);
-    }
-
-    protected override async Task<HttpResponseMessage> SendAsync(
-        HttpRequestMessage request,
-        CancellationToken cancellationToken)
-    {
-        // Inject a synthetic invocation ID if the caller didn't provide one.
-        if (!request.Headers.Contains(InvocationIdHeader))
-        {
-            request.Headers.TryAddWithoutValidation(InvocationIdHeader, Guid.NewGuid().ToString());
-        }
-
-        return await _inner.SendAsync(request, cancellationToken);
-    }
-
-    protected override void Dispose(bool disposing)
-    {
-        if (disposing)
-        {
-            _inner.Dispose();
-        }
-        base.Dispose(disposing);
-    }
-}

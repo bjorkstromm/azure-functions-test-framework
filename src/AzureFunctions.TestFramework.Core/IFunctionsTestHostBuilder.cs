@@ -63,7 +63,7 @@ public interface IFunctionsTestHostBuilder
     ///   </description></item>
     ///   <item><description>
     ///     <c>ConfigureFunctionsWebApplication()</c> — the worker's ASP.NET Core HTTP server is
-    ///     started on an ephemeral port; <see cref="IFunctionsTestHost.CreateHttpClient"/> returns
+    ///     started on an ephemeral port; <c>FunctionsTestHostHttpExtensions.CreateHttpClient()</c> returns
     ///     a client that forwards requests to that server.
     ///   </description></item>
     /// </list>
@@ -97,7 +97,7 @@ public interface IFunctionsTestHostBuilder
     ///   </description></item>
     ///   <item><description>
     ///     With <c>ConfigureFunctionsWebApplication()</c> — the worker's ASP.NET Core HTTP server is
-    ///     started on an ephemeral port; <see cref="IFunctionsTestHost.CreateHttpClient"/> returns
+    ///     started on an ephemeral port; <c>FunctionsTestHostHttpExtensions.CreateHttpClient()</c> returns
     ///     a client that forwards requests to that server (ASP.NET Core / Kestrel mode).
     ///   </description></item>
     /// </list>
@@ -163,6 +163,19 @@ public interface IFunctionsTestHostBuilder
     /// </summary>
     /// <param name="timeout">The invocation timeout.</param>
     IFunctionsTestHostBuilder WithInvocationTimeout(TimeSpan timeout);
+
+    /// <summary>
+    /// Registers an <see cref="ISyntheticBindingProvider"/> that injects synthetic input
+    /// bindings into every function invocation that declares the matching binding attribute.
+    /// <para>
+    /// The canonical use case is the <c>[DurableClient]</c> binding: the test framework must
+    /// synthesise the JSON payload (<c>rpcBaseUrl</c>, <c>taskHubName</c>, …) that the real
+    /// Azure Functions host normally provides so that the worker's converter can construct
+    /// the <c>DurableTaskClient</c> object.
+    /// </para>
+    /// </summary>
+    /// <param name="provider">The synthetic binding provider to register.</param>
+    IFunctionsTestHostBuilder WithSyntheticBindingProvider(ISyntheticBindingProvider provider);
 
     /// <summary>
     /// Builds and returns the configured test host.

@@ -18,6 +18,7 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     private readonly List<Action<IServiceCollection>> _serviceConfigurators = new();
     private readonly Dictionary<string, string> _settings = new();
     private readonly Dictionary<string, string> _environmentVariables = new();
+    private readonly List<ISyntheticBindingProvider> _syntheticBindingProviders = new();
     private Func<string[], IHostBuilder>? _hostBuilderFactory;
     private Func<string[], FunctionsApplicationBuilder>? _hostApplicationBuilderFactory;
     private ILoggerFactory? _loggerFactory;
@@ -92,6 +93,14 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
     }
 
     /// <inheritdoc/>
+    public IFunctionsTestHostBuilder WithSyntheticBindingProvider(ISyntheticBindingProvider provider)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        _syntheticBindingProviders.Add(provider);
+        return this;
+    }
+
+    /// <inheritdoc/>
     public IFunctionsTestHostBuilder WithHostBuilderFactory(Func<string[], IHostBuilder> factory)
     {
         _hostBuilderFactory = factory;
@@ -127,7 +136,7 @@ public class FunctionsTestHostBuilder : IFunctionsTestHostBuilder
 
         // Create gRPC components
         var grpcHostServiceLogger = loggerFactory.CreateLogger<GrpcHostService>();
-        var grpcHostService = new GrpcHostService(grpcHostServiceLogger, _functionsAssembly)
+        var grpcHostService = new GrpcHostService(grpcHostServiceLogger, _functionsAssembly, _syntheticBindingProviders)
         {
             InvocationTimeout = _invocationTimeout
         };

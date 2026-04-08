@@ -1,9 +1,8 @@
 using AzureFunctions.TestFramework.Core.Grpc;
-using AzureFunctions.TestFramework.Core.Http;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using System.Net;
 
-namespace AzureFunctions.TestFramework.Core.Client;
+namespace AzureFunctions.TestFramework.Http;
 
 /// <summary>
 /// Custom HttpMessageHandler that intercepts HTTP requests and routes them
@@ -118,9 +117,9 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
                 grpcRequest.InvocationRequest.TriggerMetadata[paramName] = new TypedData { String = paramValue };
             }
 
-            foreach (var binding in _grpcHostService.GetSyntheticInputBindings(functionId))
+            foreach (var binding in _grpcHostService.GetSyntheticInputParameters(functionId))
             {
-                grpcRequest.InvocationRequest.InputData.Add(binding);
+                grpcRequest.InvocationRequest.InputData.Add(GrpcHostService.ToParameterBinding(binding));
             }
 
             // 5. Send to worker via gRPC (in-process)

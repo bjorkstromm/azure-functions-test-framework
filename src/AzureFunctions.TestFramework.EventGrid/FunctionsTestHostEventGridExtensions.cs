@@ -51,7 +51,7 @@ public static class FunctionsTestHostEventGridExtensions
             InputData = { ["$eventJson"] = eventJson }
         };
 
-        return host.Invoker.InvokeAsync(functionName, context, cancellationToken);
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingData, cancellationToken);
     }
 
     /// <summary>
@@ -90,7 +90,19 @@ public static class FunctionsTestHostEventGridExtensions
             InputData = { ["$eventJson"] = eventJson }
         };
 
-        return host.Invoker.InvokeAsync(functionName, context, cancellationToken);
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingData, cancellationToken);
+    }
+
+    private static TriggerBindingData CreateBindingData(
+        FunctionInvocationContext context,
+        FunctionRegistration function)
+    {
+        var json = context.InputData.TryGetValue("$eventJson", out var j) ? j?.ToString() ?? "{}" : "{}";
+
+        return new TriggerBindingData
+        {
+            InputData = [FunctionBindingData.WithJson(function.ParameterName, json)]
+        };
     }
 
     /// <summary>

@@ -2,7 +2,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using System.Net;
 using System.Text.Json;
 
-namespace AzureFunctions.TestFramework.Core.Http;
+namespace AzureFunctions.TestFramework.Http;
 
 /// <summary>
 /// Maps gRPC InvocationResponse messages to HTTP test responses.

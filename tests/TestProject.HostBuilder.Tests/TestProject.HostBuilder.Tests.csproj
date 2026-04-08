@@ -20,6 +20,7 @@
   <ItemGroup>
     <ProjectReference Include="..\TestProject.HostBuilder\TestProject.HostBuilder.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Http\AzureFunctions.TestFramework.Http.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Timer\AzureFunctions.TestFramework.Timer.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Queue\AzureFunctions.TestFramework.Queue.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.ServiceBus\AzureFunctions.TestFramework.ServiceBus.csproj" />

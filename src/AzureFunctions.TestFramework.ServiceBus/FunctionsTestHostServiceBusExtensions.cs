@@ -60,6 +60,28 @@ public static class FunctionsTestHostServiceBusExtensions
             }
         };
 
-        return host.Invoker.InvokeAsync(functionName, context, cancellationToken);
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingData, cancellationToken);
+    }
+
+    private static TriggerBindingData CreateBindingData(
+        FunctionInvocationContext context,
+        FunctionRegistration function)
+    {
+        var bodyBytes = context.InputData.TryGetValue("$messageBodyBytes", out var b) && b is byte[] bytes
+            ? bytes
+            : Array.Empty<byte>();
+
+        var triggerMetadata = context.InputData.TryGetValue("$triggerMetadata", out var m)
+            ? m?.ToString()
+            : null;
+
+        return new TriggerBindingData
+        {
+            InputData = [FunctionBindingData.WithBytes(function.ParameterName, bodyBytes)],
+            TriggerMetadataJson = string.IsNullOrEmpty(triggerMetadata)
+                ? null
+                : new Dictionary<string, string>(StringComparer.Ordinal)
+                    { [function.ParameterName] = triggerMetadata }
+        };
     }
 }

@@ -17,12 +17,6 @@ public interface IFunctionsTestHost : IAsyncDisposable, IDisposable
     IFunctionInvoker Invoker { get; }
 
     /// <summary>
-    /// Creates an HttpClient configured to invoke functions in-process.
-    /// Similar to WebApplicationFactory.CreateClient().
-    /// </summary>
-    HttpClient CreateHttpClient();
-
-    /// <summary>
     /// Starts the test host and initializes the Functions worker.
     /// </summary>
     Task StartAsync(CancellationToken cancellationToken = default);

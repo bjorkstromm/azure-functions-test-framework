@@ -59,6 +59,28 @@ public static class FunctionsTestHostBlobExtensions
             context.InputData["$triggerMetadata"] = triggerMetadataJson;
         }
 
-        return host.Invoker.InvokeAsync(functionName, context, cancellationToken);
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingData, cancellationToken);
+    }
+
+    private static TriggerBindingData CreateBindingData(
+        FunctionInvocationContext context,
+        FunctionRegistration function)
+    {
+        var contentBytes = context.InputData.TryGetValue("$blobContentBytes", out var b) && b is byte[] bytes
+            ? bytes
+            : Array.Empty<byte>();
+
+        var triggerMetadata = context.InputData.TryGetValue("$triggerMetadata", out var m)
+            ? m?.ToString()
+            : null;
+
+        return new TriggerBindingData
+        {
+            InputData = [FunctionBindingData.WithBytes(function.ParameterName, contentBytes)],
+            TriggerMetadataJson = string.IsNullOrEmpty(triggerMetadata)
+                ? null
+                : new Dictionary<string, string>(StringComparer.Ordinal)
+                    { [function.ParameterName] = triggerMetadata }
+        };
     }
 }

@@ -1,6 +1,6 @@
 using System.Text.Json;
 
-namespace AzureFunctions.TestFramework.Core;
+namespace AzureFunctions.TestFramework.Durable;
 
 /// <summary>
 /// Default values used when synthesizing Durable client binding payloads for in-process tests.

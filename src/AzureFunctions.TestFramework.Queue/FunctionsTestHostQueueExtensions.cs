@@ -32,6 +32,20 @@ public static class FunctionsTestHostQueueExtensions
             InputData = { ["$queueMessageBytes"] = body }
         };
 
-        return host.Invoker.InvokeAsync(functionName, context, cancellationToken);
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingData, cancellationToken);
+    }
+
+    private static TriggerBindingData CreateBindingData(
+        FunctionInvocationContext context,
+        FunctionRegistration function)
+    {
+        var messageBytes = context.InputData.TryGetValue("$queueMessageBytes", out var b) && b is byte[] bytes
+            ? bytes
+            : Array.Empty<byte>();
+
+        return new TriggerBindingData
+        {
+            InputData = [FunctionBindingData.WithBytes(function.ParameterName, messageBytes)]
+        };
     }
 }
