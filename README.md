@@ -42,13 +42,13 @@ This framework aims to provide:
 
 The shipping package set is currently:
 
-- `AzureFunctions.TestFramework.Core` — gRPC-based in-process test host, HTTP client path (both direct gRPC and ASP.NET Core / Kestrel modes), metadata inspection, and shared invocation result types. Exposes `ITriggerBinding` and `ISyntheticBindingProvider` extension points so new trigger types can be supported in external packages without modifying Core.
-- `AzureFunctions.TestFramework.Http` — currently minimal HTTP-focused package kept in the published package set for future HTTP-specific helpers
-- `AzureFunctions.TestFramework.Timer` — `InvokeTimerAsync(...)` + `TimerTriggerBinding`
-- `AzureFunctions.TestFramework.Queue` — `InvokeQueueAsync(...)` + `QueueTriggerBinding`
-- `AzureFunctions.TestFramework.ServiceBus` — `InvokeServiceBusAsync(...)` + `ServiceBusTriggerBinding`
-- `AzureFunctions.TestFramework.Blob` — `InvokeBlobAsync(...)` + `BlobTriggerBinding`
-- `AzureFunctions.TestFramework.EventGrid` — `InvokeEventGridAsync(...)` for both `EventGridEvent` and `CloudEvent` + `EventGridTriggerBinding`
+- `AzureFunctions.TestFramework.Core` — gRPC-based in-process test host, metadata inspection, and shared invocation result types. Exposes `ISyntheticBindingProvider` and the `IFunctionInvoker.InvokeAsync` trigger binding factory callback so new trigger types can be supported in external packages without modifying Core.
+- `AzureFunctions.TestFramework.Http` — HTTP client support (`CreateHttpClient()` extension on `IFunctionsTestHost`), HTTP request/response mapping, and forwarding handlers for both direct gRPC and ASP.NET Core / Kestrel modes.
+- `AzureFunctions.TestFramework.Timer` — `InvokeTimerAsync(...)`
+- `AzureFunctions.TestFramework.Queue` — `InvokeQueueAsync(...)`
+- `AzureFunctions.TestFramework.ServiceBus` — `InvokeServiceBusAsync(...)`
+- `AzureFunctions.TestFramework.Blob` — `InvokeBlobAsync(...)`
+- `AzureFunctions.TestFramework.EventGrid` — `InvokeEventGridAsync(...)` for both `EventGridEvent` and `CloudEvent`
 - `AzureFunctions.TestFramework.Durable` — fake-backed durable helpers including `ConfigureFakeDurableSupport(...)`, durable client/provider helpers, status helpers, direct activity invocation, `DurableClientBindingDefaults`, and `DurableClientSyntheticBindingProvider`
 
 ## Project setup requirements

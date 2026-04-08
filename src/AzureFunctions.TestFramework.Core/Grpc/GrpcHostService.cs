@@ -415,12 +415,11 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     }
 
     /// <summary>
-    /// Invokes a non-HTTP triggered function by name using the pre-built binding data provided
-    /// by an <see cref="ITriggerBinding"/> implementation.
+    /// Invokes a non-HTTP triggered function by name using the pre-built binding data.
     /// Returns a <see cref="FunctionInvocationResult"/> describing success or failure.
     /// </summary>
     /// <param name="functionName">The name of the function (case-insensitive).</param>
-    /// <param name="bindingData">The input parameters and optional trigger metadata built by the trigger binding.</param>
+    /// <param name="bindingData">The input parameters and optional trigger metadata for the invocation.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     public async Task<FunctionInvocationResult> InvokeFunctionAsync(
         string functionName,

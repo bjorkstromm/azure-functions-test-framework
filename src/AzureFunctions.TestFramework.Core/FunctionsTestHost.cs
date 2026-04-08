@@ -174,45 +174,32 @@ public class FunctionsTestHost : IFunctionsTestHost, IHttpSupportedTestHost
 }
 
 /// <summary>
-/// Default function invoker that dispatches non-HTTP invocations via a registry of
-/// <see cref="ITriggerBinding"/> implementations, one per trigger type.
+/// Default function invoker that dispatches non-HTTP invocations via a caller-supplied
+/// trigger binding factory.
 /// </summary>
 internal class FunctionInvoker : IFunctionInvoker
 {
     private readonly GrpcHostService _grpcHostService;
-    private readonly Dictionary<string, ITriggerBinding> _bindings
-        = new(StringComparer.OrdinalIgnoreCase);
 
     public FunctionInvoker(GrpcHostService grpcHostService)
     {
         _grpcHostService = grpcHostService;
     }
 
-    public void RegisterTriggerBinding(ITriggerBinding binding)
-    {
-        ArgumentNullException.ThrowIfNull(binding);
-        _bindings.TryAdd(binding.TriggerType, binding);
-    }
-
     public Task<FunctionInvocationResult> InvokeAsync(
         string functionName,
         FunctionInvocationContext context,
+        Func<FunctionInvocationContext, FunctionRegistration, TriggerBindingData> triggerBindingFactory,
         CancellationToken cancellationToken = default)
     {
-        if (!_bindings.TryGetValue(context.TriggerType, out var binding))
-        {
-            throw new NotSupportedException(
-                $"Trigger type '{context.TriggerType}' is not supported by this invoker. " +
-                $"Ensure the corresponding extension package is referenced and that its " +
-                $"ITriggerBinding is registered via IFunctionInvoker.RegisterTriggerBinding.");
-        }
+        ArgumentNullException.ThrowIfNull(triggerBindingFactory);
 
         var registration = _grpcHostService.GetFunctionRegistration(functionName)
             ?? throw new InvalidOperationException(
                 $"Function '{functionName}' was not found or is not a non-HTTP trigger function. " +
                 $"Available non-HTTP functions: [{string.Join(", ", _grpcHostService.GetFunctions().Keys)}]");
 
-        var bindingData = binding.CreateBindingData(context, registration);
+        var bindingData = triggerBindingFactory(context, registration);
         return _grpcHostService.InvokeFunctionAsync(functionName, bindingData, cancellationToken);
     }
 

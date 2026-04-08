@@ -3,7 +3,7 @@ namespace AzureFunctions.TestFramework.Core;
 /// <summary>
 /// Represents the metadata of a discovered Azure Function, used to look up
 /// the gRPC function ID and trigger binding parameter name when building
-/// <see cref="ITriggerBinding"/> invocation requests.
+/// invocation requests.
 /// </summary>
 /// <param name="FunctionId">The stable hash-based function ID assigned by the worker's source-generated metadata provider.</param>
 /// <param name="FunctionName">The function name as declared on the function method (case-insensitive).</param>

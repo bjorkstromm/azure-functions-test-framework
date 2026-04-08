@@ -36,14 +36,24 @@ public static class FunctionsTestHostTimerExtensions
         var info = timerInfo ?? new TimerInfo();
         var json = JsonSerializer.Serialize(info, _jsonOptions);
 
-        host.Invoker.RegisterTriggerBinding(new TimerTriggerBinding());
-
         var context = new FunctionInvocationContext
         {
             TriggerType = "timerTrigger",
             InputData = { ["$timerJson"] = json }
         };
 
-        return host.Invoker.InvokeAsync(functionName, context, cancellationToken);
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingData, cancellationToken);
+    }
+
+    private static TriggerBindingData CreateBindingData(
+        FunctionInvocationContext context,
+        FunctionRegistration function)
+    {
+        var json = context.InputData.TryGetValue("$timerJson", out var j) ? j?.ToString() ?? "{}" : "{}";
+
+        return new TriggerBindingData
+        {
+            InputData = [FunctionBindingData.WithJson(function.ParameterName, json)]
+        };
     }
 }

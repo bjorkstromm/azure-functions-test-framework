@@ -25,6 +25,6 @@ The framework enforces a **one function-app project per test project** constrain
 
 To add support for an additional trigger type without modifying Core:
 
-1. Add a class implementing `ITriggerBinding` (from `AzureFunctions.TestFramework.Core`) in your new package.
-2. In the `InvokeXxxAsync` extension method, call `host.Invoker.RegisterTriggerBinding(new MyTriggerBinding())` before invoking (idempotent — safe to call on every invocation).
+1. In your `InvokeXxxAsync` static extension method, add a `private static TriggerBindingData CreateBindingData(FunctionInvocationContext context, FunctionRegistration function)` method that builds the gRPC binding data from the context's `InputData`.
+2. Pass the factory as the `triggerBindingFactory` argument to `host.Invoker.InvokeAsync(functionName, context, CreateBindingData, cancellationToken)`.
 3. If the trigger requires non-trigger input bindings injected synthetically (like `durableClient`), implement `ISyntheticBindingProvider` and register it via `builder.WithSyntheticBindingProvider(...)` in the builder-level extension method.
