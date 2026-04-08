@@ -276,6 +276,47 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("Hello, martin! (from service)", result);
     }
 
+    [Fact]
+    public async Task TestHost_InvokeActivityAsync_ResolvesDurableClient_ForActivityWithDurableClientParameter()
+    {
+        // Arrange — activity has [ActivityTrigger] string name + [DurableClient] DurableTaskClient.
+        // Without the fix this throws NotSupportedException: Deserialization of abstract types is not supported.
+        await using var testHost = await CreateHostAsync();
+
+        // Act
+        var result = await testHost.InvokeActivityAsync<string>(
+            nameof(DurableGreetingFunctions.CreateGreetingAndScheduleFollowUp),
+            "martin",
+            TestCancellation);
+
+        // Assert: the activity ran successfully and produced a greeting plus a follow-up instance ID.
+        Assert.NotNull(result);
+        Assert.StartsWith("Hello, martin! (follow-up: ", result);
+    }
+
+    [Fact]
+    public async Task DurableClientProvider_CompletesFakeOrchestration_WithActivityThatUsesDurableClient()
+    {
+        // Arrange — orchestrator calls an activity that itself accepts [DurableClient].
+        await using var testHost = await CreateHostAsync();
+        var durableClientProvider = testHost.Services.GetRequiredService<FunctionsDurableClientProvider>();
+        var durableClient = durableClientProvider.GetClient();
+
+        // Act
+#pragma warning disable xUnit1051
+        var instanceId = await durableClient.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunGreetingWithClientActivity),
+            "martin");
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
+
+        // Assert
+        Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
+        var output = metadata.ReadOutputAs<string>();
+        Assert.NotNull(output);
+        Assert.StartsWith("Hello, martin! (follow-up: ", output);
+    }
+
     private Task<IFunctionsTestHost> CreateHostAsync()
     {
         return new FunctionsTestHostBuilder()
