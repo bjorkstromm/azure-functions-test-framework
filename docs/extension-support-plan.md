@@ -2,19 +2,91 @@
 
 Support every built-in extension from [Azure Functions Isolated Worker](https://github.com/Azure/azure-functions-dotnet-worker/tree/main/extensions).
 
+> **Note on output bindings:** All output bindings (`[QueueOutput]`, `[BlobOutput]`, `[TableOutput]`, `[ServiceBusOutput]`, `[EventGridOutput]`, etc.) are captured **generically** by Core's `FunctionInvocationResult.OutputData`. No per-extension output binding code is needed — they work today for any function invoked through the framework.
+
 ## Current State
 
-### Already Supported
+### Already Supported — Detailed Binding Audit
 
-| Package | Trigger | Input Binding | Output Binding |
-|---------|---------|---------------|----------------|
-| `AzureFunctions.TestFramework.Http` | ✅ `[HttpTrigger]` | ✅ (via HttpClient) | ✅ |
-| `AzureFunctions.TestFramework.Timer` | ✅ `[TimerTrigger]` | — | ✅ (via result) |
-| `AzureFunctions.TestFramework.Queue` | ✅ `[QueueTrigger]` | — | ✅ (via result) |
-| `AzureFunctions.TestFramework.ServiceBus` | ✅ `[ServiceBusTrigger]` | — | ✅ (via result) |
-| `AzureFunctions.TestFramework.Blob` | ✅ `[BlobTrigger]` | — | ✅ (via result) |
-| `AzureFunctions.TestFramework.EventGrid` | ✅ `[EventGridTrigger]` | — | ✅ (via result) |
-| `AzureFunctions.TestFramework.Durable` | — (synthetic) | ✅ `[DurableClient]` | ✅ |
+#### `AzureFunctions.TestFramework.Http` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[HttpTrigger]` (trigger) | ✅ | ✅ `CreateHttpClient()` | ✅ |
+| `[FromBody]` (input) | ✅ | ✅ Works naturally through HTTP body | ✅ |
+| `[HttpResult]` (output) | ✅ | ✅ HTTP response returned via HttpClient | ✅ |
+
+#### `AzureFunctions.TestFramework.Timer` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[TimerTrigger]` (trigger) | ✅ | ✅ `InvokeTimerAsync()` | ✅ |
+
+Timer has only a trigger. No input/output bindings exist in the worker extension.
+
+#### `AzureFunctions.TestFramework.Queue` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[QueueTrigger]` (trigger) | ✅ | ✅ `InvokeQueueAsync()` | ✅ |
+| `[QueueOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+#### `AzureFunctions.TestFramework.ServiceBus` ⚠️ Partial
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[ServiceBusTrigger]` — single message | ✅ | ✅ `InvokeServiceBusAsync()` | ✅ |
+| `[ServiceBusTrigger]` — **batch mode** | ✅ | ❌ No batch overload | ⚠️ Gap |
+| `[ServiceBusOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+| `ServiceBusMessageActions` (SDK-injected) | ✅ | ❌ No fake provided | ⚠️ Gap |
+| `ServiceBusSessionMessageActions` (SDK-injected) | ✅ | ❌ No fake provided | ⚠️ Gap |
+
+**Gaps:**
+- **Batch trigger mode**: No `InvokeServiceBusBatchAsync()` for `IsBatched = true`
+- **`ServiceBusMessageActions`**: Functions can inject this to Complete/Abandon/DeadLetter messages. No fake is provided — users must mock via `ConfigureServices`.
+- **`ServiceBusSessionMessageActions`**: Same for session-enabled queues/topics.
+
+#### `AzureFunctions.TestFramework.Blob` ⚠️ Partial
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[BlobTrigger]` (trigger) | ✅ | ✅ `InvokeBlobAsync()` | ✅ |
+| `[BlobInput]` (input) | ✅ | ❌ No support | ❌ Gap |
+| `[BlobOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+**Gaps:**
+- **`[BlobInput]`**: Used to read blobs as input parameters (e.g. `[BlobInput("container/{name}")] string content` or `Stream`/`BlobClient`). Needs `ISyntheticBindingProvider` for `"blobInput"` or user `ConfigureServices` override.
+
+#### `AzureFunctions.TestFramework.EventGrid` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[EventGridTrigger]` — `EventGridEvent` | ✅ | ✅ `InvokeEventGridAsync(EventGridEvent)` | ✅ |
+| `[EventGridTrigger]` — `CloudEvent` | ✅ | ✅ `InvokeEventGridAsync(CloudEvent)` | ✅ |
+| `[EventGridOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+#### `AzureFunctions.TestFramework.Durable` ✅ Fully Covered
+
+Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Extensions.DurableTask`), but fully supported with fake client, orchestration context, entity support, and `ISyntheticBindingProvider`.
+
+### Gaps in Existing Extensions
+
+#### Issue 0a: ServiceBus — Batch trigger + MessageActions support
+
+**Scope:**
+- Add `InvokeServiceBusBatchAsync(this IFunctionsTestHost host, string functionName, IReadOnlyList<ServiceBusReceivedMessage> messages, ...)` overload for batch-trigger functions
+- Provide fake `ServiceBusMessageActions` (Complete/Abandon/DeadLetter/Defer/RenewLock) injectable via `ConfigureServices` or `ISyntheticBindingProvider`
+- Optionally provide fake `ServiceBusSessionMessageActions` for session-enabled scenarios
+- Test across 4-flavour matrix
+
+#### Issue 0b: Blob — Add `[BlobInput]` input binding support
+
+**Scope:**
+- Add `ISyntheticBindingProvider` for `"blobInput"` binding type to inject fake blob data
+- Or document pattern for users to override via `ConfigureServices` with fake `BlobClient`/`BlobContainerClient`
+- Test across 4-flavour matrix
+
+---
 
 ### Not Yet Supported
 
