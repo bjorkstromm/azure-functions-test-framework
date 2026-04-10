@@ -13,8 +13,10 @@ Support every built-in extension from [Azure Functions Isolated Worker](https://
 | Binding | Worker Extension | Test Framework | Status |
 |---------|-----------------|----------------|--------|
 | `[HttpTrigger]` (trigger) | ✅ | ✅ `CreateHttpClient()` | ✅ |
-| `[FromBody]` (input) | ✅ | ✅ Works naturally through HTTP body | ✅ |
+| `[FromBody]` (input) | ✅ | ✅ ASP.NET Core integration mode only | ⚠️ |
 | `[HttpResult]` (output) | ✅ | ✅ HTTP response returned via HttpClient | ✅ |
+
+> **Note:** `[FromBody]` only works in **ASP.NET Core integration mode**. In direct gRPC mode, the Worker SDK's `DefaultFromBodyConversionFeature` requires `NullableHeaders` in the proto definition, which is not yet included in the framework's proto. Use `req.ReadFromJsonAsync<T>()` as an alternative in direct gRPC mode.
 
 #### `AzureFunctions.TestFramework.Timer` ✅ Fully Covered
 
