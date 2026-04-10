@@ -46,7 +46,7 @@ The shipping package set is currently:
 - `AzureFunctions.TestFramework.Http` — HTTP client support (`CreateHttpClient()` extension on `IFunctionsTestHost`), HTTP request/response mapping, and forwarding handlers for both direct gRPC and ASP.NET Core integration modes.
 - `AzureFunctions.TestFramework.Timer` — `InvokeTimerAsync(...)`
 - `AzureFunctions.TestFramework.Queue` — `InvokeQueueAsync(...)`
-- `AzureFunctions.TestFramework.ServiceBus` — `InvokeServiceBusAsync(...)`
+- `AzureFunctions.TestFramework.ServiceBus` — `InvokeServiceBusAsync(...)`, `InvokeServiceBusBatchAsync(...)`, `ConfigureFakeServiceBusMessageActions()`
 - `AzureFunctions.TestFramework.Blob` — `InvokeBlobAsync(...)`
 - `AzureFunctions.TestFramework.EventGrid` — `InvokeEventGridAsync(...)` for both `EventGridEvent` and `CloudEvent`
 - `AzureFunctions.TestFramework.Durable` — fake-backed durable helpers including `ConfigureFakeDurableSupport(...)`, durable client/provider helpers, status helpers, direct activity invocation, `DurableClientBindingDefaults`, and `DurableClientSyntheticBindingProvider`
@@ -310,8 +310,11 @@ public class ServiceBusFunctionTests : IAsyncLifetime
     {
         _testHost = await new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(MyServiceBusFunction).Assembly)
+            .ConfigureFakeServiceBusMessageActions()   // required when functions accept ServiceBusMessageActions
             .BuildAndStartAsync();
     }
+
+    // ── Single message (string / byte[] / BinaryData function parameter) ──────────────
 
     [Fact]
     public async Task ProcessMessage_WithStringBody_Succeeds()
@@ -321,16 +324,51 @@ public class ServiceBusFunctionTests : IAsyncLifetime
         Assert.True(result.Success);
     }
 
+    // ── Single message (ServiceBusReceivedMessage function parameter) ─────────────────
+
     [Fact]
-    public async Task ProcessMessage_WithJsonBody_Succeeds()
+    public async Task ProcessMessage_WithReceivedMessage_Succeeds()
     {
-        var message = new ServiceBusMessage("{\"orderId\": \"abc123\"}")
-        {
-            ContentType = "application/json",
-            MessageId = Guid.NewGuid().ToString()
-        };
+        var message = ServiceBusModelFactory.ServiceBusReceivedMessage(
+            body: BinaryData.FromString("Hello from test!"),
+            messageId: Guid.NewGuid().ToString());
+
         var result = await _testHost.InvokeServiceBusAsync("ProcessOrderMessage", message);
         Assert.True(result.Success);
+    }
+
+    // ── Batch mode (IsBatched = true, ServiceBusReceivedMessage[] parameter) ──────────
+
+    [Fact]
+    public async Task ProcessBatch_WithMultipleMessages_Succeeds()
+    {
+        var messages = Enumerable.Range(1, 3)
+            .Select(i => ServiceBusModelFactory.ServiceBusReceivedMessage(
+                body: BinaryData.FromString($"order {i}"),
+                messageId: Guid.NewGuid().ToString()))
+            .ToList()
+            .AsReadOnly();
+
+        var result = await _testHost.InvokeServiceBusBatchAsync("ProcessOrderBatch", messages);
+        Assert.True(result.Success);
+    }
+
+    // ── ServiceBusMessageActions injection ────────────────────────────────────────────
+
+    [Fact]
+    public async Task ProcessMessage_CompletesMessageViaActions()
+    {
+        var message = ServiceBusModelFactory.ServiceBusReceivedMessage(
+            body: BinaryData.FromString("Hello!"),
+            messageId: Guid.NewGuid().ToString());
+
+        var result = await _testHost.InvokeServiceBusAsync("ProcessOrderMessage", message);
+        Assert.True(result.Success);
+
+        // Verify that the function called CompleteMessageAsync
+        var actions = _testHost.Services.GetRequiredService<FakeServiceBusMessageActions>();
+        Assert.Single(actions.RecordedActions);
+        Assert.Equal("Complete", actions.RecordedActions[0].Action);
     }
 
     public async Task DisposeAsync()
@@ -339,6 +377,37 @@ public class ServiceBusFunctionTests : IAsyncLifetime
         _testHost.Dispose();
     }
 }
+```
+
+#### `ServiceBusMessageActions` and `ServiceBusSessionMessageActions`
+
+Functions that accept `ServiceBusMessageActions` or `ServiceBusSessionMessageActions` as parameters need
+fake implementations because the real SDK converters require a live gRPC settlement channel. Call
+`ConfigureFakeServiceBusMessageActions()` on the builder to register the fakes:
+
+```csharp
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyFunction).Assembly)
+    .ConfigureFakeServiceBusMessageActions()  // registers fakes + intercepts SDK converters
+    .BuildAndStartAsync();
+```
+
+After the invocation, resolve the fake from `host.Services` to assert settlement calls:
+
+```csharp
+var actions = host.Services.GetRequiredService<FakeServiceBusMessageActions>();
+// RecordedActions contains every Complete/Abandon/DeadLetter/Defer/RenewLock call made during the invocation
+Assert.Equal("Complete", actions.RecordedActions[0].Action);
+
+// Reset between tests if the host is shared (IClassFixture / OneTimeSetUp)
+actions.Reset();
+```
+
+For session-enabled topics/queues:
+
+```csharp
+var sessionActions = host.Services.GetRequiredService<FakeServiceBusSessionMessageActions>();
+Assert.Contains(sessionActions.RecordedActions, a => a.Action == "RenewSessionLock");
 ```
 
 ### 5. Blob Trigger Invocation

@@ -33,20 +33,16 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 | `[QueueTrigger]` (trigger) | ✅ | ✅ `InvokeQueueAsync()` | ✅ |
 | `[QueueOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
 
-#### `AzureFunctions.TestFramework.ServiceBus` ⚠️ Partial
+#### `AzureFunctions.TestFramework.ServiceBus` ✅ Fully Covered
 
 | Binding | Worker Extension | Test Framework | Status |
 |---------|-----------------|----------------|--------|
-| `[ServiceBusTrigger]` — single message | ✅ | ✅ `InvokeServiceBusAsync()` | ✅ |
-| `[ServiceBusTrigger]` — **batch mode** | ✅ | ❌ No batch overload | ⚠️ Gap |
+| `[ServiceBusTrigger]` — single message (`string`/`byte[]`/`BinaryData`) | ✅ | ✅ `InvokeServiceBusAsync(ServiceBusMessage)` | ✅ |
+| `[ServiceBusTrigger]` — single message (`ServiceBusReceivedMessage`) | ✅ | ✅ `InvokeServiceBusAsync(ServiceBusReceivedMessage)` | ✅ |
+| `[ServiceBusTrigger]` — **batch mode** (`ServiceBusReceivedMessage[]`) | ✅ | ✅ `InvokeServiceBusBatchAsync(IReadOnlyList<ServiceBusReceivedMessage>)` | ✅ |
 | `[ServiceBusOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
-| `ServiceBusMessageActions` (SDK-injected) | ✅ | ❌ No fake provided | ⚠️ Gap |
-| `ServiceBusSessionMessageActions` (SDK-injected) | ✅ | ❌ No fake provided | ⚠️ Gap |
-
-**Gaps:**
-- **Batch trigger mode**: No `InvokeServiceBusBatchAsync()` for `IsBatched = true`
-- **`ServiceBusMessageActions`**: Functions can inject this to Complete/Abandon/DeadLetter messages. No fake is provided — users must mock via `ConfigureServices`.
-- **`ServiceBusSessionMessageActions`**: Same for session-enabled queues/topics.
+| `ServiceBusMessageActions` (SDK-injected) | ✅ | ✅ `FakeServiceBusMessageActions` via `ConfigureFakeServiceBusMessageActions()` | ✅ |
+| `ServiceBusSessionMessageActions` (SDK-injected) | ✅ | ✅ `FakeServiceBusSessionMessageActions` via `ConfigureFakeServiceBusMessageActions()` | ✅ |
 
 #### `AzureFunctions.TestFramework.Blob` ⚠️ Partial
 
@@ -72,14 +68,6 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Extensions.DurableTask`), but fully supported with fake client, orchestration context, entity support, and `ISyntheticBindingProvider`.
 
 ### Gaps in Existing Extensions
-
-#### Issue 0a: ServiceBus — Batch trigger + MessageActions support
-
-**Scope:**
-- Add `InvokeServiceBusBatchAsync(this IFunctionsTestHost host, string functionName, IReadOnlyList<ServiceBusReceivedMessage> messages, ...)` overload for batch-trigger functions
-- Provide fake `ServiceBusMessageActions` (Complete/Abandon/DeadLetter/Defer/RenewLock) injectable via `ConfigureServices` or `ISyntheticBindingProvider`
-- Optionally provide fake `ServiceBusSessionMessageActions` for session-enabled scenarios
-- Test across 4-flavour matrix
 
 #### Issue 0b: Blob — Add `[BlobInput]` input binding support
 
