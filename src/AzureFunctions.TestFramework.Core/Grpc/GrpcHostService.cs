@@ -154,8 +154,26 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             return new TypedData { Json = data.Json };
         if (data.StringValue != null)
             return new TypedData { String = data.StringValue };
+        if (data.ModelBindingData != null)
+            return new TypedData { ModelBindingData = ToModelBindingData(data.ModelBindingData) };
+        if (data.CollectionModelBindingData != null)
+        {
+            var collection = new CollectionModelBindingData();
+            foreach (var item in data.CollectionModelBindingData)
+                collection.ModelBindingData.Add(ToModelBindingData(item));
+            return new TypedData { CollectionModelBindingData = collection };
+        }
         return new TypedData();
     }
+
+    private static ModelBindingData ToModelBindingData(ModelBindingDataValue value)
+        => new()
+        {
+            Version = value.Version,
+            Source = value.Source,
+            ContentType = value.ContentType,
+            Content = ByteString.CopyFrom(value.Content)
+        };
 
     /// <summary>
     /// Waits until all functions have been discovered and loaded.
