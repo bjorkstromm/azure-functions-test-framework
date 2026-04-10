@@ -1,13 +1,24 @@
 using Azure.Messaging.EventGrid;
+using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Blob;
 using AzureFunctions.TestFramework.EventGrid;
+using AzureFunctions.TestFramework.Queue;
 using Xunit;
 
 namespace TestProject;
 
-/// <summary>Tests for blob-triggered and Event Grid–triggered functions.</summary>
+/// <summary>Tests for blob-triggered, blob-input, and Event Grid–triggered functions.</summary>
 public abstract class BlobAndEventGridTestsBase : TestHostTestBase
 {
+    /// <summary>
+    /// The <c>[BlobInput]</c> blob path registered by concrete test classes in the host builder.
+    /// Must match the <c>blobPath</c> argument of <c>[BlobInput]</c> on <see cref="BlobInputFunction"/>.
+    /// </summary>
+    protected const string BlobInputTestPath = "test-input/data.txt";
+
+    /// <summary>Expected content injected for the <see cref="BlobInputTestPath"/> binding.</summary>
+    protected const string BlobInputTestContent = "hello from blob input!";
+
     private InMemoryProcessedItemsService? _processedItems;
 
     protected BlobAndEventGridTestsBase(ITestOutputHelper output) : base(output) { }
@@ -30,6 +41,23 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
         var processed = _processedItems!.TakeAll();
         Assert.Single(processed);
         Assert.Contains("Hello from blob!", processed[0]);
+    }
+
+    [Fact]
+    public async Task InvokeWithBlobInput_ReadsRegisteredContent()
+    {
+        // The concrete test class registers BlobInputTestPath → BlobInputTestContent
+        // in the host builder via WithBlobInputContent(). The ReadBlobInput function reads
+        // that content via [BlobInput("test-input/data.txt")] and stores it.
+        var queueMessage = QueuesModelFactory.QueueMessage(
+            Guid.NewGuid().ToString(), "pop-receipt", "unused", 1);
+
+        var result = await TestHost.InvokeQueueAsync("ReadBlobInput", queueMessage, TestCancellation);
+
+        Assert.True(result.Success, $"BlobInput invocation failed: {result.Error}");
+        var processed = _processedItems!.TakeAll();
+        Assert.Single(processed);
+        Assert.Equal(BlobInputTestContent, processed[0]);
     }
 
     [Fact]
