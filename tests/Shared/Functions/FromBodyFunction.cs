@@ -1,7 +1,6 @@
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using System.Net;
-using WorkerFromBody = Microsoft.Azure.Functions.Worker.Http.FromBodyAttribute;
 #if USE_ASPNET_CORE
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +20,7 @@ public class FromBodyFunction
     [Function("EchoFromBody")]
     public async Task<HttpResponseData> EchoFromBody(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "echo-from-body")] HttpRequestData req,
-        [WorkerFromBody] CreateItemRequest body)
+        [Microsoft.Azure.Functions.Worker.Http.FromBody] CreateItemRequest body)
     {
         var response = req.CreateResponse(HttpStatusCode.OK);
         await response.WriteAsJsonAsync(body);
@@ -35,7 +34,7 @@ public class FromBodyFunction
     [Function("EchoFromBodyAspNetCore")]
     public IActionResult EchoFromBodyAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "aspnetcore/echo-from-body")] HttpRequest req,
-        [WorkerFromBody] CreateItemRequest body)
+        [Microsoft.Azure.Functions.Worker.Http.FromBody] CreateItemRequest body)
         => new OkObjectResult(body);
 #endif
 }
