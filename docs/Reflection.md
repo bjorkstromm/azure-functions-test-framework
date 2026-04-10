@@ -13,9 +13,10 @@ This document catalogs every place where .NET reflection is used in the test fra
 | [BindingCacheCleaner](#3-bindingcachecleaner) | `Core/Worker/BindingCacheCleaner.cs` | Internal `IBindingCache<T>` interface + private `ConcurrentDictionary` field | Clear stale cache entries to avoid `InvalidCastException` |
 | [TestHttpRequestConverter](#4-testhttprequestconverter) | `Core/Worker/Converters/TestHttpRequestConverter.cs` | `HttpContext.Request` property via string-based lookup | Bypass ALC type-identity check when resolving `HttpRequest` |
 | [IAutoConfigureStartup scan](#5-iautoconfigurestartup-scan) | `Core/Worker/WorkerHostService.cs` | Assembly scan for source-generated `IAutoConfigureStartup` implementations | Register generated function metadata and executor providers |
-| [FunctionsTestHostBuilderDurableExtensions](#6-durable-internals) | `Durable/FunctionsTestHostBuilderDurableExtensions.cs` | Internal `DurableTaskClientConverter`, `FunctionsDurableClientProvider` + nested `ClientKey` / `ClientHolder` types | Inject fake `DurableTaskClient` without the real gRPC binding payload |
-| [FakeDurableFunctionCatalog](#7-fakedurablefunctioncatalog) | `Durable/FakeDurableFunctionCatalog.cs` | Public attributes (`[Function]`, `[ActivityTrigger]`, etc.) via `GetCustomAttribute` | Discover durable activities/orchestrators/entities without a `functions.metadata` file |
-| [FakeDurableOrchestrationRunner](#8-fakedurableorchestrationrunner) | `Durable/FakeDurableOrchestrationRunner.cs` | `MethodInfo.Invoke`, `Task<T>.Result`, `ValueTask<T>.AsTask()` | Execute durable function methods (activities, orchestrators) directly |
+| [FunctionsTestHostBuilderServiceBusExtensions](#6-servicebus-fake-converter-interception) | `ServiceBus/FunctionsTestHostBuilderServiceBusExtensions.cs` | Internal `ServiceBusMessageActionsConverter`, `ServiceBusSessionMessageActionsConverter` types by name | Register fake settlement converters without requiring the real gRPC settlement channel |
+| [FunctionsTestHostBuilderDurableExtensions](#7-durable-internals) | `Durable/FunctionsTestHostBuilderDurableExtensions.cs` | Internal `DurableTaskClientConverter`, `FunctionsDurableClientProvider` + nested `ClientKey` / `ClientHolder` types | Inject fake `DurableTaskClient` without the real gRPC binding payload |
+| [FakeDurableFunctionCatalog](#8-fakedurablefunctioncatalog) | `Durable/FakeDurableFunctionCatalog.cs` | Public attributes (`[Function]`, `[ActivityTrigger]`, etc.) via `GetCustomAttribute` | Discover durable activities/orchestrators/entities without a `functions.metadata` file |
+| [FakeDurableOrchestrationRunner](#9-fakedurableorchestrationrunner) | `Durable/FakeDurableOrchestrationRunner.cs` | `MethodInfo.Invoke`, `Task<T>.Result`, `ValueTask<T>.AsTask()` | Execute durable function methods (activities, orchestrators) directly |
 
 ---
 
@@ -192,7 +193,43 @@ hostBuilder.RegisterGeneratedStartups(functionsAssembly);
 
 ---
 
-### 6. Durable Internals
+### 6. ServiceBus Fake Converter Interception
+
+**File:** `src/AzureFunctions.TestFramework.ServiceBus/FunctionsTestHostBuilderServiceBusExtensions.cs`
+
+**SDK types reflected (internal to `Microsoft.Azure.Functions.Worker.Extensions.ServiceBus`):**
+- `ServiceBusMessageActionsConverter` — by full qualified name via `Assembly.GetType(...)`
+- `ServiceBusSessionMessageActionsConverter` — by full qualified name via `Assembly.GetType(...)`
+
+**Why reflection is needed:**
+
+When a function declares a `ServiceBusMessageActions` or `ServiceBusSessionMessageActions` parameter, the Worker SDK resolves the value through its own internal converters (`ServiceBusMessageActionsConverter` / `ServiceBusSessionMessageActionsConverter`). These converters hold a reference to `Settlement.SettlementClient`, a live gRPC channel to the real Azure Service Bus settlement endpoint. In an in-process test environment, that gRPC channel does not exist.
+
+The framework intercepts these converters by registering the fake implementations under the real internal converter types in the worker's DI container. When the SDK calls `ActivatorUtilities.GetServiceOrCreateInstance(serviceProvider, converterType)`, it finds the fakes in the container instead of constructing the real converters.
+
+Because both converter types are **internal**, their `System.Type` references cannot be obtained at compile time. The framework retrieves them via `typeof(ServiceBusTriggerAttribute).Assembly.GetType("...", throwOnError: true)` — a string-based lookup against the known assembly.
+
+**How to avoid reflection:**
+
+Expose the converter types publicly, or provide a dedicated testing registration API:
+
+```csharp
+// Hypothetical Microsoft.Azure.Functions.Worker.Extensions.ServiceBus.Testing namespace
+public static class ServiceBusTestingExtensions
+{
+    public static IServiceCollection AddFakeServiceBusMessageActions(
+        this IServiceCollection services,
+        ServiceBusMessageActions fakeActions);
+
+    public static IServiceCollection AddFakeServiceBusSessionMessageActions(
+        this IServiceCollection services,
+        ServiceBusSessionMessageActions fakeActions);
+}
+```
+
+---
+
+### 7. Durable Internals
 
 **File:** `src/AzureFunctions.TestFramework.Durable/FunctionsTestHostBuilderDurableExtensions.cs`
 
@@ -234,7 +271,7 @@ Alternatively, exposing `IFunctionsDurableClientProvider` publicly with a `Regis
 
 ---
 
-### 7. FakeDurableFunctionCatalog
+### 8. FakeDurableFunctionCatalog
 
 **File:** `src/AzureFunctions.TestFramework.Durable/FakeDurableFunctionCatalog.cs`
 
@@ -260,7 +297,7 @@ foreach (var activity in catalog.Activities) { ... }
 
 ---
 
-### 8. FakeDurableOrchestrationRunner
+### 9. FakeDurableOrchestrationRunner
 
 **File:** `src/AzureFunctions.TestFramework.Durable/FakeDurableOrchestrationRunner.cs`
 
@@ -309,21 +346,26 @@ The following is a prioritized list of changes to the Azure Functions Worker SDK
 
 ### Medium Priority
 
-4. **Make `IBindingCache<T>` public and add `Clear()` / `Remove(string)`**
+4. **Expose Service Bus testing helpers** (`Microsoft.Azure.Functions.Worker.Extensions.ServiceBus.Testing`)
+   - `AddFakeServiceBusMessageActions(services, fakeActions)` and `AddFakeServiceBusSessionMessageActions(services, fakeActions)` extension methods
+   - Eliminates the string-based `Assembly.GetType(...)` lookup for internal converter types in `FunctionsTestHostBuilderServiceBusExtensions.cs`
+   - Estimated impact: removes ~10 lines
+
+5. **Make `IBindingCache<T>` public and add `Clear()` / `Remove(string)`**
    - Eliminates `BindingCacheCleaner`'s private-field reflection
    - Estimated impact: removes ~30 lines
 
-5. **Expose `IHttpContextFeature` / `IHttpRequestDataFeature` in `FunctionContext.Features`** (publicly documented)
+6. **Expose `IHttpContextFeature` / `IHttpRequestDataFeature` in `FunctionContext.Features`** (publicly documented)
    - Eliminates `TestHttpRequestConverter`'s `GetProperty("Request")` fallback
    - Estimated impact: removes ~10 lines
 
 ### Lower Priority
 
-6. **Source-generated durable function catalog** — `GeneratedDurableFunctionCatalog` class
+7. **Source-generated durable function catalog** — `GeneratedDurableFunctionCatalog` class
    - Would replace `FakeDurableFunctionCatalog`'s assembly scan with a direct lookup
    - Not strictly needed as all attributes scanned are already public
 
-7. **`RegisterGeneratedStartups(Assembly)` host builder extension**
+8. **`RegisterGeneratedStartups(Assembly)` host builder extension**
    - Would replace the `IAutoConfigureStartup` assembly scan in `WorkerHostService.cs`
    - Not strictly needed as `IAutoConfigureStartup` is already public
 

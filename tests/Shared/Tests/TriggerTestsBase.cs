@@ -51,6 +51,41 @@ public abstract class TriggerTestsBase : TestHostTestBase
     }
 
     [Fact]
+    public async Task InvokeServiceBusAsync_WithReceivedMessage_Succeeds()
+    {
+        var body = "Hello as ServiceBusReceivedMessage!";
+        var receivedMessage = ServiceBusModelFactory.ServiceBusReceivedMessage(
+            body: BinaryData.FromString(body),
+            messageId: Guid.NewGuid().ToString());
+
+        var result = await TestHost.InvokeServiceBusAsync("ProcessServiceBusReceivedMessage", receivedMessage, TestCancellation);
+
+        Assert.True(result.Success, $"Service Bus ReceivedMessage invocation failed: {result.Error}");
+        var processed = _processedItems!.TakeAll();
+        Assert.Single(processed);
+        Assert.Equal(body, processed[0]);
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusBatchAsync_WithMultipleMessages_Succeeds()
+    {
+        var bodies = new[] { "Batch message 1", "Batch message 2", "Batch message 3" };
+        var messages = bodies
+            .Select(b => ServiceBusModelFactory.ServiceBusReceivedMessage(
+                body: BinaryData.FromString(b),
+                messageId: Guid.NewGuid().ToString()))
+            .ToList()
+            .AsReadOnly();
+
+        var result = await TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", messages, TestCancellation);
+
+        Assert.True(result.Success, $"Service Bus batch invocation failed: {result.Error}");
+        var processed = _processedItems!.TakeAll();
+        Assert.Equal(3, processed.Count);
+        Assert.Equal(bodies, processed);
+    }
+
+    [Fact]
     public async Task InvokeQueueAsync_CapturesPlainReturnValue()
     {
         var messageText = "Hello return value!";
