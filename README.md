@@ -15,6 +15,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 |------|--------|
 | **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core integration modes |
 | **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid) | ✅ Extension methods + result capture |
+| **Table input bindings** (`[TableInput]`) | ✅ `WithTableEntity` / `WithTableEntities` via `ISyntheticBindingProvider` |
 | **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events) | ✅ Fake-backed in-process |
 | **ASP.NET Core integration** (`ConfigureFunctionsWebApplication`) | ✅ Full parameter binding incl. `HttpRequest`, `FunctionContext`, typed route params, `CancellationToken` |
 | **`WithHostBuilderFactory` + `ConfigureServices`** (`IHostBuilder`) | ✅ DI overrides, inherited app services |
@@ -47,8 +48,9 @@ The shipping package set is currently:
 - `AzureFunctions.TestFramework.Timer` — `InvokeTimerAsync(...)`
 - `AzureFunctions.TestFramework.Queue` — `InvokeQueueAsync(...)`
 - `AzureFunctions.TestFramework.ServiceBus` — `InvokeServiceBusAsync(...)`, `InvokeServiceBusBatchAsync(...)`, `ConfigureFakeServiceBusMessageActions()`
-- `AzureFunctions.TestFramework.Blob` — `InvokeBlobAsync(...)`
+- `AzureFunctions.TestFramework.Blob` — `InvokeBlobAsync(...)`, `WithBlobInputContent(...)` (input binding injection via `ISyntheticBindingProvider`)
 - `AzureFunctions.TestFramework.EventGrid` — `InvokeEventGridAsync(...)` for both `EventGridEvent` and `CloudEvent`
+- `AzureFunctions.TestFramework.Tables` — `WithTableEntity(...)`, `WithTableEntities(...)` (input binding injection via `ISyntheticBindingProvider`); `[TableOutput]` capture works generically via `FunctionInvocationResult.OutputData`
 - `AzureFunctions.TestFramework.Durable` — fake-backed durable helpers including `ConfigureFakeDurableSupport(...)`, durable client/provider helpers, status helpers, direct activity invocation, `DurableClientBindingDefaults`, and `DurableClientSyntheticBindingProvider`
 
 ## Project setup requirements
@@ -500,6 +502,70 @@ The `blobPath` key must match the path declared in the `[BlobInput]` attribute e
 > **Supported parameter types:** `string`, `byte[]`, `Stream`, `BinaryData`, `ReadOnlyMemory<byte>`. Complex types like `BlobClient`/`BlockBlobClient` use a different binding mechanism (model binding data) and are not supported by `WithBlobInputContent`. For those types, override the blob SDK client via `ConfigureServices`.
 
 
+### 5c. Table Input Binding (`[TableInput]`)
+
+The `AzureFunctions.TestFramework.Tables` package supports injecting fake table entity data for functions that use the `[TableInput]` attribute. Use `WithTableEntity` or `WithTableEntities` on the builder to register the data that will be injected.
+
+```csharp
+// Function under test
+[Function("LookupOrder")]
+public static string Run(
+    [QueueTrigger("lookup-queue")] string rowKey,
+    [TableInput("Orders", "customer-1", "{queueTrigger}")] OrderEntity order)
+{
+    return $"Order: {order.Status}";
+}
+```
+
+```csharp
+// Test setup
+using AzureFunctions.TestFramework.Tables;
+
+// Single entity — matches [TableInput("Orders", "customer-1", "order-42")]
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyFunction).Assembly)
+    .WithTableEntity("Orders", "customer-1", "order-42",
+        new OrderEntity { PartitionKey = "customer-1", RowKey = "order-42", Status = "Pending" })
+    .BuildAndStartAsync();
+
+// Collection — matches [TableInput("Orders")] (no partitionKey / rowKey)
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyFunction).Assembly)
+    .WithTableEntities("Orders",
+        new[]
+        {
+            new OrderEntity { PartitionKey = "customer-1", RowKey = "order-1", Status = "Pending" },
+            new OrderEntity { PartitionKey = "customer-1", RowKey = "order-2", Status = "Shipped" },
+        })
+    .BuildAndStartAsync();
+
+// Partition-scoped collection — matches [TableInput("Orders", "customer-1")]
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyFunction).Assembly)
+    .WithTableEntities("Orders", "customer-1",
+        new[]
+        {
+            new OrderEntity { PartitionKey = "customer-1", RowKey = "order-1", Status = "Pending" },
+        })
+    .BuildAndStartAsync();
+```
+
+Lookup is performed from most-specific to least-specific key:
+1. `tableName/partitionKey/rowKey` — single entity (matches `[TableInput("T", "pk", "rk")]`)
+2. `tableName/partitionKey` — partition-scoped collection (matches `[TableInput("T", "pk")]`)
+3. `tableName` — full-table collection (matches `[TableInput("T")]`)
+
+**`[TableOutput]`** — output binding values are captured generically by Core's `FunctionInvocationResult.OutputData` without any per-extension work:
+
+```csharp
+var result = await _testHost.InvokeQueueAsync("WriteOrder", message);
+var entity = result.ReadOutputAs<OrderEntity>("Entity");  // binding name from [TableOutput]
+Assert.Equal("customer-1", entity.PartitionKey);
+```
+
+> **Supported parameter types for `[TableInput]`:** POCO types, `TableEntity` / `ITableEntity`, `IEnumerable<T>`. `TableClient` uses a different model-binding-data mechanism and is not supported by `WithTableEntity` / `WithTableEntities`. For `TableClient` parameters, override the Azure Tables SDK client in DI via `ConfigureServices`.
+
+
 ### 6. Event Grid Trigger Invocation
 
 Use the `AzureFunctions.TestFramework.EventGrid` package to invoke Event Grid–triggered functions directly from tests. Both `EventGridEvent` (EventGrid schema) and `CloudEvent` (CloudEvents schema) are supported.
@@ -679,8 +745,9 @@ src/
   AzureFunctions.TestFramework.Timer/        # TimerTrigger invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.Queue/        # QueueTrigger invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.ServiceBus/   # ServiceBusTrigger invocation (net8.0;net10.0)
-  AzureFunctions.TestFramework.Blob/         # BlobTrigger invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.Blob/         # BlobTrigger invocation + BlobInput injection (net8.0;net10.0)
   AzureFunctions.TestFramework.EventGrid/    # EventGridTrigger invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.Tables/       # TableInput injection via ISyntheticBindingProvider (net8.0;net10.0)
   AzureFunctions.TestFramework.Durable/      # Fake durable support (net8.0;net10.0)
 
 samples/

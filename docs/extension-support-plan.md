@@ -62,6 +62,17 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 | `[EventGridTrigger]` — `CloudEvent` | ✅ | ✅ `InvokeEventGridAsync(CloudEvent)` | ✅ |
 | `[EventGridOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
 
+#### `AzureFunctions.TestFramework.Tables` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[TableInput]` — single entity (POCO / `ITableEntity`) | ✅ | ✅ `WithTableEntity(tableName, pk, rk, entity)` | ✅ |
+| `[TableInput]` — collection (`IEnumerable<T>`) | ✅ | ✅ `WithTableEntities(tableName, entities)` | ✅ |
+| `[TableInput]` — partition collection | ✅ | ✅ `WithTableEntities(tableName, pk, entities)` | ✅ |
+| `[TableOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+> **Note:** Tables has no trigger. `[TableInput]` with `TableClient` parameters is not supported by `WithTableEntity` / `WithTableEntities` (uses model-binding-data; override via `ConfigureServices` instead).
+
 #### `AzureFunctions.TestFramework.Durable` ✅ Fully Covered
 
 Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Extensions.DurableTask`), but fully supported with fake client, orchestration context, entity support, and `ISyntheticBindingProvider`.
@@ -72,7 +83,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 |-----------|---------------|---------|-------|--------|
 | **CosmosDB** | `Microsoft.Azure.Functions.Worker.Extensions.CosmosDB` | `[CosmosDBTrigger]` | `[CosmosDBInput]` | `[CosmosDBOutput]` |
 | **Event Hubs** | `Microsoft.Azure.Functions.Worker.Extensions.EventHubs` | `[EventHubTrigger]` | — | `[EventHubOutput]` |
-| **Tables** | `Microsoft.Azure.Functions.Worker.Extensions.Tables` | — | `[TableInput]` | `[TableOutput]` |
 | **SignalR Service** | `Microsoft.Azure.Functions.Worker.Extensions.SignalRService` | `[SignalRTrigger]` | `[SignalRConnectionInfo]`, `[SignalREndpoints]`, `[SignalRNegotiation]` | `[SignalROutput]` |
 | **Kafka** | `Microsoft.Azure.Functions.Worker.Extensions.Kafka` | `[KafkaTrigger]` | — | `[KafkaOutput]` |
 | **RabbitMQ** | `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ` | `[RabbitMQTrigger]` | — | `[RabbitMQOutput]` |
@@ -132,21 +142,16 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 ---
 
-### Issue 3: Table Input & Output bindings
+### ~~Issue 3: Table Input & Output bindings~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.Tables`
+**Package:** `AzureFunctions.TestFramework.Tables` — shipped.
 
-**Bindings:**
-- **Input:** `[TableInput]` — reads entities from Azure Table Storage / Cosmos DB Table API
-- **Output:** `[TableOutput]` — writes entities to Table Storage
-
-**Scope:**
-- New package: `AzureFunctions.TestFramework.Tables`
-- No trigger (Tables has no trigger) — used alongside HTTP, Queue, Timer, or other triggers
-- Input binding support via `ISyntheticBindingProvider` to inject fake table entity data
-- Output bindings captured via `FunctionInvocationResult.OutputData`
-- Tests should demonstrate input/output bindings in combination with existing triggers
-- Test across 4-flavour matrix
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `WithTableEntity(tableName, pk, rk, entity)` — injects a single entity for `[TableInput("T", "pk", "rk")]`
+- `WithTableEntities(tableName, entities)` — full-table collection for `[TableInput("T")]`
+- `WithTableEntities(tableName, pk, entities)` — partition-scoped collection for `[TableInput("T", "pk")]`
+- `[TableOutput]` captured generically by `FunctionInvocationResult.OutputData`
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Tables`
 
@@ -276,9 +281,8 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 
 1. **CosmosDB** — Very high demand, commonly used with Azure Functions
 2. **Event Hubs** — High demand for event-driven architectures
-3. **Tables** — Common for simple storage, pairs with existing triggers
-4. **SignalR** — Real-time scenarios, most complex
-5. **Kafka** — Growing adoption
-6. **RabbitMQ** — Niche but important
-7. **SendGrid** — Output-only, low complexity
-8. **Warmup** — Simplest, rarely tested in isolation
+3. **SignalR** — Real-time scenarios, most complex
+4. **Kafka** — Growing adoption
+5. **RabbitMQ** — Niche but important
+6. **SendGrid** — Output-only, low complexity
+7. **Warmup** — Simplest, rarely tested in isolation
