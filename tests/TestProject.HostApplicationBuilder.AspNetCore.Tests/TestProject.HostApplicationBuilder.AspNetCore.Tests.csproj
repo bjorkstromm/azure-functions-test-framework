@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.ServiceBus\AzureFunctions.TestFramework.ServiceBus.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Blob\AzureFunctions.TestFramework.Blob.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.EventGrid\AzureFunctions.TestFramework.EventGrid.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Tables\AzureFunctions.TestFramework.Tables.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Durable\AzureFunctions.TestFramework.Durable.csproj" />
   </ItemGroup>
 </Project>
