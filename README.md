@@ -456,6 +456,50 @@ public class BlobFunctionTests : IAsyncLifetime
 }
 ```
 
+### 5b. Blob Input Binding (`[BlobInput]`)
+
+The `AzureFunctions.TestFramework.Blob` package also supports injecting fake blob content for functions that use the `[BlobInput]` attribute (non-trigger input binding). Use `WithBlobInputContent` on the builder to pre-register the blob data that will be injected on every invocation.
+
+```csharp
+// Function under test
+[Function("ReadDocument")]
+public static string Run(
+    [QueueTrigger("process-queue")] string blobPath,
+    [BlobInput("documents/template.txt")] string templateContent)
+{
+    return $"Template: {templateContent}";
+}
+```
+
+```csharp
+// Test setup
+using AzureFunctions.TestFramework.Blob;
+
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyFunction).Assembly)
+    // Register the content to inject for [BlobInput("documents/template.txt")]
+    .WithBlobInputContent("documents/template.txt", BinaryData.FromString("Hello, template!"))
+    .BuildAndStartAsync();
+```
+
+**Multiple blobs:** Use the dictionary overload to register several paths at once:
+
+```csharp
+_testHost = await new FunctionsTestHostBuilder()
+    .WithFunctionsAssembly(typeof(MyFunction).Assembly)
+    .WithBlobInputContent(new Dictionary<string, BinaryData>
+    {
+        ["documents/template.txt"] = BinaryData.FromString("Hello, template!"),
+        ["configs/settings.json"] = BinaryData.FromObjectAsJson(new { timeout = 30 }),
+    })
+    .BuildAndStartAsync();
+```
+
+The `blobPath` key must match the path declared in the `[BlobInput]` attribute exactly (case-insensitive). Dynamic path templates (e.g. `"documents/{queueTrigger}"`) are matched against the template string, not the resolved path. When no content is registered for a binding, an empty `byte[]` is injected (which the worker surfaces as `null` / empty for string and stream parameters).
+
+> **Supported parameter types:** `string`, `byte[]`, `Stream`, `BinaryData`, `ReadOnlyMemory<byte>`. Complex types like `BlobClient`/`BlockBlobClient` use a different binding mechanism (model binding data) and are not supported by `WithBlobInputContent`. For those types, override the blob SDK client via `ConfigureServices`.
+
+
 ### 6. Event Grid Trigger Invocation
 
 Use the `AzureFunctions.TestFramework.EventGrid` package to invoke Event Grid–triggered functions directly from tests. Both `EventGridEvent` (EventGrid schema) and `CloudEvent` (CloudEvents schema) are supported.

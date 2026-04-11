@@ -44,16 +44,15 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 | `ServiceBusMessageActions` (SDK-injected) | ✅ | ✅ `FakeServiceBusMessageActions` via `ConfigureFakeServiceBusMessageActions()` | ✅ |
 | `ServiceBusSessionMessageActions` (SDK-injected) | ✅ | ✅ `FakeServiceBusSessionMessageActions` via `ConfigureFakeServiceBusMessageActions()` | ✅ |
 
-#### `AzureFunctions.TestFramework.Blob` ⚠️ Partial
+#### `AzureFunctions.TestFramework.Blob` ✅ Fully Covered
 
 | Binding | Worker Extension | Test Framework | Status |
 |---------|-----------------|----------------|--------|
 | `[BlobTrigger]` (trigger) | ✅ | ✅ `InvokeBlobAsync()` | ✅ |
-| `[BlobInput]` (input) | ✅ | ❌ No support | ❌ Gap |
+| `[BlobInput]` (input) | ✅ | ✅ `WithBlobInputContent()` via `BlobInputSyntheticBindingProvider` | ✅ |
 | `[BlobOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
 
-**Gaps:**
-- **`[BlobInput]`**: Used to read blobs as input parameters (e.g. `[BlobInput("container/{name}")] string content` or `Stream`/`BlobClient`). Needs `ISyntheticBindingProvider` for `"blobInput"` or user `ConfigureServices` override.
+> **`[BlobInput]` scope:** `WithBlobInputContent(blobPath, BinaryData)` injects bytes for parameters typed as `string`, `byte[]`, `Stream`, `BinaryData`, or `ReadOnlyMemory<byte>`. For complex SDK client types (`BlobClient`, `BlockBlobClient`, etc.) that use model-binding-data payloads, override the Azure Blob SDK client in DI via `ConfigureServices` instead.
 
 #### `AzureFunctions.TestFramework.EventGrid` ✅ Fully Covered
 
@@ -66,17 +65,6 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 #### `AzureFunctions.TestFramework.Durable` ✅ Fully Covered
 
 Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Extensions.DurableTask`), but fully supported with fake client, orchestration context, entity support, and `ISyntheticBindingProvider`.
-
-### Gaps in Existing Extensions
-
-#### Issue 0b: Blob — Add `[BlobInput]` input binding support
-
-**Scope:**
-- Add `ISyntheticBindingProvider` for `"blobInput"` binding type to inject fake blob data
-- Or document pattern for users to override via `ConfigureServices` with fake `BlobClient`/`BlobContainerClient`
-- Test across 4-flavour matrix
-
----
 
 ### Not Yet Supported
 

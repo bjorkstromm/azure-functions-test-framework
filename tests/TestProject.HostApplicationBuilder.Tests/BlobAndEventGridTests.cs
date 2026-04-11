@@ -1,3 +1,4 @@
+using AzureFunctions.TestFramework.Blob;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace TestProject;
@@ -11,6 +12,7 @@ public class BlobAndEventGridTests : BlobAndEventGridTestsBase
             .WithFunctionsAssembly(typeof(BlobTriggerFunction).Assembly)
             .WithLoggerFactory(CreateLoggerFactory())
             .WithHostApplicationBuilderFactory(TestHostFactory.CreateApplicationBuilder)
+            .WithBlobInputContent(BlobInputTestPath, BinaryData.FromString(BlobInputTestContent))
             .ConfigureServices(services => services.AddSingleton<IProcessedItemsService>(processedItems))
             .BuildAndStartAsync(TestCancellation);
 }
