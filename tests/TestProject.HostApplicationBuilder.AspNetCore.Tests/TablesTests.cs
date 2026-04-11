@@ -11,7 +11,7 @@ public class TablesTests : TablesTestsBase
         new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(TableInputFunction).Assembly)
             .WithLoggerFactory(CreateLoggerFactory())
-            .WithHostApplicationBuilderFactory(TestHostFactory.CreateApplicationBuilder)
+            .WithHostApplicationBuilderFactory(TestHostFactory.CreateWebApplicationBuilder)
             .WithTableEntity(
                 TableInputFunction.TableName,
                 TableInputFunction.PartitionKey,

@@ -92,8 +92,8 @@ public sealed class TableInputSyntheticBindingProvider : ISyntheticBindingProvid
 
         if (!string.IsNullOrEmpty(partitionKey))
         {
-            var partitionKey2 = $"{tableName}/{partitionKey}";
-            if (_jsonByKey.TryGetValue(partitionKey2, out var partitionJson))
+            var partitionScopeKey = $"{tableName}/{partitionKey}";
+            if (_jsonByKey.TryGetValue(partitionScopeKey, out var partitionJson))
                 return FunctionBindingData.WithJson(parameterName, partitionJson);
         }
 
