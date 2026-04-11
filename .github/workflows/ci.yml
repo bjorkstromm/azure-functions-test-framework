@@ -30,3 +30,6 @@ jobs:
 
       - name: Test
         run: dotnet test --no-build --configuration Release --verbosity normal
+
+      - name: Pack
+        run: dotnet pack --no-build --configuration Release --output ./artifacts
