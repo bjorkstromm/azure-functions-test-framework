@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>CosmosDB Trigger, Input, and Output binding support for the Azure Functions Test Framework. Enables invoking CosmosDB-triggered functions and injecting CosmosDB input binding data in integration tests.</Description>
+    <PackageTags>azure-functions testing dotnet integration-testing cosmosdb-trigger cosmosdb-input cosmosdb-output</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.CosmosDB" />
+  </ItemGroup>
+
+</Project>

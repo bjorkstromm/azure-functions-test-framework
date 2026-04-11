@@ -62,6 +62,17 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 | `[EventGridTrigger]` — `CloudEvent` | ✅ | ✅ `InvokeEventGridAsync(CloudEvent)` | ✅ |
 | `[EventGridOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
 
+#### `AzureFunctions.TestFramework.CosmosDB` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[CosmosDBTrigger]` — change-feed batch (`IReadOnlyList<T>`) | ✅ | ✅ `InvokeCosmosDBAsync<T>(IReadOnlyList<T>)` | ✅ |
+| `[CosmosDBTrigger]` — raw JSON string | ✅ | ✅ `InvokeCosmosDBAsync(string documentsJson)` | ✅ |
+| `[CosmosDBInput]` (input) | ✅ | ✅ `WithCosmosDBInputDocuments(...)` via `CosmosDBInputSyntheticBindingProvider` | ✅ |
+| `[CosmosDBOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+> **`[CosmosDBInput]` scope:** `WithCosmosDBInputDocuments(databaseName, containerName, document)` injects a single document or list of documents for parameters typed as POCO types or `string`. The key is `"{databaseName}/{containerName}"` (case-insensitive). For complex SDK client types (`CosmosClient`, `Container`, etc.), override via `ConfigureServices` instead.
+
 #### `AzureFunctions.TestFramework.Tables` ✅ Fully Covered
 
 | Binding | Worker Extension | Test Framework | Status |
@@ -81,7 +92,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 | Extension | NuGet Package | Trigger | Input | Output |
 |-----------|---------------|---------|-------|--------|
-| **CosmosDB** | `Microsoft.Azure.Functions.Worker.Extensions.CosmosDB` | `[CosmosDBTrigger]` | `[CosmosDBInput]` | `[CosmosDBOutput]` |
 | **Event Hubs** | `Microsoft.Azure.Functions.Worker.Extensions.EventHubs` | `[EventHubTrigger]` | — | `[EventHubOutput]` |
 | **SignalR Service** | `Microsoft.Azure.Functions.Worker.Extensions.SignalRService` | `[SignalRTrigger]` | `[SignalRConnectionInfo]`, `[SignalREndpoints]`, `[SignalRNegotiation]` | `[SignalROutput]` |
 | **Kafka** | `Microsoft.Azure.Functions.Worker.Extensions.Kafka` | `[KafkaTrigger]` | — | `[KafkaOutput]` |
@@ -101,22 +111,18 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 ## Issues
 
-### Issue 1: CosmosDB Trigger, Input & Output bindings
+### ~~Issue 1: CosmosDB Trigger, Input & Output bindings~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.CosmosDB`
+**Package:** `AzureFunctions.TestFramework.CosmosDB` — shipped.
 
-**Bindings:**
-- **Trigger:** `[CosmosDBTrigger]` — receives a list of changed documents from a CosmosDB change feed
-- **Input:** `[CosmosDBInput]` — reads documents from CosmosDB (point-read or query)
-- **Output:** `[CosmosDBOutput]` — writes documents to CosmosDB
-
-**Scope:**
-- New package: `AzureFunctions.TestFramework.CosmosDB`
-- Extension method: `InvokeCosmosDBAsync(this IFunctionsTestHost host, string functionName, IReadOnlyList<T> documents, ...)` — sends a batch of change-feed documents as JSON
-- Output bindings captured via existing `FunctionInvocationResult.OutputData`
-- Input binding support via `ISyntheticBindingProvider` to inject fake document data, or users override via `ConfigureServices`
-- Test across 4-flavour matrix (IHostBuilder × direct gRPC, IHostBuilder × ASP.NET Core, FunctionsApplicationBuilder × direct gRPC, FunctionsApplicationBuilder × ASP.NET Core)
-- Sample function + tests
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeCosmosDBAsync<T>(functionName, IReadOnlyList<T> documents)` — strongly-typed change-feed trigger
+- `InvokeCosmosDBAsync(functionName, string documentsJson)` — raw JSON change-feed trigger
+- `WithCosmosDBInputDocuments(databaseName, containerName, document)` — injects a single document for `[CosmosDBInput]`
+- `WithCosmosDBInputDocuments(databaseName, containerName, IReadOnlyList<T>)` — injects a list of documents
+- `WithCosmosDBInputJson(databaseName, containerName, json)` — injects raw JSON for `[CosmosDBInput]`
+- `[CosmosDBOutput]` captured generically by `FunctionInvocationResult.OutputData` or `ReadReturnValueAs<T>()`
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.CosmosDB`
 

@@ -20,6 +20,7 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/AzureFunctions.TestFramework.Blob/AzureFunctions.TestFramework.Blob.csproj" />
+    <Project Path="src/AzureFunctions.TestFramework.CosmosDB/AzureFunctions.TestFramework.CosmosDB.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Core/AzureFunctions.TestFramework.Core.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Durable/AzureFunctions.TestFramework.Durable.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.EventGrid/AzureFunctions.TestFramework.EventGrid.csproj" />
