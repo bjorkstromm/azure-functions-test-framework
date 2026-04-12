@@ -24,6 +24,7 @@
     <Project Path="src/AzureFunctions.TestFramework.Core/AzureFunctions.TestFramework.Core.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Durable/AzureFunctions.TestFramework.Durable.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.EventGrid/AzureFunctions.TestFramework.EventGrid.csproj" />
+    <Project Path="src/AzureFunctions.TestFramework.EventHubs/AzureFunctions.TestFramework.EventHubs.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Http/AzureFunctions.TestFramework.Http.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Queue/AzureFunctions.TestFramework.Queue.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.ServiceBus/AzureFunctions.TestFramework.ServiceBus.csproj" />
