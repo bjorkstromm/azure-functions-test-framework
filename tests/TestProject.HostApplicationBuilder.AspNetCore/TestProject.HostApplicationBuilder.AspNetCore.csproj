@@ -27,6 +27,8 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Tables" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.EventGrid" />
     <PackageReference Include="Azure.Messaging.EventGrid" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.EventHubs" />
+    <PackageReference Include="Azure.Messaging.EventHubs" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.CosmosDB" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />

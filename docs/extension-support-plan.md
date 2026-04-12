@@ -62,6 +62,14 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 | `[EventGridTrigger]` — `CloudEvent` | ✅ | ✅ `InvokeEventGridAsync(CloudEvent)` | ✅ |
 | `[EventGridOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
 
+#### `AzureFunctions.TestFramework.EventHubs` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[EventHubTrigger]` — single event (`EventData`, `IsBatched = false`) | ✅ | ✅ `InvokeEventHubAsync(EventData)` | ✅ |
+| `[EventHubTrigger]` — **batch mode** (`EventData[]`, default `IsBatched = true`) | ✅ | ✅ `InvokeEventHubBatchAsync(IReadOnlyList<EventData>)` | ✅ |
+| `[EventHubOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
 #### `AzureFunctions.TestFramework.CosmosDB` ✅ Fully Covered
 
 | Binding | Worker Extension | Test Framework | Status |
@@ -92,7 +100,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 | Extension | NuGet Package | Trigger | Input | Output |
 |-----------|---------------|---------|-------|--------|
-| **Event Hubs** | `Microsoft.Azure.Functions.Worker.Extensions.EventHubs` | `[EventHubTrigger]` | — | `[EventHubOutput]` |
 | **SignalR Service** | `Microsoft.Azure.Functions.Worker.Extensions.SignalRService` | `[SignalRTrigger]` | `[SignalRConnectionInfo]`, `[SignalREndpoints]`, `[SignalRNegotiation]` | `[SignalROutput]` |
 | **Kafka** | `Microsoft.Azure.Functions.Worker.Extensions.Kafka` | `[KafkaTrigger]` | — | `[KafkaOutput]` |
 | **RabbitMQ** | `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ` | `[RabbitMQTrigger]` | — | `[RabbitMQOutput]` |
@@ -128,21 +135,15 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 2: Event Hubs Trigger & Output binding
+### ~~Issue 2: Event Hubs Trigger & Output binding~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.EventHubs`
+**Package:** `AzureFunctions.TestFramework.EventHubs` — shipped.
 
-**Bindings:**
-- **Trigger:** `[EventHubTrigger]` — receives events from Azure Event Hubs (single or batch mode)
-- **Output:** `[EventHubOutput]` — sends events to Event Hubs
-
-**Scope:**
-- New package: `AzureFunctions.TestFramework.EventHubs`
-- Extension method: `InvokeEventHubAsync(this IFunctionsTestHost host, string functionName, EventData eventData, ...)` — single event
-- Batch overload: `InvokeEventHubBatchAsync(...)` — sends multiple `EventData` for batch-trigger functions
-- Output bindings captured via `FunctionInvocationResult.OutputData`
-- Test across 4-flavour matrix
-- Sample function + tests
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeEventHubAsync(EventData)` — single-event trigger (`IsBatched = false`)
+- `InvokeEventHubBatchAsync(IReadOnlyList<EventData>)` — batch-trigger (`IsBatched = true`, the default)
+- `[EventHubOutput]` captured generically by `FunctionInvocationResult.OutputData` or `ReadReturnValueAs<T>()`
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.EventHubs`
 

@@ -5,6 +5,7 @@
 
   <ItemGroup>
     <PackageVersion Include="Azure.Messaging.EventGrid" Version="5.0.0" />
+    <PackageVersion Include="Azure.Messaging.EventHubs" Version="5.12.2" />
     <PackageVersion Include="coverlet.collector" Version="8.0.1" />
     <PackageVersion Include="Grpc.AspNetCore" Version="2.76.0" />
     <PackageVersion Include="Grpc.Tools" Version="2.78.0" />
@@ -14,6 +15,7 @@
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.CosmosDB" Version="4.14.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.16.2" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.EventGrid" Version="3.6.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.EventHubs" Version="6.5.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.3.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.1.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.24.0" />
