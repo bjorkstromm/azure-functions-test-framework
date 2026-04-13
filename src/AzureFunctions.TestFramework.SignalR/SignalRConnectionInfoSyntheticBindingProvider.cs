@@ -43,13 +43,10 @@ public sealed class SignalRConnectionInfoSyntheticBindingProvider : ISyntheticBi
     /// <param name="url">The SignalR service client endpoint URL.</param>
     /// <param name="accessToken">The SignalR service access token.</param>
     public SignalRConnectionInfoSyntheticBindingProvider(string url, string accessToken)
-    {
-        ArgumentNullException.ThrowIfNull(url);
-        ArgumentNullException.ThrowIfNull(accessToken);
-
-        _connectionInfoJson = JsonSerializer.Serialize(
+        : this(JsonSerializer.Serialize(
             new SignalRConnectionInfo { Url = url, AccessToken = accessToken },
-            _jsonOptions);
+            _jsonOptions))
+    {
     }
 
     /// <inheritdoc/>

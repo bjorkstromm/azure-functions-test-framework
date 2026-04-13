@@ -47,7 +47,9 @@ public static class FunctionsTestHostBuilderSignalRExtensions
         ArgumentNullException.ThrowIfNull(connectionInfo);
 
         return builder.WithSyntheticBindingProvider(
-            new SignalRConnectionInfoSyntheticBindingProvider(connectionInfo.Url, connectionInfo.AccessToken));
+            new SignalRConnectionInfoSyntheticBindingProvider(
+                connectionInfo.Url ?? string.Empty,
+                connectionInfo.AccessToken ?? string.Empty));
     }
 
     /// <summary>
