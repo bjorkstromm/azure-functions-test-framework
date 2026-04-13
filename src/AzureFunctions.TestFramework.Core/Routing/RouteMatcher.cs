@@ -25,8 +25,11 @@ public sealed class RouteMatcher
     private static readonly IInlineConstraintResolver SharedConstraintResolver = CreateConstraintResolver();
 
     // Sentinel used in the TemplateMatcher defaults dictionary to mark optional parameters.
-    // When the path has no segment for an optional parameter, the matcher sets the value to
-    // this sentinel instead of leaving it absent; we filter it out before returning route params.
+    // When the path has no segment for an optional parameter, the matcher copies this sentinel
+    // into the matched-values dictionary instead of leaving the key absent. We filter it out in
+    // Match() so that callers see a clean absence of the key rather than a non-string sentinel.
+    // A private object instance (not null) is used so it can never be confused with a real route
+    // value string, even if an optional parameter appears alongside a null default value.
     private static readonly object OptionalSentinel = new();
 
     private readonly List<RouteEntry> _routes = [];
@@ -151,8 +154,12 @@ public sealed class RouteMatcher
 
             foreach (var constraint in paramConstraints)
             {
-                // httpContext and route are not used by any built-in ASP.NET Core constraint
-                // (int, guid, alpha, minlength, range, regex, …), so null is safe here.
+                // Built-in ASP.NET Core route constraints (IntRouteConstraint, GuidRouteConstraint,
+                // AlphaRouteConstraint, MinRouteConstraint, MaxRouteConstraint, RangeRouteConstraint,
+                // RegexRouteConstraint, etc.) perform their checks solely against the route value
+                // string in the `values` dictionary. None of them dereference `httpContext` or
+                // `route`, so passing null is safe for the standard constraint set.
+                // See: https://github.com/dotnet/aspnetcore/tree/main/src/Http/Routing/src/Constraints
                 if (!constraint.Match(null, null, name, values, RouteDirection.IncomingRequest))
                     return false;
             }

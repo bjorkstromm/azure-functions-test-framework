@@ -376,7 +376,12 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// <param name="httpMethod">The HTTP method (e.g. "GET", "POST").</param>
     /// <param name="requestPath">The raw request path (e.g. "/api/todos/123").</param>
     /// <param name="routePrefix">The functions route prefix (default "api").</param>
-    public async Task SendInvocationRequestAsync(
+    /// <returns>
+    /// <see langword="true"/> when the <c>InvocationRequest</c> was dispatched to the worker;
+    /// <see langword="false"/> when no registered route matched the request (constraint mismatch,
+    /// unknown path, etc.) and no message was sent.
+    /// </returns>
+    public async Task<bool> SendInvocationRequestAsync(
         string invocationId,
         string httpMethod,
         string requestPath,
@@ -387,7 +392,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         {
             _logger.LogWarning(
                 "No function found for {Method} {Path}; InvocationRequest not sent", httpMethod, requestPath);
-            return;
+            return false;
         }
 
         var invocationRequest = new InvocationRequest
@@ -438,6 +443,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         await SendMessageOneWayAsync(message);
         _logger.LogDebug("Sent InvocationRequest for {InvocationId} -> function {FunctionId}",
             invocationId, functionId);
+        return true;
     }
 
     /// <summary>

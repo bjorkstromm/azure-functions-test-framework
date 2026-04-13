@@ -52,9 +52,7 @@ public static class RouteConstraintFunction
     {
         // Read the optional route value via BindingData so this works in both gRPC and
         // ASP.NET Core integration modes without depending on optional parameter binding.
-        req.FunctionContext.BindingContext.BindingData.TryGetValue("page", out var pageObj);
-        var page = pageObj as string;
-
+        var page = GetRouteValue(req, "page");
         var response = req.CreateResponse(HttpStatusCode.OK);
         await response.WriteAsJsonAsync(new OptionalPageResponse(page));
         return response;
@@ -68,9 +66,7 @@ public static class RouteConstraintFunction
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "files/{*rest}")]
         HttpRequestData req)
     {
-        req.FunctionContext.BindingContext.BindingData.TryGetValue("rest", out var restObj);
-        var rest = restObj as string ?? string.Empty;
-
+        var rest = GetRouteValue(req, "rest") ?? string.Empty;
         var response = req.CreateResponse(HttpStatusCode.OK);
         await response.WriteAsJsonAsync(new CatchAllResponse(rest));
         return response;
@@ -88,6 +84,18 @@ public static class RouteConstraintFunction
         var response = req.CreateResponse(HttpStatusCode.OK);
         await response.WriteAsJsonAsync(new RouteEchoResponse("ranged-int", id));
         return response;
+    }
+
+    // ── Helper ────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Reads a route parameter value from <see cref="BindingContext.BindingData"/>.
+    /// Works in both gRPC-direct and ASP.NET Core integration modes.
+    /// </summary>
+    private static string? GetRouteValue(HttpRequestData req, string paramName)
+    {
+        req.FunctionContext.BindingContext.BindingData.TryGetValue(paramName, out var value);
+        return value as string;
     }
 }
 

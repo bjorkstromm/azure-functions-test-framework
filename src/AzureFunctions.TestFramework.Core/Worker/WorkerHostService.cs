@@ -690,7 +690,16 @@ public class WorkerHostService : IAsyncDisposable
                     // called, so there is no race condition.
                     try
                     {
-                        await grpc.SendInvocationRequestAsync(invocationId, method, path, routePrefix);
+                        var dispatched = await grpc.SendInvocationRequestAsync(invocationId, method, path, routePrefix);
+                        if (!dispatched)
+                        {
+                            // No function matched (constraint mismatch, unknown route, etc.).
+                            // Return 404 immediately so WorkerRequestServicesMiddleware is never
+                            // entered — it would otherwise wait for the InvocationRequest that will
+                            // never arrive and time out after 5 seconds.
+                            context.Response.StatusCode = StatusCodes.Status404NotFound;
+                            return;
+                        }
                     }
                     catch (Exception ex)
                     {
