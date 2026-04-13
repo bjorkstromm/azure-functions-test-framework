@@ -26,8 +26,10 @@ internal sealed class FakeDurableEntityRunner : IDisposable
 
     public void Dispose()
     {
+        // Only cancel — do not dispose. Background delayed-signal tasks hold a reference to
+        // _shutdownCts.Token; disposing while a task is still running can cause an
+        // ObjectDisposedException on the fire-and-forget task (unobserved).
         _shutdownCts.Cancel();
-        _shutdownCts.Dispose();
 
         foreach (var instance in _entities.Values)
         {

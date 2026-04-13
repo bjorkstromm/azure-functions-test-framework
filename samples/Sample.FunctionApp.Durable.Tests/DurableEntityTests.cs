@@ -117,9 +117,7 @@ public sealed class DurableEntityTests
         await host.SignalEntityAsync(entityId, "add", 7, TestCancellation);
 
         // Signal with future SignalTime — returns immediately (fire-and-forget)
-#pragma warning disable xUnit1051
-        await durableClient.Entities.SignalEntityAsync(entityId, "add", 10, options);
-#pragma warning restore xUnit1051
+        await durableClient.Entities.SignalEntityAsync(entityId, "add", 10, options, TestCancellation);
 
         // Assert — only the immediate signal should be reflected (delayed signal hasn't fired yet)
         var metadataBefore = host.GetEntity<int>(entityId);
@@ -144,9 +142,7 @@ public sealed class DurableEntityTests
         var options = new SignalEntityOptions { SignalTime = DateTimeOffset.UtcNow.AddSeconds(-1) };
 
         // Act — signal with past SignalTime should execute immediately
-#pragma warning disable xUnit1051
-        await durableClient.Entities.SignalEntityAsync(entityId, "add", 5, options);
-#pragma warning restore xUnit1051
+        await durableClient.Entities.SignalEntityAsync(entityId, "add", 5, options, TestCancellation);
 
         // Assert
         var metadata = host.GetEntity<int>(entityId);
@@ -163,9 +159,7 @@ public sealed class DurableEntityTests
         var options = new SignalEntityOptions { SignalTime = DateTimeOffset.UtcNow.AddSeconds(30) };
 
         // Act — schedule a far-future signal, then dispose the host (which disposes the runner)
-#pragma warning disable xUnit1051
-        await durableClient.Entities.SignalEntityAsync(entityId, "add", 99, options);
-#pragma warning restore xUnit1051
+        await durableClient.Entities.SignalEntityAsync(entityId, "add", 99, options, TestCancellation);
         await host.DisposeAsync();
 
         // Assert — no exception thrown; the delayed signal was cancelled on shutdown
