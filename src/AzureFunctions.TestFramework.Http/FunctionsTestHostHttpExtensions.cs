@@ -42,7 +42,7 @@ public static class FunctionsTestHostHttpExtensions
         return new HttpClient(
             new FunctionsHttpMessageHandler(
                 httpHost.GrpcHostService,
-                httpHost.GrpcHostService.FunctionRouteMap,
+                httpHost.GrpcHostService.RouteMatcher,
                 httpHost.RoutePrefix),
             disposeHandler: true)
         {

@@ -1,3 +1,4 @@
+using AzureFunctions.TestFramework.Core.Routing;
 using Grpc.Core;
 using Microsoft.Azure.Functions.Worker.Core.FunctionMetadata;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
@@ -43,6 +44,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     private int _connectionVersion;
     // Key format: "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}"
     private readonly Dictionary<string, string> _functionRouteToId = new(StringComparer.OrdinalIgnoreCase);
+    private readonly RouteMatcher _routeMatcher = new();
     // Key: function name (case-insensitive); Value: FunctionRegistration
     private readonly Dictionary<string, FunctionRegistration> _functionsByName
         = new(StringComparer.OrdinalIgnoreCase);
@@ -111,6 +113,12 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// Key format is "{METHOD}:{route}", e.g. "GET:todos" or "POST:todos/{id}".
     /// </summary>
     public IReadOnlyDictionary<string, string> FunctionRouteMap => _functionRouteToId;
+
+    /// <summary>
+    /// Gets the <see cref="RouteMatcher"/> built from loaded HTTP trigger routes.
+    /// Supports route constraints, optional parameters, and catch-all segments.
+    /// </summary>
+    public RouteMatcher RouteMatcher => _routeMatcher;
 
     /// <summary>
     /// Gets the metadata for all discovered functions, keyed by function name.
@@ -368,7 +376,12 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// <param name="httpMethod">The HTTP method (e.g. "GET", "POST").</param>
     /// <param name="requestPath">The raw request path (e.g. "/api/todos/123").</param>
     /// <param name="routePrefix">The functions route prefix (default "api").</param>
-    public async Task SendInvocationRequestAsync(
+    /// <returns>
+    /// <see langword="true"/> when the <c>InvocationRequest</c> was dispatched to the worker;
+    /// <see langword="false"/> when no registered route matched the request (constraint mismatch,
+    /// unknown path, etc.) and no message was sent.
+    /// </returns>
+    public async Task<bool> SendInvocationRequestAsync(
         string invocationId,
         string httpMethod,
         string requestPath,
@@ -379,7 +392,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         {
             _logger.LogWarning(
                 "No function found for {Method} {Path}; InvocationRequest not sent", httpMethod, requestPath);
-            return;
+            return false;
         }
 
         var invocationRequest = new InvocationRequest
@@ -430,6 +443,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         await SendMessageOneWayAsync(message);
         _logger.LogDebug("Sent InvocationRequest for {InvocationId} -> function {FunctionId}",
             invocationId, functionId);
+        return true;
     }
 
     /// <summary>
@@ -595,81 +609,26 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// Matches an incoming HTTP method + request path against the loaded function route map.
     /// Returns the function ID and a dictionary of extracted route parameter values (e.g.
     /// <c>{"id": "abc123"}</c> for a route pattern <c>todos/{id}</c>).
+    /// Supports route constraints, optional parameters, and catch-all segments.
     /// </summary>
     public (string? FunctionId, IReadOnlyDictionary<string, string> RouteParams) FindFunctionMatch(
         string httpMethod, string requestPath, string routePrefix = "api")
     {
-        static IReadOnlyDictionary<string, string> Empty() =>
-            System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty;
-
         // Strip leading slash and the route prefix (e.g. "/api/" or "api/").
         var path = requestPath.TrimStart('/');
         if (!string.IsNullOrEmpty(routePrefix))
         {
             var prefix = routePrefix.Trim('/') + "/";
             if (path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
-            {
                 path = path.Substring(prefix.Length);
-            }
         }
 
-        var method = httpMethod.ToUpperInvariant();
+        // Strip query string.
+        var queryIndex = path.IndexOf('?');
+        if (queryIndex >= 0)
+            path = path.Substring(0, queryIndex);
 
-        // 1. Exact match (no route parameters).
-        if (_functionRouteToId.TryGetValue($"{method}:{path}", out var exactId))
-        {
-            return (exactId, Empty());
-        }
-
-        // 2. Pattern match: route segments with {param} placeholders.
-        var pathSegments = path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-        foreach (var (routeKey, functionId) in _functionRouteToId)
-        {
-            var colon = routeKey.IndexOf(':');
-            if (colon < 0) continue;
-
-            if (!routeKey.AsSpan(0, colon).Equals(method, StringComparison.OrdinalIgnoreCase)) continue;
-
-            var routePattern = routeKey.AsSpan(colon + 1);
-            var routeSegments = routePattern.ToString()
-                .Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-            if (routeSegments.Length != pathSegments.Length) continue;
-
-            var match = true;
-            for (var i = 0; i < routeSegments.Length; i++)
-            {
-                var seg = routeSegments[i];
-                // A segment enclosed in braces is a parameter placeholder – matches anything.
-                if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}') continue;
-                if (!seg.Equals(pathSegments[i], StringComparison.OrdinalIgnoreCase))
-                {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match)
-            {
-                // Extract route parameter values (e.g. "{id}" → pathSegments[i]).
-                var routeParams = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                for (var i = 0; i < routeSegments.Length; i++)
-                {
-                    var seg = routeSegments[i];
-                    if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}')
-                    {
-                        var paramName = seg.Substring(1, seg.Length - 2);
-                        // Strip route constraint (e.g. "productId:guid" → "productId").
-                        var colonIndex = paramName.IndexOf(':');
-                        if (colonIndex > 0) paramName = paramName.Substring(0, colonIndex);
-                        routeParams[paramName] = pathSegments[i];
-                    }
-                }
-                return (functionId, routeParams);
-            }
-        }
-
-        return (null, Empty());
+        return _routeMatcher.Match(httpMethod, path);
     }
 
     private async Task HandleWorkerMessageAsync(
@@ -848,6 +807,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                                 {
                                     var key = $"{httpMethod}:{route}";
                                     _functionRouteToId[key] = functionMetadata.FunctionId;
+                                    _routeMatcher.AddRoute(httpMethod, route, functionMetadata.FunctionId);
                                     _logger.LogDebug("Mapped '{Key}' to function ID '{FunctionId}'",
                                         key, functionMetadata.FunctionId);
                                 }
