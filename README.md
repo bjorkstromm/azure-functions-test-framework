@@ -111,7 +111,7 @@ dotnet pack --configuration Release --output ./artifacts
 - Richer durable lifecycle helpers (terminate/suspend/resume and more management helpers)
 - Additional typed helpers for more complex output payloads
 - More middleware scenarios such as authorization and exception handling
-- More binding types such as Kafka, RabbitMQ, and SendGrid
+- More binding types such as Kafka and RabbitMQ
 
 ## Project Structure
 
