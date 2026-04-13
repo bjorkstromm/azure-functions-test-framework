@@ -117,6 +117,19 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 | **RabbitMQ** | `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ` | `[RabbitMQTrigger]` | — | `[RabbitMQOutput]` |
 | **SendGrid** | `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` | — | — | `[SendGrid]` |
 | **Warmup** | `Microsoft.Azure.Functions.Worker.Extensions.Warmup` | `[WarmupTrigger]` | — | — |
+| **Azure SQL** | `Microsoft.Azure.Functions.Worker.Extensions.Sql` | `[SqlTrigger]` | `[SqlInput]` | `[SqlOutput]` |
+| **Redis** | `Microsoft.Azure.Functions.Worker.Extensions.Redis` | `[RedisPubSubTrigger]`, `[RedisListTrigger]`, `[RedisStreamTrigger]` | `[RedisInput]` | `[RedisOutput]` |
+| **Azure Data Explorer** | `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)* | — | `[KustoInput]` | `[KustoOutput]` |
+| **MCP** | `Microsoft.Azure.Functions.Worker.Extensions.Mcp` | `[McpToolTrigger]`, `[McpResourceTrigger]` | — | — |
+| **Dapr** | `Microsoft.Azure.Functions.Worker.Extensions.Dapr` | `[DaprBindingTrigger]`, `[DaprServiceInvocationTrigger]`, `[DaprTopicTrigger]` | `[DaprStateInput]`, `[DaprSecretInput]` | `[DaprStateOutput]`, `[DaprInvokeOutput]`, `[DaprPublishOutput]`, `[DaprBindingOutput]` |
+
+### Not Applicable — No Isolated Worker Support
+
+| Extension | Reason |
+|-----------|--------|
+| **Twilio** | `Microsoft.Azure.WebJobs.Extensions.Twilio` — [no isolated worker model support](https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-twilio) |
+| **Mobile Apps** | Functions v1.x only — not supported in v4.x runtime |
+| **Notification Hubs** | Functions v1.x only — not supported in v4.x runtime |
 
 ### Infrastructure-only (no user-facing bindings — no action needed)
 
@@ -125,6 +138,7 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 - `Worker.Extensions.Rpc` — gRPC extension plumbing
 - `Worker.Extensions.Storage` — meta-package referencing Blobs + Queues
 - `Worker.Extensions.Http.AspNetCore` — ASP.NET Core integration infrastructure
+- **IoT Hub** — uses the Azure Event Hubs extension under the hood (`Microsoft.Azure.Functions.Worker.Extensions.EventHubs`); already covered by `AzureFunctions.TestFramework.EventHubs`
 
 ---
 
@@ -265,6 +279,123 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
+### Issue 9: Azure SQL Trigger, Input & Output bindings
+
+**Package:** `AzureFunctions.TestFramework.Sql`
+
+**Bindings:**
+- **Trigger:** `[SqlTrigger]` — fires when rows in a SQL table change (change-tracking based)
+- **Input:** `[SqlInput]` — reads rows from a SQL table or view
+- **Output:** `[SqlOutput]` — upserts rows into a SQL table
+
+**Scope:**
+- New package: `AzureFunctions.TestFramework.Sql`
+- Extension method: `InvokeSqlAsync<T>(this IFunctionsTestHost host, string functionName, IReadOnlyList<SqlChange<T>> changes)` — batch change-feed trigger
+- `ISyntheticBindingProvider` (`SqlInputSyntheticBindingProvider`): `WithSqlInputRows(tableName, rows)` — injects fake query results for `[SqlInput]`
+- Output bindings captured generically by `FunctionInvocationResult.OutputData`
+- Test across 4-flavour matrix
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Sql`
+
+---
+
+### Issue 10: Redis Triggers, Input & Output bindings
+
+**Package:** `AzureFunctions.TestFramework.Redis`
+
+**Bindings:**
+- **Trigger:** `[RedisPubSubTrigger]` — fires on Redis pub/sub channel messages
+- **Trigger:** `[RedisListTrigger]` — fires on Redis list push events (LPUSH/RPUSH)
+- **Trigger:** `[RedisStreamTrigger]` — fires on Redis stream entries
+- **Input:** `[RedisInput]` — reads a value from the Redis cache
+- **Output:** `[RedisOutput]` — writes a value to the Redis cache
+
+**Scope:**
+- New package: `AzureFunctions.TestFramework.Redis`
+- Extension methods per trigger type:
+  - `InvokeRedisPubSubAsync(functionName, channel, message)` — pub/sub trigger
+  - `InvokeRedisListAsync(functionName, key, value)` — list trigger
+  - `InvokeRedisStreamAsync(functionName, key, entries)` — stream trigger
+- `ISyntheticBindingProvider` (`RedisInputSyntheticBindingProvider`): `WithRedisInput(key, value)` — injects fake cached value for `[RedisInput]`
+- Output bindings captured generically by `FunctionInvocationResult.OutputData`
+- Test across 4-flavour matrix
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Redis`
+
+---
+
+### Issue 11: Azure Data Explorer Input & Output bindings *(preview)*
+
+**Package:** `AzureFunctions.TestFramework.DataExplorer`
+
+**Bindings:**
+- **Input:** `[KustoInput]` — reads query results from an Azure Data Explorer (Kusto) cluster
+- **Output:** `[KustoOutput]` — ingests rows into an Azure Data Explorer table
+
+> **Note:** No trigger binding exists for Azure Data Explorer. This is an input/output-only extension (preview).
+
+**Scope:**
+- New package: `AzureFunctions.TestFramework.DataExplorer`
+- `ISyntheticBindingProvider` (`KustoInputSyntheticBindingProvider`): `WithKustoInputRows(database, table, rows)` — injects fake query results for `[KustoInput]`
+- Output bindings captured generically by `FunctionInvocationResult.OutputData`
+- Test across 4-flavour matrix
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)*
+
+---
+
+### Issue 12: MCP (Model Context Protocol) Trigger
+
+**Package:** `AzureFunctions.TestFramework.Mcp`
+
+**Bindings:**
+- **Trigger:** `[McpToolTrigger]` — exposes a function as an MCP tool callable by language model clients
+- **Trigger:** `[McpResourceTrigger]` — exposes a function as an MCP resource (interactive UI support)
+
+> **Note:** No input or output bindings exist for MCP. Both binding types are trigger-only.
+
+**Scope:**
+- New package: `AzureFunctions.TestFramework.Mcp`
+- Extension methods:
+  - `InvokeMcpToolAsync(functionName, toolArguments)` — invokes an MCP tool trigger with a dictionary of named arguments
+  - `InvokeMcpResourceAsync(functionName, resourceUri)` — invokes an MCP resource trigger
+- Test across 4-flavour matrix
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Mcp`
+
+---
+
+### Issue 13: Dapr Triggers, Input & Output bindings
+
+**Package:** `AzureFunctions.TestFramework.Dapr`
+
+**Bindings:**
+- **Trigger:** `[DaprBindingTrigger]` — fires on a Dapr input binding event
+- **Trigger:** `[DaprServiceInvocationTrigger]` — fires on a Dapr service invocation call
+- **Trigger:** `[DaprTopicTrigger]` — fires on a Dapr pub/sub topic message
+- **Input:** `[DaprStateInput]` — reads state from a Dapr state store
+- **Input:** `[DaprSecretInput]` — reads a secret from a Dapr secret store
+- **Output:** `[DaprStateOutput]` — saves state to a Dapr state store
+- **Output:** `[DaprInvokeOutput]` — invokes another Dapr app
+- **Output:** `[DaprPublishOutput]` — publishes a message to a Dapr topic
+- **Output:** `[DaprBindingOutput]` — sends a value to a Dapr output binding
+
+> **Note:** The Dapr extension is supported in Kubernetes, Azure Container Apps, Azure IoT Edge, and other self-hosted modes only. It is not available in the Azure Functions Consumption plan.
+
+**Scope:**
+- New package: `AzureFunctions.TestFramework.Dapr`
+- Extension methods per trigger type:
+  - `InvokeDaprBindingAsync(functionName, bindingName, operation, data)` — Dapr input binding trigger
+  - `InvokeDaprServiceInvocationAsync(functionName, appId, methodName, body)` — service invocation trigger
+  - `InvokeDaprTopicAsync(functionName, pubSubName, topic, data)` — pub/sub topic trigger
+- `ISyntheticBindingProvider` implementations for state and secret input bindings
+- Output bindings captured generically by `FunctionInvocationResult.OutputData`
+- Test across 4-flavour matrix
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Dapr`
+
+---
+
 ## Implementation Notes
 
 ### Pattern for New Extension Packages
@@ -295,7 +426,12 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 1. **CosmosDB** — Very high demand, commonly used with Azure Functions
 2. **Event Hubs** — High demand for event-driven architectures
 3. **SignalR** — Real-time scenarios, most complex
-4. **Kafka** — Growing adoption
-5. **RabbitMQ** — Niche but important
-6. **SendGrid** — Output-only, low complexity
-7. **Warmup** — Simplest, rarely tested in isolation
+4. **Azure SQL** — High demand for data-driven functions; trigger + input + output
+5. **Redis** — Growing adoption for caching and event-driven patterns; three trigger variants
+6. **Kafka** — Growing adoption
+7. **MCP** — New AI/agent integration pattern; trigger-only, relatively simple
+8. **RabbitMQ** — Niche but important
+9. **SendGrid** — Output-only, low complexity
+10. **Dapr** — Kubernetes/Container Apps only; rich binding set
+11. **Azure Data Explorer** — Preview, input/output only; niche data-engineering scenarios
+12. **Warmup** — Simplest, rarely tested in isolation
