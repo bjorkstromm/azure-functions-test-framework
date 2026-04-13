@@ -37,7 +37,7 @@ internal sealed class FakeTaskOrchestrationEntityFeature : TaskOrchestrationEnti
         string operationName,
         object? input,
         SignalEntityOptions? options)
-        => _entityRunner.SignalEntityAsync(id, operationName, input, CancellationToken.None);
+        => _entityRunner.SignalEntityAsync(id, operationName, input, options, CancellationToken.None);
 
     public override Task<IAsyncDisposable> LockEntitiesAsync(IEnumerable<EntityInstanceId> entityIds)
         => throw new NotSupportedException("Entity locking from orchestrations is not supported by the fake.");

@@ -23,7 +23,7 @@ internal sealed class FakeTaskEntityContext : TaskEntityContext
     {
         // Fire-and-forget: start a background task so the calling entity is not blocked.
         // Log any failure so it is not silently swallowed in tests.
-        _ = Task.Run(() => _entityRunner.SignalEntityAsync(id, operationName, input, CancellationToken.None))
+        _ = Task.Run(() => _entityRunner.SignalEntityAsync(id, operationName, input, options, CancellationToken.None))
             .ContinueWith(
                 t => _logger.LogError(t.Exception, "Unhandled exception in fire-and-forget entity signal {Operation} on {EntityId}", operationName, id),
                 TaskContinuationOptions.OnlyOnFaulted);
