@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Description>SignalRTrigger invocation and SignalR input/output binding support for the Azure Functions Test Framework. Enables triggering SignalR-triggered functions and injecting synthetic SignalR connection info, negotiation, and endpoint bindings in integration tests.</Description>
+    <PackageTags>azure-functions testing dotnet integration-testing signalr-trigger signalr</PackageTags>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.SignalRService" />
+  </ItemGroup>
+
+</Project>
