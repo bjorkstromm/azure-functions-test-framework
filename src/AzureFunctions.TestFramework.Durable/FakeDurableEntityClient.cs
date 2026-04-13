@@ -20,7 +20,7 @@ internal sealed class FakeDurableEntityClient : DurableEntityClient
         object? input,
         SignalEntityOptions? options,
         CancellationToken cancellation)
-        => _entityRunner.SignalEntityAsync(id, operationName, input, cancellation);
+        => _entityRunner.SignalEntityAsync(id, operationName, input, options, cancellation);
 
     public override Task<EntityMetadata<TState>?> GetEntityAsync<TState>(
         EntityInstanceId id,

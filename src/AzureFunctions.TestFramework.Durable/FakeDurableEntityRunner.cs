@@ -12,6 +12,7 @@ internal sealed class FakeDurableEntityRunner : IDisposable
     private readonly ConcurrentDictionary<EntityInstanceId, FakeEntityInstanceState> _entities = new();
     private readonly ILogger<FakeDurableEntityRunner> _logger;
     private readonly IServiceProvider _serviceProvider;
+    private readonly CancellationTokenSource _shutdownCts = new();
 
     public FakeDurableEntityRunner(
         FakeDurableFunctionCatalog catalog,
@@ -25,6 +26,11 @@ internal sealed class FakeDurableEntityRunner : IDisposable
 
     public void Dispose()
     {
+        // Only cancel — do not dispose. Background delayed-signal tasks hold a reference to
+        // _shutdownCts.Token; disposing while a task is still running can cause an
+        // ObjectDisposedException on the fire-and-forget task (unobserved).
+        _shutdownCts.Cancel();
+
         foreach (var instance in _entities.Values)
         {
             instance.Dispose();
@@ -32,7 +38,57 @@ internal sealed class FakeDurableEntityRunner : IDisposable
     }
 
     /// <summary>Signals an entity (fire-and-forget) and awaits serial execution.</summary>
-    public async Task SignalEntityAsync(
+    public Task SignalEntityAsync(
+        EntityInstanceId entityId,
+        string operationName,
+        object? input,
+        SignalEntityOptions? options,
+        CancellationToken cancellationToken)
+    {
+        var delay = ComputeDelay(options);
+        if (delay > TimeSpan.Zero)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            _ = Task.Run(() => DelayedSignalAsync(entityId, operationName, input, delay))
+                .ContinueWith(
+                    t => _logger.LogError(t.Exception, "Unhandled exception in delayed entity signal {Operation} on {EntityId}", operationName, entityId),
+                    TaskContinuationOptions.OnlyOnFaulted);
+            return Task.CompletedTask;
+        }
+
+        return ExecuteSignalAsync(entityId, operationName, input, cancellationToken);
+    }
+
+    /// <summary>Overload without options for backward compatibility.</summary>
+    public Task SignalEntityAsync(
+        EntityInstanceId entityId,
+        string operationName,
+        object? input,
+        CancellationToken cancellationToken)
+        => SignalEntityAsync(entityId, operationName, input, options: null, cancellationToken);
+
+    private async Task DelayedSignalAsync(
+        EntityInstanceId entityId,
+        string operationName,
+        object? input,
+        TimeSpan delay)
+    {
+        // Only _shutdownCts is used: the caller's token cancelled the enqueue act, which already
+        // completed (we returned Task.CompletedTask). The delayed execution should only be
+        // cancelled when the host shuts down.
+        try
+        {
+            _logger.LogInformation("Scheduling entity signal {Operation} on {EntityId} with delay {Delay}", operationName, entityId, delay);
+            await Task.Delay(delay, _shutdownCts.Token).ConfigureAwait(false);
+            await ExecuteSignalAsync(entityId, operationName, input, _shutdownCts.Token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            // Silently swallow — the host is shutting down.
+        }
+    }
+
+    private async Task ExecuteSignalAsync(
         EntityInstanceId entityId,
         string operationName,
         object? input,
@@ -48,6 +104,22 @@ internal sealed class FakeDurableEntityRunner : IDisposable
         {
             instance.Semaphore.Release();
         }
+    }
+
+    // Task.Delay uses int milliseconds internally; clamp to prevent ArgumentOutOfRangeException
+    // for far-future SignalTime values.
+    private static readonly TimeSpan MaxDelay = TimeSpan.FromMilliseconds(int.MaxValue);
+
+    private static TimeSpan ComputeDelay(SignalEntityOptions? options)
+    {
+        if (options?.SignalTime is { } signalTime)
+        {
+            var delay = signalTime - DateTimeOffset.UtcNow;
+            if (delay <= TimeSpan.Zero) return TimeSpan.Zero;
+            return delay < MaxDelay ? delay : MaxDelay;
+        }
+
+        return TimeSpan.Zero;
     }
 
     /// <summary>Calls an entity and returns its result.</summary>

@@ -102,6 +102,70 @@ public sealed class DurableEntityTests
     }
 
     [Fact]
+    public async Task SignalEntityAsync_WithFutureSignalTime_DelaysExecution()
+    {
+        // Arrange
+        await using var host = await CreateHostAsync();
+        var durableClient = host.Services.GetRequiredService<FunctionsDurableClientProvider>().Client;
+        var entityId = new EntityInstanceId(nameof(Counter), "delayed-counter");
+
+        // Use a 5-second delay so the "before" assertion is reliably before the signal fires,
+        // even on a slow/loaded machine.
+        var options = new SignalEntityOptions { SignalTime = DateTimeOffset.UtcNow.AddSeconds(5) };
+
+        // Act — immediate signal
+        await host.SignalEntityAsync(entityId, "add", 7, TestCancellation);
+
+        // Signal with future SignalTime — returns immediately (fire-and-forget)
+        await durableClient.Entities.SignalEntityAsync(entityId, "add", 10, options, TestCancellation);
+
+        // Assert — only the immediate signal should be reflected (delayed signal hasn't fired yet)
+        var metadataBefore = host.GetEntity<int>(entityId);
+        Assert.Equal(7, metadataBefore.State);
+
+        // Poll until the delayed signal fires (up to 15s to avoid flakiness on loaded CI).
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(15);
+        while (host.GetEntity<int>(entityId).State != 17)
+        {
+            Assert.True(DateTimeOffset.UtcNow < deadline, "Timed out waiting for delayed entity signal to execute.");
+            await Task.Delay(50, TestCancellation);
+        }
+    }
+
+    [Fact]
+    public async Task SignalEntityAsync_WithPastSignalTime_ExecutesImmediately()
+    {
+        // Arrange
+        await using var host = await CreateHostAsync();
+        var durableClient = host.Services.GetRequiredService<FunctionsDurableClientProvider>().Client;
+        var entityId = new EntityInstanceId(nameof(Counter), "past-signal-counter");
+        var options = new SignalEntityOptions { SignalTime = DateTimeOffset.UtcNow.AddSeconds(-1) };
+
+        // Act — signal with past SignalTime should execute immediately
+        await durableClient.Entities.SignalEntityAsync(entityId, "add", 5, options, TestCancellation);
+
+        // Assert
+        var metadata = host.GetEntity<int>(entityId);
+        Assert.Equal(5, metadata.State);
+    }
+
+    [Fact]
+    public async Task SignalEntityAsync_WithSignalTime_CancelledOnDispose_DoesNotThrow()
+    {
+        // Arrange
+        var host = await CreateHostAsync();
+        var durableClient = host.Services.GetRequiredService<FunctionsDurableClientProvider>().Client;
+        var entityId = new EntityInstanceId(nameof(Counter), "cancelled-counter");
+        var options = new SignalEntityOptions { SignalTime = DateTimeOffset.UtcNow.AddSeconds(30) };
+
+        // Act — schedule a far-future signal, then dispose the host (which disposes the runner)
+        await durableClient.Entities.SignalEntityAsync(entityId, "add", 99, options, TestCancellation);
+        await host.DisposeAsync();
+
+        // Assert — no exception thrown; the delayed signal was cancelled on shutdown
+    }
+
+    [Fact]
     public async Task SignalEntityAsync_MultipleInstances_AreIsolated()
     {
         // Arrange
