@@ -1,4 +1,5 @@
 using AzureFunctions.TestFramework.Core.Grpc;
+using AzureFunctions.TestFramework.Core.Routing;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using System.Net;
 
@@ -13,13 +14,37 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
     private readonly GrpcHostService _grpcHostService;
     private readonly HttpRequestMapper _requestMapper;
     private readonly HttpResponseMapper _responseMapper;
-    private readonly IReadOnlyDictionary<string, string> _routeToFunctionMap;
-    private readonly Dictionary<string, string> _exactRouteMap;
-    private readonly List<RoutePatternEntry> _patternRoutes;
+    private readonly RouteMatcher _routeMatcher;
     private readonly string _routePrefix;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="FunctionsHttpMessageHandler"/> class.
+    /// Initializes a new instance of the <see cref="FunctionsHttpMessageHandler"/> class
+    /// using a pre-built <see cref="RouteMatcher"/>.
+    /// </summary>
+    /// <param name="grpcHostService">The in-process gRPC host service used to dispatch invocations.</param>
+    /// <param name="routeMatcher">
+    /// The route matcher populated with all registered HTTP trigger routes for this host.
+    /// Obtain via <see cref="GrpcHostService.RouteMatcher"/>.
+    /// </param>
+    /// <param name="routePrefix">
+    /// The HTTP route prefix configured in <c>host.json</c> (e.g. <c>"api"</c> or <c>"v1"</c>).
+    /// Defaults to <c>"api"</c> when not specified.
+    /// </param>
+    public FunctionsHttpMessageHandler(
+        GrpcHostService grpcHostService,
+        RouteMatcher routeMatcher,
+        string routePrefix = "api")
+    {
+        _grpcHostService = grpcHostService;
+        _requestMapper = new HttpRequestMapper();
+        _responseMapper = new HttpResponseMapper();
+        _routeMatcher = routeMatcher;
+        _routePrefix = routePrefix.Trim('/');
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="FunctionsHttpMessageHandler"/> class
+    /// using the legacy route-map dictionary. Builds a <see cref="RouteMatcher"/> internally.
     /// </summary>
     /// <param name="grpcHostService">The in-process gRPC host service used to dispatch invocations.</param>
     /// <param name="routeToFunctionMap">The loaded HTTP route map keyed by <c>{METHOD}:{route}</c>.</param>
@@ -31,37 +56,22 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
         GrpcHostService grpcHostService,
         IReadOnlyDictionary<string, string> routeToFunctionMap,
         string routePrefix = "api")
+        : this(grpcHostService, BuildMatcher(routeToFunctionMap), routePrefix)
     {
-        _grpcHostService = grpcHostService;
-        _requestMapper = new HttpRequestMapper();
-        _responseMapper = new HttpResponseMapper();
-        _routeToFunctionMap = routeToFunctionMap;
-        _routePrefix = routePrefix.Trim('/');
-        _exactRouteMap = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        _patternRoutes = new List<RoutePatternEntry>();
+    }
 
-        foreach (var (routeKey, functionId) in _routeToFunctionMap)
+    private static RouteMatcher BuildMatcher(IReadOnlyDictionary<string, string> routeToFunctionMap)
+    {
+        var matcher = new RouteMatcher();
+        foreach (var (routeKey, functionId) in routeToFunctionMap)
         {
             var colonIdx = routeKey.IndexOf(':');
-            if (colonIdx < 0)
-            {
-                continue;
-            }
-
-            var method = routeKey.Substring(0, colonIdx).ToUpperInvariant();
-            // Route keys from the function map are bare routes (e.g. "todos/{id}") with no prefix.
-            var route = NormalizePath(routeKey.Substring(colonIdx + 1), string.Empty);
-            var routeSegments = route.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            var hasParameters = routeSegments.Any(static seg => seg.Length > 2 && seg[0] == '{' && seg[^1] == '}');
-
-            if (!hasParameters)
-            {
-                _exactRouteMap[$"{method}:{route}"] = functionId;
-                continue;
-            }
-
-            _patternRoutes.Add(new RoutePatternEntry(method, functionId, routeSegments));
+            if (colonIdx < 0) continue;
+            var method = routeKey[..colonIdx];
+            var route = routeKey[(colonIdx + 1)..];
+            matcher.AddRoute(method, route, functionId);
         }
+        return matcher;
     }
 
     /// <summary>
@@ -199,62 +209,7 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
         string httpMethod, string path)
     {
         var normalizedPath = NormalizePath(path, _routePrefix);
-        var upperMethod = httpMethod.ToUpperInvariant();
-        var pathSegments = normalizedPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
-
-        if (_exactRouteMap.TryGetValue($"{upperMethod}:{normalizedPath}", out var exactFunctionId))
-        {
-            return (exactFunctionId, System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
-        }
-
-        foreach (var pattern in _patternRoutes)
-        {
-            if (!string.Equals(pattern.Method, upperMethod, StringComparison.Ordinal))
-            {
-                continue;
-            }
-
-            if (pattern.Segments.Length != pathSegments.Length)
-            {
-                continue;
-            }
-
-            var match = true;
-            for (int i = 0; i < pattern.Segments.Length; i++)
-            {
-                var seg = pattern.Segments[i];
-                if (seg.StartsWith('{') && seg.EndsWith('}'))
-                {
-                    continue;
-                }
-
-                if (!string.Equals(pathSegments[i], seg, StringComparison.OrdinalIgnoreCase))
-                {
-                    match = false;
-                    break;
-                }
-            }
-
-            if (match)
-            {
-                var routeParams = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                for (int i = 0; i < pattern.Segments.Length; i++)
-                {
-                    var seg = pattern.Segments[i];
-                    if (seg.Length > 2 && seg[0] == '{' && seg[seg.Length - 1] == '}')
-                    {
-                        var paramName = seg.Substring(1, seg.Length - 2);
-                        // Strip route constraint (e.g. "productId:guid" → "productId").
-                        var colonIndex = paramName.IndexOf(':');
-                        if (colonIndex > 0) paramName = paramName.Substring(0, colonIndex);
-                        routeParams[paramName] = pathSegments[i];
-                    }
-                }
-                return (pattern.FunctionId, routeParams);
-            }
-        }
-
-        return (null, System.Collections.ObjectModel.ReadOnlyDictionary<string, string>.Empty);
+        return _routeMatcher.Match(httpMethod, normalizedPath);
     }
 
     private static string NormalizePath(string path, string routePrefix)
@@ -277,8 +232,6 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
 
         return normalizedPath;
     }
-
-    private sealed record RoutePatternEntry(string Method, string FunctionId, string[] Segments);
 
     private HttpResponseMessage CreateHttpResponseMessage(HttpTestResponse testResponse)
     {
