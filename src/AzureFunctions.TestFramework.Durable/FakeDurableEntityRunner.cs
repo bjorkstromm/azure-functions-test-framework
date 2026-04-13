@@ -46,6 +46,7 @@ internal sealed class FakeDurableEntityRunner : IDisposable
         var delay = ComputeDelay(options);
         if (delay > TimeSpan.Zero)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             _ = Task.Run(() => DelayedSignalAsync(entityId, operationName, input, delay))
                 .ContinueWith(
                     t => _logger.LogError(t.Exception, "Unhandled exception in delayed entity signal {Operation} on {EntityId}", operationName, entityId),
