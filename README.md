@@ -56,7 +56,6 @@ This framework aims to provide:
 | [`AzureFunctions.TestFramework.CosmosDB`](https://www.nuget.org/packages/AzureFunctions.TestFramework.CosmosDB) | `InvokeCosmosDBAsync(...)` for change-feed trigger, `WithCosmosDBInputDocuments(...)` for input binding injection | [README](src/AzureFunctions.TestFramework.CosmosDB/README.md) |
 | [`AzureFunctions.TestFramework.Tables`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Tables) | `WithTableEntity(...)`, `WithTableEntities(...)` (input binding injection); `[TableOutput]` capture works generically via Core | [README](src/AzureFunctions.TestFramework.Tables/README.md) |
 | [`AzureFunctions.TestFramework.SignalR`](https://www.nuget.org/packages/AzureFunctions.TestFramework.SignalR) | `InvokeSignalRAsync(...)` for `[SignalRTrigger]`; `WithSignalRConnectionInfo(...)`, `WithSignalRNegotiation(...)`, `WithSignalREndpoints(...)` for input binding injection; `[SignalROutput]` captured via Core | [README](src/AzureFunctions.TestFramework.SignalR/README.md) |
-| [`AzureFunctions.TestFramework.SendGrid`](https://www.nuget.org/packages/AzureFunctions.TestFramework.SendGrid) | `[SendGrid]` output-only — no invoke method needed; captured via `FunctionInvocationResult.ReadOutputAs<SendGridMessage>(bindingName)` | [README](src/AzureFunctions.TestFramework.SendGrid/README.md) |
 | [`AzureFunctions.TestFramework.Durable`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Durable) | Fake-backed durable helpers, `ConfigureFakeDurableSupport(...)`, `FakeDurableTaskClient`, activity invocation, external events | [README](src/AzureFunctions.TestFramework.Durable/README.md) |
 
 ## Project setup requirements
@@ -129,7 +128,6 @@ src/
   AzureFunctions.TestFramework.CosmosDB/     # CosmosDBTrigger invocation + CosmosDBInput injection (net8.0;net10.0)
   AzureFunctions.TestFramework.Tables/       # TableInput injection via ISyntheticBindingProvider (net8.0;net10.0)
   AzureFunctions.TestFramework.SignalR/      # SignalRTrigger invocation + SignalR input binding injection (net8.0;net10.0)
-  AzureFunctions.TestFramework.SendGrid/     # SendGrid output-only — [SendGrid] captured via generic output capture (net8.0;net10.0)
   AzureFunctions.TestFramework.Durable/      # Fake durable support (net8.0;net10.0)
 
 samples/
