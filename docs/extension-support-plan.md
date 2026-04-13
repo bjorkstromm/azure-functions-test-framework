@@ -81,6 +81,19 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 
 > **`[CosmosDBInput]` scope:** `WithCosmosDBInputDocuments(databaseName, containerName, document)` injects a single document or list of documents for parameters typed as POCO types or `string`. The key is `"{databaseName}/{containerName}"` (case-insensitive). For complex SDK client types (`CosmosClient`, `Container`, etc.), override via `ConfigureServices` instead.
 
+#### `AzureFunctions.TestFramework.SignalR` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[SignalRTrigger]` (trigger) — message events | ✅ | ✅ `InvokeSignalRAsync(SignalRInvocationContext)` | ✅ |
+| `[SignalRTrigger]` (trigger) — connection/disconnection events | ✅ | ✅ `InvokeSignalRAsync(SignalRInvocationContext)` | ✅ |
+| `[SignalRConnectionInfoInput]` (input) | ✅ | ✅ `WithSignalRConnectionInfo(url, accessToken)` via `SignalRConnectionInfoSyntheticBindingProvider` | ✅ |
+| `[SignalREndpointsInput]` (input) | ✅ | ✅ `WithSignalREndpoints(SignalREndpoint[])` via `SignalREndpointsSyntheticBindingProvider` | ✅ |
+| `[SignalRNegotiationInput]` (input) | ✅ | ✅ `WithSignalRNegotiation(SignalRNegotiationContext)` via `SignalRNegotiationSyntheticBindingProvider` | ✅ |
+| `[SignalROutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+> **`[SignalROutput]` note:** `SignalRMessageAction` and `SignalRGroupAction` have multiple parameterized constructors (no `[JsonConstructor]`), so `ReadReturnValueAs<SignalRMessageAction>()` is not available directly. Read the return value as `JsonElement` and inspect properties via `GetProperty(...)` instead.
+
 #### `AzureFunctions.TestFramework.Tables` ✅ Fully Covered
 
 | Binding | Worker Extension | Test Framework | Status |
@@ -100,7 +113,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 | Extension | NuGet Package | Trigger | Input | Output |
 |-----------|---------------|---------|-------|--------|
-| **SignalR Service** | `Microsoft.Azure.Functions.Worker.Extensions.SignalRService` | `[SignalRTrigger]` | `[SignalRConnectionInfo]`, `[SignalREndpoints]`, `[SignalRNegotiation]` | `[SignalROutput]` |
 | **Kafka** | `Microsoft.Azure.Functions.Worker.Extensions.Kafka` | `[KafkaTrigger]` | — | `[KafkaOutput]` |
 | **RabbitMQ** | `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ` | `[RabbitMQTrigger]` | — | `[RabbitMQOutput]` |
 | **SendGrid** | `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` | — | — | `[SendGrid]` |
@@ -164,24 +176,18 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 4: SignalR Service Trigger, Input & Output bindings
+### ~~Issue 4: SignalR Service Trigger, Input & Output bindings~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.SignalR`
+**Package:** `AzureFunctions.TestFramework.SignalR` — shipped.
 
-**Bindings:**
-- **Trigger:** `[SignalRTrigger]` — receives SignalR messages, connection, and disconnection events
-- **Input:** `[SignalRConnectionInfo]` — gets client connection info for negotiation
-- **Input:** `[SignalREndpoints]` — gets SignalR service endpoints
-- **Input:** `[SignalRNegotiation]` — performs full SignalR negotiation
-- **Output:** `[SignalROutput]` — sends messages/actions via SignalR
-
-**Scope:**
-- New package: `AzureFunctions.TestFramework.SignalR`
-- Extension method: `InvokeSignalRAsync(this IFunctionsTestHost host, string functionName, InvocationContext invocationContext, ...)` — fires a SignalR trigger invocation
-- Input bindings require `ISyntheticBindingProvider` implementations to inject fake connection info / negotiation results
-- Output bindings captured via `FunctionInvocationResult.OutputData`
-- Most complex extension — 1 trigger + 3 input bindings + 1 output binding
-- Test across 4-flavour matrix
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeSignalRAsync(functionName, SignalRInvocationContext)` — fires a `[SignalRTrigger]` invocation for messages, connections, and disconnection events
+- `WithSignalRConnectionInfo(url, accessToken)` — injects fake URL + token for `[SignalRConnectionInfoInput]`
+- `WithSignalRConnectionInfo(SignalRConnectionInfo)` — convenience overload taking the SDK type directly
+- `WithSignalREndpoints(SignalREndpoint[])` — injects fake endpoints for `[SignalREndpointsInput]`
+- `WithSignalRNegotiation(SignalRNegotiationContext)` — injects a fake negotiation context for `[SignalRNegotiationInput]`
+- `[SignalROutput]` captured generically; read as `JsonElement` due to `SignalRMessageAction` having multiple parameterized constructors
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.SignalRService`
 
