@@ -100,12 +100,17 @@ internal sealed class FakeDurableEntityRunner : IDisposable
         }
     }
 
+    // Task.Delay uses int milliseconds internally; clamp to prevent ArgumentOutOfRangeException
+    // for far-future SignalTime values.
+    private static readonly TimeSpan MaxDelay = TimeSpan.FromMilliseconds(int.MaxValue);
+
     private static TimeSpan ComputeDelay(SignalEntityOptions? options)
     {
         if (options?.SignalTime is { } signalTime)
         {
             var delay = signalTime - DateTimeOffset.UtcNow;
-            return delay > TimeSpan.Zero ? delay : TimeSpan.Zero;
+            if (delay <= TimeSpan.Zero) return TimeSpan.Zero;
+            return delay < MaxDelay ? delay : MaxDelay;
         }
 
         return TimeSpan.Zero;
