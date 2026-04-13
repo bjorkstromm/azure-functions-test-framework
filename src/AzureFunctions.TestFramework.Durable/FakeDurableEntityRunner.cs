@@ -46,7 +46,7 @@ internal sealed class FakeDurableEntityRunner : IDisposable
         var delay = ComputeDelay(options);
         if (delay > TimeSpan.Zero)
         {
-            _ = Task.Run(() => DelayedSignalAsync(entityId, operationName, input, delay, cancellationToken));
+            _ = Task.Run(() => DelayedSignalAsync(entityId, operationName, input, delay));
             return Task.CompletedTask;
         }
 
@@ -65,19 +65,20 @@ internal sealed class FakeDurableEntityRunner : IDisposable
         EntityInstanceId entityId,
         string operationName,
         object? input,
-        TimeSpan delay,
-        CancellationToken cancellationToken)
+        TimeSpan delay)
     {
-        using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _shutdownCts.Token);
+        // Only _shutdownCts is used: the caller's token cancelled the enqueue act, which already
+        // completed (we returned Task.CompletedTask). The delayed execution should only be
+        // cancelled when the host shuts down.
         try
         {
             _logger.LogInformation("Scheduling entity signal {Operation} on {EntityId} with delay {Delay}", operationName, entityId, delay);
-            await Task.Delay(delay, linkedCts.Token).ConfigureAwait(false);
-            await ExecuteSignalAsync(entityId, operationName, input, linkedCts.Token).ConfigureAwait(false);
+            await Task.Delay(delay, _shutdownCts.Token).ConfigureAwait(false);
+            await ExecuteSignalAsync(entityId, operationName, input, _shutdownCts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
-            // Silently swallow cancellation — the host is shutting down or the caller cancelled.
+            // Silently swallow — the host is shutting down.
         }
     }
 
