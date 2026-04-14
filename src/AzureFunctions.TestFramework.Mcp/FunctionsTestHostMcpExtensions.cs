@@ -183,4 +183,3 @@ public static class FunctionsTestHostMcpExtensions
         };
     }
 }
-
