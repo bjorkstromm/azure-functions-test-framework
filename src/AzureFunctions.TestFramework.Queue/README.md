@@ -6,46 +6,56 @@ QueueTrigger invocation support for the Azure Functions Test Framework. Provides
 
 ## Usage
 
+### Functions with `string` parameter
+
+Use the `string` overload when the function parameter is `string`, `byte[]`, or `BinaryData`:
+
+```csharp
+using AzureFunctions.TestFramework.Core;
+using AzureFunctions.TestFramework.Queue;
+
+[Fact]
+public async Task ProcessQueueMessage_WithTextMessage_Succeeds()
+{
+    var result = await _testHost.InvokeQueueAsync("ProcessQueueMessage", "Hello from queue!");
+    Assert.True(result.Success);
+}
+```
+
+### Functions with `QueueMessage` parameter
+
+Use the `QueueMessage` overload when the function parameter is typed as `QueueMessage`:
+
 ```csharp
 using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Queue;
 
-public class QueueFunctionTests : IAsyncLifetime
+[Fact]
+public async Task ProcessQueueMessage_WithQueueMessage_Succeeds()
 {
-    private IFunctionsTestHost _testHost;
+    var message = QueuesModelFactory.QueueMessage(
+        messageId: Guid.NewGuid().ToString(),
+        popReceipt: "pop-receipt",
+        messageText: "Hello from queue!",
+        dequeueCount: 1);
 
-    public async Task InitializeAsync()
-    {
-        _testHost = await new FunctionsTestHostBuilder()
-            .WithFunctionsAssembly(typeof(MyQueueFunction).Assembly)
-            .BuildAndStartAsync();
-    }
-
-    [Fact]
-    public async Task ProcessQueueMessage_WithTextMessage_Succeeds()
-    {
-        var message = QueuesModelFactory.QueueMessage(
-            messageId: Guid.NewGuid().ToString(),
-            popReceipt: "pop-receipt",
-            messageText: "Hello from queue!",
-            dequeueCount: 1);
-
-        var result = await _testHost.InvokeQueueAsync("ProcessQueueMessage", message);
-        Assert.True(result.Success);
-    }
-
-    public async Task DisposeAsync()
-    {
-        await _testHost.StopAsync();
-        _testHost.Dispose();
-    }
+    var result = await _testHost.InvokeQueueAsync("ProcessQueueMessage", message);
+    Assert.True(result.Success);
 }
 ```
 
 ### API
 
 ```csharp
+// For functions with string/byte[]/BinaryData parameters
+Task<FunctionInvocationResult> InvokeQueueAsync(
+    this IFunctionsTestHost host,
+    string functionName,
+    string message,
+    CancellationToken cancellationToken = default)
+
+// For functions with QueueMessage parameters
 Task<FunctionInvocationResult> InvokeQueueAsync(
     this IFunctionsTestHost host,
     string functionName,
@@ -54,17 +64,15 @@ Task<FunctionInvocationResult> InvokeQueueAsync(
 ```
 
 - **`functionName`** — the name of the queue function (case-insensitive).
-- **`message`** — the `QueueMessage` to pass to the function. Use `QueuesModelFactory.QueueMessage(...)` from `Azure.Storage.Queues.Models` to create test messages.
+- **`message`** (`string`) — the message text to pass to the function.
+- **`message`** (`QueueMessage`) — the `QueueMessage` to pass to the function. Use `QueuesModelFactory.QueueMessage(...)` from `Azure.Storage.Queues.Models` to create test messages.
 
 ### Output binding capture
 
 Use `FunctionInvocationResult` to inspect output bindings produced by the function:
 
 ```csharp
-var message = QueuesModelFactory.QueueMessage(
-    Guid.NewGuid().ToString(), "pop-receipt", "order-123", 1);
-
-var result = await _testHost.InvokeQueueAsync("ProcessOrder", message);
+var result = await _testHost.InvokeQueueAsync("ProcessOrder", "order-123");
 Assert.True(result.Success);
 
 // Read a named output binding (e.g. [QueueOutput("results")])

@@ -1,4 +1,3 @@
-using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.CosmosDB;
 using AzureFunctions.TestFramework.Queue;
 using Xunit;
@@ -109,10 +108,7 @@ public abstract class CosmosDBTestsBase : TestHostTestBase
     [Fact]
     public async Task InvokeQueueAsync_WithCosmosDBInput_ReadsRegisteredDocument()
     {
-        var queueMessage = QueuesModelFactory.QueueMessage(
-            Guid.NewGuid().ToString(), "pop-receipt", "unused", 1);
-
-        var result = await TestHost.InvokeQueueAsync("ReadCosmosInput", queueMessage, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("ReadCosmosInput", "unused", TestCancellation);
 
         Assert.True(result.Success, $"CosmosDB input binding invocation failed: {result.Error}");
         var processed = _processedItems!.TakeAll();

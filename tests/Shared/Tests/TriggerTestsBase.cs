@@ -26,11 +26,24 @@ public abstract class TriggerTestsBase : TestHostTestBase
     public async Task InvokeQueueAsync_WithTextMessage_Succeeds()
     {
         var messageText = "Hello from queue!";
-        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
 
-        var result = await TestHost.InvokeQueueAsync("ProcessQueueMessage", message, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("ProcessQueueMessage", messageText, TestCancellation);
 
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
+        var processed = _processedItems!.TakeAll();
+        Assert.Single(processed);
+        Assert.Equal(messageText, processed[0]);
+    }
+
+    [Fact]
+    public async Task InvokeQueueAsync_WithQueueMessageParam_Succeeds()
+    {
+        var messageText = "Hello typed queue!";
+        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
+
+        var result = await TestHost.InvokeQueueAsync("ProcessQueueMessageTyped", message, TestCancellation);
+
+        Assert.True(result.Success, $"Typed QueueMessage invocation failed: {result.Error}");
         var processed = _processedItems!.TakeAll();
         Assert.Single(processed);
         Assert.Equal(messageText, processed[0]);
@@ -89,9 +102,8 @@ public abstract class TriggerTestsBase : TestHostTestBase
     public async Task InvokeQueueAsync_CapturesPlainReturnValue()
     {
         var messageText = "Hello return value!";
-        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
 
-        var result = await TestHost.InvokeQueueAsync("ReturnQueueMessageValue", message, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("ReturnQueueMessageValue", messageText, TestCancellation);
 
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         Assert.Equal($"return:{messageText}", result.ReadReturnValueAs<string>());
@@ -101,9 +113,8 @@ public abstract class TriggerTestsBase : TestHostTestBase
     public async Task InvokeQueueAsync_CapturesOutputBindingData()
     {
         var messageText = "Hello output binding!";
-        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
 
-        var result = await TestHost.InvokeQueueAsync("CreateQueueOutputMessages", message, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("CreateQueueOutputMessages", messageText, TestCancellation);
 
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         var outputBinding = Assert.Single(result.OutputData);
@@ -116,9 +127,8 @@ public abstract class TriggerTestsBase : TestHostTestBase
     public async Task InvokeQueueAsync_CapturesBlobOutputBindingData()
     {
         var messageText = "Hello blob output!";
-        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
 
-        var result = await TestHost.InvokeQueueAsync("CreateBlobOutputDocument", message, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("CreateBlobOutputDocument", messageText, TestCancellation);
 
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         var content = result.ReadOutputAs<string>("Content");
@@ -129,9 +139,8 @@ public abstract class TriggerTestsBase : TestHostTestBase
     public async Task InvokeQueueAsync_CapturesTableOutputBindingData()
     {
         var messageText = "Hello table output!";
-        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
 
-        var result = await TestHost.InvokeQueueAsync("CreateTableOutputEntity", message, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("CreateTableOutputEntity", messageText, TestCancellation);
 
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         var entity = result.ReadOutputAs<CapturedTableEntity>("Entity");

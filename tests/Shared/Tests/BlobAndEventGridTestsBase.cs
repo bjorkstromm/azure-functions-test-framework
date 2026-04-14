@@ -1,5 +1,4 @@
 using Azure.Messaging.EventGrid;
-using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Blob;
 using AzureFunctions.TestFramework.EventGrid;
 using AzureFunctions.TestFramework.Queue;
@@ -49,10 +48,7 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
         // The concrete test class registers BlobInputTestPath → BlobInputTestContent
         // in the host builder via WithBlobInputContent(). The ReadBlobInput function reads
         // that content via [BlobInput("test-input/data.txt")] and stores it.
-        var queueMessage = QueuesModelFactory.QueueMessage(
-            Guid.NewGuid().ToString(), "pop-receipt", "unused", 1);
-
-        var result = await TestHost.InvokeQueueAsync("ReadBlobInput", queueMessage, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("ReadBlobInput", "unused", TestCancellation);
 
         Assert.True(result.Success, $"BlobInput invocation failed: {result.Error}");
         var processed = _processedItems!.TakeAll();
