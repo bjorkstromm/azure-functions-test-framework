@@ -18,6 +18,12 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
     /// <summary>Expected content injected for the <see cref="BlobInputTestPath"/> binding.</summary>
     protected const string BlobInputTestContent = "hello from blob input!";
 
+    /// <summary>
+    /// The <c>[BlobInput]</c> blob path for BlobClient-typed input bindings.
+    /// Must match the <c>blobPath</c> argument of <c>[BlobInput]</c> on <c>ReadBlobInputClient</c>.
+    /// </summary>
+    protected const string BlobInputClientTestPath = "test-input-client/data.txt";
+
     private InMemoryProcessedItemsService? _processedItems;
 
     protected BlobAndEventGridTestsBase(ITestOutputHelper output) : base(output) { }
@@ -43,6 +49,21 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
     }
 
     [Fact]
+    public async Task InvokeBlobAsync_WithBlobClientParam_Succeeds()
+    {
+        var result = await TestHost.InvokeBlobAsync(
+            "ProcessBlobClient",
+            containerName: "test-container",
+            blobName: "myblob.txt",
+            cancellationToken: TestCancellation);
+
+        Assert.True(result.Success, $"BlobClient trigger invocation failed: {result.Error}");
+        var processed = _processedItems!.TakeAll();
+        Assert.Single(processed);
+        Assert.Equal("test-container/myblob.txt", processed[0]);
+    }
+
+    [Fact]
     public async Task InvokeWithBlobInput_ReadsRegisteredContent()
     {
         // The concrete test class registers BlobInputTestPath → BlobInputTestContent
@@ -54,6 +75,17 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
         var processed = _processedItems!.TakeAll();
         Assert.Single(processed);
         Assert.Equal(BlobInputTestContent, processed[0]);
+    }
+
+    [Fact]
+    public async Task InvokeBlobInput_WithBlobClientParam_Succeeds()
+    {
+        var result = await TestHost.InvokeQueueAsync("ReadBlobInputClient", "unused", TestCancellation);
+
+        Assert.True(result.Success, $"BlobClient input invocation failed: {result.Error}");
+        var processed = _processedItems!.TakeAll();
+        Assert.Single(processed);
+        Assert.Equal("test-input-client/data.txt", processed[0]);
     }
 
     [Fact]

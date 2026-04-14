@@ -1,3 +1,4 @@
+using Azure.Storage.Blobs;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
@@ -21,5 +22,15 @@ public class BlobInputFunction
     {
         _logger.LogInformation("Read blob input content: {Content}", blobContent);
         _processedItems.Add(blobContent);
+    }
+
+    [Function("ReadBlobInputClient")]
+    public void RunBlobClient(
+        [QueueTrigger("read-blob-client-queue")] string unused,
+        [BlobInput("test-input-client/data.txt")] BlobClient client)
+    {
+        _logger.LogInformation("Read blob input client: container={Container}, blob={Blob}",
+            client.BlobContainerName, client.Name);
+        _processedItems.Add($"{client.BlobContainerName}/{client.Name}");
     }
 }
