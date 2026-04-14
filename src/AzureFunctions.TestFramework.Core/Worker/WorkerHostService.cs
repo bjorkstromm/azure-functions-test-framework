@@ -6,6 +6,8 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Builder;
+using Microsoft.Azure.Functions.Worker.Core;
+using Microsoft.Azure.Functions.Worker.Middleware;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -273,8 +275,16 @@ public class WorkerHostService : IAsyncDisposable
             // No factory provided: configure the Functions worker defaults here.
             // User service configurators are applied inside ConfigureFunctionsWorkerDefaults
             // so they are available to the worker's DI container.
+            var functionsAssembly = _functionsAssembly;
+            var extensionLogger = _logger;
             hostBuilder.ConfigureFunctionsWorkerDefaults((context, builder) =>
             {
+                // The SDK's RunExtensionStartupCode reads Assembly.GetEntryAssembly() which
+                // in a test runner returns the wrong assembly.  Manually invoke the extension
+                // startup code from the functions assembly so extension middleware (e.g.
+                // FunctionsMcpContextMiddleware) is registered.
+                InvokeExtensionStartupCode(functionsAssembly, builder, extensionLogger);
+
                 foreach (var configurator in _serviceConfigurators)
                 {
                     configurator(builder.Services);
@@ -297,6 +307,37 @@ public class WorkerHostService : IAsyncDisposable
                 });
             }
 
+            // The SDK's RunExtensionStartupCode reads Assembly.GetEntryAssembly() which
+            // returns the test runner, not the functions assembly.  The SDK stores the
+            // IFunctionsWorkerApplicationBuilder as a singleton in the service collection,
+            // so we can retrieve it and invoke extension startup code against it.
+            //
+            // IMPORTANT: By this point ConfigureFunctionsWorkerDefaults has already added
+            // UseDefaultWorkerMiddleware (OutputBindings + FunctionExecution) to the pipeline
+            // builder.  Extension middleware (e.g. MCP) must run BEFORE FunctionExecution so
+            // it can populate FunctionContext.Items before the function body executes.
+            // We capture the middleware added by the extension startup and INSERT them at
+            // position 0 in the pipeline builder's internal collection instead of appending.
+            var functionsAssembly = _functionsAssembly;
+            var extensionLogger = _logger;
+            hostBuilder.ConfigureServices(services =>
+            {
+                var existingBuilder = services
+                    .Where(d => d.ServiceType == typeof(IFunctionsWorkerApplicationBuilder))
+                    .Select(d => d.ImplementationInstance as IFunctionsWorkerApplicationBuilder)
+                    .FirstOrDefault();
+
+                if (existingBuilder != null)
+                {
+                    InvokeExtensionStartupCodeAtFront(functionsAssembly, existingBuilder, extensionLogger);
+                }
+                else
+                {
+                    extensionLogger.LogWarning(
+                        "Could not find IFunctionsWorkerApplicationBuilder in service collection; "
+                        + "extension startup code will not be invoked");
+                }
+            });
         }
 
         // IMPORTANT: Add our configuration AFTER ConfigureFunctionsWorkerDefaults
@@ -531,6 +572,12 @@ public class WorkerHostService : IAsyncDisposable
             }
         }
 
+        // The SDK's RunExtensionStartupCode reads Assembly.GetEntryAssembly() which
+        // returns the test runner, not the functions assembly.  Manually invoke the
+        // extension startup code so extension middleware (e.g. FunctionsMcpContextMiddleware)
+        // is registered.
+        InvokeExtensionStartupCode(_functionsAssembly, appBuilder, _logger);
+
         // Configure logging to suppress noisy framework messages during tests,
         // but allow AzureFunctions.TestFramework.Core namespace at Information level
         // so startup filters and gRPC bridge activity is visible.
@@ -760,5 +807,174 @@ public class WorkerHostService : IAsyncDisposable
         /// <inheritdoc />
         public IHost Build() =>
             throw new NotSupportedException("Use the FunctionsApplicationBuilder to build the host.");
+    }
+
+    /// <summary>
+    /// Invokes the source-generated <c>WorkerExtensionStartupCodeExecutor</c> from the given
+    /// assembly.  The SDK's <c>RunExtensionStartupCode</c> reads
+    /// <see cref="Assembly.GetEntryAssembly"/> which returns the test runner in in-process
+    /// hosting, so extension middleware (e.g. <c>FunctionsMcpContextMiddleware</c>) is never
+    /// registered.  This method reads the
+    /// <see cref="WorkerExtensionStartupCodeExecutorInfoAttribute"/> from the functions
+    /// assembly instead and invokes the executor's <see cref="WorkerExtensionStartup.Configure"/>
+    /// method.
+    /// </summary>
+    private static void InvokeExtensionStartupCode(
+        Assembly functionsAssembly,
+        IFunctionsWorkerApplicationBuilder builder,
+        ILogger logger)
+    {
+        var attr = functionsAssembly
+            .GetCustomAttribute<WorkerExtensionStartupCodeExecutorInfoAttribute>();
+        if (attr is null)
+        {
+            logger.LogDebug("No WorkerExtensionStartupCodeExecutorInfoAttribute found on {Assembly}",
+                functionsAssembly.GetName().Name);
+            return;
+        }
+
+        try
+        {
+            if (Activator.CreateInstance(attr.StartupCodeExecutorType) is WorkerExtensionStartup executor)
+            {
+                executor.Configure(builder);
+                logger.LogInformation(
+                    "Invoked extension startup code: {Type}", attr.StartupCodeExecutorType.FullName);
+            }
+            else
+            {
+                logger.LogWarning(
+                    "Extension startup type {Type} is not a WorkerExtensionStartup",
+                    attr.StartupCodeExecutorType.FullName);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to invoke extension startup code: {Type}", attr.StartupCodeExecutorType.FullName);
+        }
+    }
+
+    /// <summary>
+    /// Like <see cref="InvokeExtensionStartupCode"/> but inserts any middleware registered by
+    /// the extension startup code at the FRONT of the pipeline builder's middleware collection.
+    /// This is required in the IHostBuilder + factory path where
+    /// <c>ConfigureFunctionsWorkerDefaults</c> has already appended
+    /// <c>OutputBindingsMiddleware</c> and <c>FunctionExecutionMiddleware</c>.
+    /// Extension middleware (e.g. MCP) must run before <c>FunctionExecutionMiddleware</c>.
+    /// </summary>
+    private static void InvokeExtensionStartupCodeAtFront(
+        Assembly functionsAssembly,
+        IFunctionsWorkerApplicationBuilder builder,
+        ILogger logger)
+    {
+        var attr = functionsAssembly
+            .GetCustomAttribute<WorkerExtensionStartupCodeExecutorInfoAttribute>();
+        if (attr is null)
+        {
+            logger.LogDebug("No WorkerExtensionStartupCodeExecutorInfoAttribute found on {Assembly}",
+                functionsAssembly.GetName().Name);
+            return;
+        }
+
+        try
+        {
+            if (Activator.CreateInstance(attr.StartupCodeExecutorType) is not WorkerExtensionStartup executor)
+            {
+                logger.LogWarning(
+                    "Extension startup type {Type} is not a WorkerExtensionStartup",
+                    attr.StartupCodeExecutorType.FullName);
+                return;
+            }
+
+            // Snapshot the current pipeline builder's middleware count.  The extension
+            // startup will call UseMiddleware<T>() → builder.Use() which appends entries.
+            // After invocation, we move any NEW entries to the front of the list so they
+            // execute before the already-registered default middleware.
+            var middlewareList = GetPipelineMiddlewareList(builder, logger);
+            var countBefore = middlewareList?.Count ?? -1;
+
+            executor.Configure(builder);
+
+            if (middlewareList != null && middlewareList.Count > countBefore)
+            {
+                var newCount = middlewareList.Count - countBefore;
+                // Extract the newly added entries from the end…
+                var newEntries = new List<object>(newCount);
+                for (var i = countBefore; i < middlewareList.Count; i++)
+                {
+                    newEntries.Add(middlewareList[i]!);
+                }
+                // …remove them from the end…
+                for (var i = middlewareList.Count - 1; i >= countBefore; i--)
+                {
+                    middlewareList.RemoveAt(i);
+                }
+                // …and insert them at the front.
+                for (var i = 0; i < newEntries.Count; i++)
+                {
+                    middlewareList.Insert(i, newEntries[i]);
+                }
+
+                logger.LogInformation(
+                    "Invoked extension startup code (inserted {NewCount} middleware at front): {Type}",
+                    newCount, attr.StartupCodeExecutorType.FullName);
+            }
+            else
+            {
+                logger.LogInformation(
+                    "Invoked extension startup code: {Type}", attr.StartupCodeExecutorType.FullName);
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex,
+                "Failed to invoke extension startup code: {Type}", attr.StartupCodeExecutorType.FullName);
+        }
+    }
+
+    /// <summary>
+    /// Uses reflection to access the pipeline builder's internal middleware collection
+    /// (a <c>List&lt;Func&lt;FunctionExecutionDelegate, FunctionExecutionDelegate&gt;&gt;</c>)
+    /// stored in the <c>FunctionsWorkerApplicationBuilder._pipelineBuilder._middlewareCollection</c>
+    /// field.  Returns <c>null</c> if the internal structure has changed.
+    /// </summary>
+    private static System.Collections.IList? GetPipelineMiddlewareList(
+        IFunctionsWorkerApplicationBuilder builder,
+        ILogger logger)
+    {
+        try
+        {
+            // FunctionsWorkerApplicationBuilder (or Configuration.FunctionsWorkerApplicationBuilder)
+            // has a field _pipelineBuilder of type IInvocationPipelineBuilder<FunctionContext>.
+            var builderType = builder.GetType();
+            var pipelineField = builderType.GetField("_pipelineBuilder",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            if (pipelineField is null)
+            {
+                logger.LogDebug("Could not find _pipelineBuilder field on {Type}", builderType.FullName);
+                return null;
+            }
+
+            var pipelineBuilder = pipelineField.GetValue(builder);
+            if (pipelineBuilder is null) return null;
+
+            // DefaultInvocationPipelineBuilder<FunctionContext> has _middlewareCollection
+            var middlewareField = pipelineBuilder.GetType().GetField("_middlewareCollection",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+            if (middlewareField is null)
+            {
+                logger.LogDebug("Could not find _middlewareCollection field on {Type}",
+                    pipelineBuilder.GetType().FullName);
+                return null;
+            }
+
+            return middlewareField.GetValue(pipelineBuilder) as System.Collections.IList;
+        }
+        catch (Exception ex)
+        {
+            logger.LogDebug(ex, "Failed to access pipeline middleware list via reflection");
+            return null;
+        }
     }
 }
