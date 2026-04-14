@@ -31,5 +31,6 @@
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.CosmosDB\AzureFunctions.TestFramework.CosmosDB.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Durable\AzureFunctions.TestFramework.Durable.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.SignalR\AzureFunctions.TestFramework.SignalR.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Mcp\AzureFunctions.TestFramework.Mcp.csproj" />
   </ItemGroup>
 </Project>

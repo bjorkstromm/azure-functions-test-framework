@@ -31,6 +31,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.CosmosDB" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.SignalRService" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Mcp" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
   </ItemGroup>
   <ItemGroup>
