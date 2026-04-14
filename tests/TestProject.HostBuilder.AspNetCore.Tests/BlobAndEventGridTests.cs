@@ -1,3 +1,4 @@
+using Azure.Storage.Blobs;
 using AzureFunctions.TestFramework.Blob;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -13,6 +14,8 @@ public class BlobAndEventGridTests : BlobAndEventGridTestsBase
             .WithLoggerFactory(CreateLoggerFactory())
             .WithHostBuilderFactory(TestHostFactory.CreateWorkerHostBuilder)
             .WithBlobInputContent(BlobInputTestPath, BinaryData.FromString(BlobInputTestContent))
+            .WithBlobServiceClient(new BlobServiceClient("UseDevelopmentStorage=true"))
+            .WithBlobInputClient(BlobInputClientTestPath)
             .ConfigureServices(services => services.AddSingleton<IProcessedItemsService>(processedItems))
             .BuildAndStartAsync(TestCancellation);
 }

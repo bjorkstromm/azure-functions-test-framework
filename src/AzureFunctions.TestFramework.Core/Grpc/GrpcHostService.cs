@@ -846,7 +846,11 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                                     _syntheticInputByFunctionId[functionMetadata.FunctionId] = bindings;
                                 }
 
-                                bindings.Add(provider.CreateSyntheticParameter(providerParamName, root));
+                                var syntheticParam = provider.CreateSyntheticParameter(providerParamName, root);
+                                if (syntheticParam is null)
+                                    continue;
+
+                                bindings.Add(syntheticParam);
                                 _logger.LogDebug(
                                     "Added synthetic '{BindingType}' binding '{BindingName}' for function '{Name}'",
                                     provider.BindingType, providerParamName, functionMetadata.Name);
