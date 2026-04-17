@@ -109,6 +109,16 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 
 Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Extensions.DurableTask`), but fully supported with fake client, orchestration context, entity support, and `ISyntheticBindingProvider`.
 
+#### `AzureFunctions.TestFramework.Mcp` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[McpToolTrigger]` (trigger) | ✅ | ✅ `InvokeMcpToolAsync(functionName, toolArguments?, toolName?, sessionId?)` | ✅ |
+| `[McpResourceTrigger]` (trigger) | ✅ | ✅ `InvokeMcpResourceAsync(functionName, resourceUri, sessionId?)` | ✅ |
+| `[McpPromptTrigger]` (trigger) | ✅ | ✅ `InvokeMcpPromptAsync(functionName, arguments?, promptName?, sessionId?)` | ✅ |
+
+> **Note:** MCP triggers require `FunctionsMcpContextMiddleware` to populate `FunctionContext.Items` before the function body executes. The framework automatically invokes the extension startup code from the functions assembly (working around the SDK's `Assembly.GetEntryAssembly()` limitation in test runners). See `docs/Reflection.md` §§ 10–11 for details.
+
 ### Not Yet Supported
 
 | Extension | NuGet Package | Trigger | Input | Output |
@@ -120,7 +130,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 | **Azure SQL** | `Microsoft.Azure.Functions.Worker.Extensions.Sql` | `[SqlTrigger]` | `[SqlInput]` | `[SqlOutput]` |
 | **Redis** | `Microsoft.Azure.Functions.Worker.Extensions.Redis` | `[RedisPubSubTrigger]`, `[RedisListTrigger]`, `[RedisStreamTrigger]` | `[RedisInput]` | `[RedisOutput]` |
 | **Azure Data Explorer** | `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)* | — | `[KustoInput]` | `[KustoOutput]` |
-| **MCP** | `Microsoft.Azure.Functions.Worker.Extensions.Mcp` | `[McpToolTrigger]`, `[McpResourceTrigger]` | — | — |
 | **Dapr** | `Microsoft.Azure.Functions.Worker.Extensions.Dapr` | `[DaprBindingTrigger]`, `[DaprServiceInvocationTrigger]`, `[DaprTopicTrigger]` | `[DaprStateInput]`, `[DaprSecretInput]` | `[DaprStateOutput]`, `[DaprInvokeOutput]`, `[DaprPublishOutput]`, `[DaprBindingOutput]` |
 
 ### Not Applicable — No Isolated Worker Support
@@ -344,22 +353,16 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 12: MCP (Model Context Protocol) Trigger
+### ~~Issue 12: MCP (Model Context Protocol) Trigger~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.Mcp`
+**Package:** `AzureFunctions.TestFramework.Mcp` — shipped.
 
-**Bindings:**
-- **Trigger:** `[McpToolTrigger]` — exposes a function as an MCP tool callable by language model clients
-- **Trigger:** `[McpResourceTrigger]` — exposes a function as an MCP resource (interactive UI support)
-
-> **Note:** No input or output bindings exist for MCP. Both binding types are trigger-only.
-
-**Scope:**
-- New package: `AzureFunctions.TestFramework.Mcp`
-- Extension methods:
-  - `InvokeMcpToolAsync(functionName, toolArguments)` — invokes an MCP tool trigger with a dictionary of named arguments
-  - `InvokeMcpResourceAsync(functionName, resourceUri)` — invokes an MCP resource trigger
-- Test across 4-flavour matrix
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeMcpToolAsync(functionName, toolArguments?, toolName?, sessionId?)` — invokes an MCP tool trigger with optional named arguments, custom tool name, and session ID
+- `InvokeMcpResourceAsync(functionName, resourceUri, sessionId?)` — invokes an MCP resource trigger with a resource URI
+- `InvokeMcpPromptAsync(functionName, arguments?, promptName?, sessionId?)` — invokes an MCP prompt trigger with optional arguments and custom prompt name
+- MCP triggers require extension middleware (`FunctionsMcpContextMiddleware`) to populate `FunctionContext.Items`; the framework invokes the `WorkerExtensionStartupCodeExecutor` from the functions assembly automatically (see `docs/Reflection.md` §§ 10–11)
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Mcp`
 
@@ -429,7 +432,7 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 4. **Azure SQL** — High demand for data-driven functions; trigger + input + output
 5. **Redis** — Growing adoption for caching and event-driven patterns; three trigger variants
 6. **Kafka** — Growing adoption
-7. **MCP** — New AI/agent integration pattern; trigger-only, relatively simple
+7. ~~**MCP** — New AI/agent integration pattern; trigger-only, relatively simple~~ ✅ Done
 8. **RabbitMQ** — Niche but important
 9. **SendGrid** — Output-only, low complexity
 10. **Dapr** — Kubernetes/Container Apps only; rich binding set

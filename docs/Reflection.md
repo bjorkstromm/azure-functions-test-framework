@@ -17,6 +17,8 @@ This document catalogs every place where .NET reflection is used in the test fra
 | [FunctionsTestHostBuilderDurableExtensions](#7-durable-internals) | `Durable/FunctionsTestHostBuilderDurableExtensions.cs` | Internal `DurableTaskClientConverter`, `FunctionsDurableClientProvider` + nested `ClientKey` / `ClientHolder` types | Inject fake `DurableTaskClient` without the real gRPC binding payload |
 | [FakeDurableFunctionCatalog](#8-fakedurablefunctioncatalog) | `Durable/FakeDurableFunctionCatalog.cs` | Public attributes (`[Function]`, `[ActivityTrigger]`, etc.) via `GetCustomAttribute` | Discover durable activities/orchestrators/entities without a `functions.metadata` file |
 | [FakeDurableOrchestrationRunner](#9-fakedurableorchestrationrunner) | `Durable/FakeDurableOrchestrationRunner.cs` | `MethodInfo.Invoke`, `Task<T>.Result`, `ValueTask<T>.AsTask()` | Execute durable function methods (activities, orchestrators) directly |
+| [WorkerExtensionStartup invocation](#10-workerextensionstartup-invocation) | `Core/Worker/WorkerHostService.cs` | Public `WorkerExtensionStartupCodeExecutorInfoAttribute` + `Activator.CreateInstance` | Invoke extension startup from functions assembly (SDK reads wrong entry assembly in test runners) |
+| [Pipeline middleware reordering](#11-pipeline-middleware-reordering) | `Core/Worker/WorkerHostService.cs` | Internal `FunctionsWorkerApplicationBuilder._pipelineBuilder._middlewareCollection` fields | Insert extension middleware before default middleware in IHostBuilder + factory path |
 
 ---
 
@@ -325,6 +327,74 @@ However, this would be a breaking change in the framework's test authoring exper
 
 ---
 
+### 10. WorkerExtensionStartup Invocation
+
+**File:** `src/AzureFunctions.TestFramework.Core/Worker/WorkerHostService.cs`
+
+**SDK types used:**
+- `WorkerExtensionStartupCodeExecutorInfoAttribute` (public, `Microsoft.Azure.Functions.Worker.Core`) — `Assembly.GetCustomAttribute<WorkerExtensionStartupCodeExecutorInfoAttribute>()`
+- `WorkerExtensionStartupCodeExecutorInfoAttribute.StartupCodeExecutorType` property (public)
+- `WorkerExtensionStartup` (public abstract class, `Microsoft.Azure.Functions.Worker.Core`) — base class of the source-generated executor
+- `WorkerExtensionStartup.Configure(IFunctionsWorkerApplicationBuilder)` (public virtual)
+- `Activator.CreateInstance(attr.StartupCodeExecutorType)` — instantiate the source-generated executor
+
+**Why reflection is needed:**
+
+The Worker SDK's `RunExtensionStartupCode` reads `Assembly.GetEntryAssembly()` to find the `WorkerExtensionStartupCodeExecutorInfoAttribute`. In a test-runner process, `GetEntryAssembly()` returns the test runner (e.g. xUnit), not the functions assembly. As a result, extension middleware registered via `WorkerExtensionStartup.Configure()` — such as MCP's `FunctionsMcpContextMiddleware` — is never invoked.
+
+The framework reads the attribute from the **functions assembly** (passed via `WithFunctionsAssembly`) and invokes `Configure(builder)` directly. All types involved are **public**, so no private SDK internals are accessed. The only "reflection" is `Activator.CreateInstance(type)`, which is standard .NET plugin discovery.
+
+**How to avoid reflection:**
+
+No change is strictly needed — all types are public. If the SDK exposed an explicit method:
+
+```csharp
+// Hypothetical
+builder.RunExtensionStartupCode(functionsAssembly);
+```
+
+…the `Activator.CreateInstance` call could be replaced with a direct SDK API call.
+
+---
+
+### 11. Pipeline Middleware Reordering
+
+**File:** `src/AzureFunctions.TestFramework.Core/Worker/WorkerHostService.cs`
+
+**SDK types reflected (all internal to `Microsoft.Azure.Functions.Worker.Core`):**
+- `FunctionsWorkerApplicationBuilder` (internal concrete class)
+  - Private field: `_pipelineBuilder` (`IInvocationPipelineBuilder<FunctionContext>`)
+- `DefaultInvocationPipelineBuilder<FunctionContext>` (internal concrete class)
+  - Private field: `_middlewareCollection` (`IList<Func<FunctionExecutionDelegate, FunctionExecutionDelegate>>`)
+
+**Why reflection is needed:**
+
+In the IHostBuilder + factory path, the user's factory calls `ConfigureFunctionsWorkerDefaults(b => { ... })` which adds the user's middleware and then internally appends `OutputBindingsMiddleware` and `FunctionExecutionMiddleware` via `UseDefaultWorkerMiddleware`. The framework invokes extension startup code **after** this (via `ConfigureServices`), so any extension middleware is appended **after** `FunctionExecutionMiddleware`.
+
+The `DefaultInvocationPipelineBuilder.Build()` reverses the list and folds — meaning the last-added middleware becomes the innermost. Extension middleware like `FunctionsMcpContextMiddleware` must run **before** `FunctionExecutionMiddleware` to populate `FunctionContext.Items` before the function body executes.
+
+The framework accesses the internal `_middlewareCollection` field via reflection to **insert** newly registered extension middleware at position 0 (front of the list), ensuring it runs before the default middleware.
+
+**How to avoid reflection:**
+
+Expose a public API on `IFunctionsWorkerApplicationBuilder` for prepending middleware:
+
+```csharp
+// Hypothetical
+builder.UseMiddlewareAtFront<FunctionsMcpContextMiddleware>();
+// or:
+builder.Insert(0, next => new McpMiddleware(next).Invoke);
+```
+
+Alternatively, change `RunExtensionStartupCode` to accept a target assembly parameter, eliminating the need for the framework to invoke it separately:
+
+```csharp
+// Hypothetical
+builder.RunExtensionStartupCode(functionsAssembly);
+```
+
+---
+
 ## Worker SDK Changes That Would Eliminate All Reflection
 
 The following is a prioritized list of changes to the Azure Functions Worker SDK that would allow this test framework to remove all reflection against SDK internals.
@@ -368,6 +438,11 @@ The following is a prioritized list of changes to the Azure Functions Worker SDK
 8. **`RegisterGeneratedStartups(Assembly)` host builder extension**
    - Would replace the `IAutoConfigureStartup` assembly scan in `WorkerHostService.cs`
    - Not strictly needed as `IAutoConfigureStartup` is already public
+
+9. **`RunExtensionStartupCode(Assembly)` or `UseMiddlewareAtFront<T>()`**
+   - Would replace the `WorkerExtensionStartup` invocation in `WorkerHostService.InvokeExtensionStartupCode` and the pipeline `_middlewareCollection` reflection in `InvokeExtensionStartupCodeAtFront`
+   - The startup invocation itself only uses public types (`WorkerExtensionStartupCodeExecutorInfoAttribute`, `WorkerExtensionStartup`, `Activator.CreateInstance`), but the middleware reordering depends on internal fields `_pipelineBuilder` and `_middlewareCollection`
+   - Estimated impact: removes ~60 lines of reflection in `GetPipelineMiddlewareList` + `InvokeExtensionStartupCodeAtFront`
 
 ---
 
