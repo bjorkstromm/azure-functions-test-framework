@@ -130,6 +130,23 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 > **`[SqlInput]` scope:** `WithSqlInputRows(commandText, rows)` injects a list of rows for parameters typed as `IEnumerable<T>`. The key is the `commandText` value declared in the `[SqlInput]` attribute (case-insensitive). For raw JSON injection use `WithSqlInputJson(commandText, json)`. When using `InvokeSqlAsync(string changesJson)`, `SqlChangeOperation` values must be integers (0=Insert, 1=Update, 2=Delete).
 
+#### `AzureFunctions.TestFramework.Redis` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[RedisPubSubTrigger]` (trigger) | ✅ | ✅ `InvokeRedisPubSubAsync(functionName, channel, message)` | ✅ |
+| `[RedisListTrigger]` (trigger) | ✅ | ✅ `InvokeRedisListAsync(functionName, key, value)` | ✅ |
+| `[RedisStreamTrigger]` (trigger) | ✅ | ✅ `InvokeRedisStreamAsync(functionName, key, entries)` | ✅ |
+| `[RedisInput]` (input) | ✅ | ✅ `WithRedisInput(command, value)` via `RedisInputSyntheticBindingProvider` | ✅ |
+| `[RedisOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+> **`[RedisInput]` scope:** `WithRedisInput(command, value)` injects a string result for parameters typed as `string` or any type whose converter accepts a string value. The key is the full `command` string declared in the `[RedisInput]` attribute (case-insensitive), e.g. `"GET mykey"`. Use `WithRedisInputJson(command, json)` for pre-serialized JSON injection. The message/value/entries passed to the trigger invocation methods are delivered as `string` binding data; functions whose parameters are typed as `string` receive the raw value directly.
+>
+> **`[RedisStreamTrigger]` note:** `InvokeRedisStreamAsync` accepts `IReadOnlyList<KeyValuePair<string, string>>` entries and serializes them to a JSON array of `{"name":"…","value":"…"}` objects. Functions that receive `string` get the raw JSON; for other types the worker's Redis converter handles deserialization.
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Redis`
+
 ### Not Yet Supported
 
 | Extension | NuGet Package | Trigger | Input | Output |
@@ -138,7 +155,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 | **RabbitMQ** | `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ` | `[RabbitMQTrigger]` | — | `[RabbitMQOutput]` |
 | **SendGrid** | `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` | — | — | `[SendGrid]` |
 | **Warmup** | `Microsoft.Azure.Functions.Worker.Extensions.Warmup` | `[WarmupTrigger]` | — | — |
-| **Redis** | `Microsoft.Azure.Functions.Worker.Extensions.Redis` | `[RedisPubSubTrigger]`, `[RedisListTrigger]`, `[RedisStreamTrigger]` | `[RedisInput]` | `[RedisOutput]` |
 | **Azure Data Explorer** | `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)* | — | `[KustoInput]` | `[KustoOutput]` |
 | **Dapr** | `Microsoft.Azure.Functions.Worker.Extensions.Dapr` | `[DaprBindingTrigger]`, `[DaprServiceInvocationTrigger]`, `[DaprTopicTrigger]` | `[DaprStateInput]`, `[DaprSecretInput]` | `[DaprStateOutput]`, `[DaprInvokeOutput]`, `[DaprPublishOutput]`, `[DaprBindingOutput]` |
 

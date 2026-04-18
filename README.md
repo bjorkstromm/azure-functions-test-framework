@@ -14,10 +14,11 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 | Area | Status |
 |------|--------|
 | **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core integration modes |
-| **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP) | ✅ Extension methods + result capture |
+| **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis) | ✅ Extension methods + result capture |
 | **Table input bindings** (`[TableInput]`) | ✅ `WithTableEntity` / `WithTableEntities` via `ISyntheticBindingProvider` |
 | **CosmosDB input bindings** (`[CosmosDBInput]`) | ✅ `WithCosmosDBInputDocuments` via `ISyntheticBindingProvider` |
 | **SQL input bindings** (`[SqlInput]`) | ✅ `WithSqlInputRows` via `ISyntheticBindingProvider` |
+| **Redis input bindings** (`[RedisInput]`) | ✅ `WithRedisInput` via `ISyntheticBindingProvider` |
 | **SignalR input bindings** (`[SignalRConnectionInfoInput]`, `[SignalREndpointsInput]`, `[SignalRNegotiationInput]`) | ✅ `WithSignalRConnectionInfo` / `WithSignalREndpoints` / `WithSignalRNegotiation` via `ISyntheticBindingProvider` |
 | **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events) | ✅ Fake-backed in-process |
 | **ASP.NET Core integration** (`ConfigureFunctionsWebApplication`) | ✅ Full parameter binding incl. `HttpRequest`, `FunctionContext`, typed route params, `CancellationToken` |
@@ -60,6 +61,7 @@ This framework aims to provide:
 | [`AzureFunctions.TestFramework.SignalR`](https://www.nuget.org/packages/AzureFunctions.TestFramework.SignalR) | `InvokeSignalRAsync(...)` for `[SignalRTrigger]`; `WithSignalRConnectionInfo(...)`, `WithSignalRNegotiation(...)`, `WithSignalREndpoints(...)` for input binding injection; `[SignalROutput]` captured via Core | [README](src/AzureFunctions.TestFramework.SignalR/README.md) |
 | [`AzureFunctions.TestFramework.Durable`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Durable) | Fake-backed durable helpers, `ConfigureFakeDurableSupport(...)`, `FakeDurableTaskClient`, activity invocation, external events | [README](src/AzureFunctions.TestFramework.Durable/README.md) |
 | [`AzureFunctions.TestFramework.Mcp`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Mcp) | `InvokeMcpToolAsync(...)`, `InvokeMcpResourceAsync(...)`, `InvokeMcpPromptAsync(...)` for MCP (Model Context Protocol) triggers | [README](src/AzureFunctions.TestFramework.Mcp/README.md) |
+| [`AzureFunctions.TestFramework.Redis`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Redis) | `InvokeRedisPubSubAsync(...)`, `InvokeRedisListAsync(...)`, `InvokeRedisStreamAsync(...)` for Redis triggers; `WithRedisInput(...)` for `[RedisInput]` binding injection; `[RedisOutput]` captured via Core | [README](src/AzureFunctions.TestFramework.Redis/README.md) |
 
 ## Project setup requirements
 
@@ -132,6 +134,7 @@ src/
   AzureFunctions.TestFramework.Sql/          # SqlTrigger invocation + SqlInput injection (net8.0;net10.0)
   AzureFunctions.TestFramework.Tables/       # TableInput injection via ISyntheticBindingProvider (net8.0;net10.0)
   AzureFunctions.TestFramework.SignalR/      # SignalRTrigger invocation + SignalR input binding injection (net8.0;net10.0)
+  AzureFunctions.TestFramework.Redis/        # RedisPubSubTrigger/RedisListTrigger/RedisStreamTrigger invocation + RedisInput injection (net8.0;net10.0)
   AzureFunctions.TestFramework.Durable/      # Fake durable support (net8.0;net10.0)
 
 samples/
