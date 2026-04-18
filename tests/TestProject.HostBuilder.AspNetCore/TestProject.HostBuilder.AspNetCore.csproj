@@ -30,6 +30,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.EventHubs" />
     <PackageReference Include="Azure.Messaging.EventHubs" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.CosmosDB" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Sql" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.SignalRService" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Mcp" />

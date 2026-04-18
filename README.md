@@ -14,9 +14,10 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 | Area | Status |
 |------|--------|
 | **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core integration modes |
-| **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SignalR, MCP) | ✅ Extension methods + result capture |
+| **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP) | ✅ Extension methods + result capture |
 | **Table input bindings** (`[TableInput]`) | ✅ `WithTableEntity` / `WithTableEntities` via `ISyntheticBindingProvider` |
 | **CosmosDB input bindings** (`[CosmosDBInput]`) | ✅ `WithCosmosDBInputDocuments` via `ISyntheticBindingProvider` |
+| **SQL input bindings** (`[SqlInput]`) | ✅ `WithSqlInputRows` via `ISyntheticBindingProvider` |
 | **SignalR input bindings** (`[SignalRConnectionInfoInput]`, `[SignalREndpointsInput]`, `[SignalRNegotiationInput]`) | ✅ `WithSignalRConnectionInfo` / `WithSignalREndpoints` / `WithSignalRNegotiation` via `ISyntheticBindingProvider` |
 | **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events) | ✅ Fake-backed in-process |
 | **ASP.NET Core integration** (`ConfigureFunctionsWebApplication`) | ✅ Full parameter binding incl. `HttpRequest`, `FunctionContext`, typed route params, `CancellationToken` |
@@ -54,6 +55,7 @@ This framework aims to provide:
 | [`AzureFunctions.TestFramework.EventGrid`](https://www.nuget.org/packages/AzureFunctions.TestFramework.EventGrid) | `InvokeEventGridAsync(...)` for both `EventGridEvent` and `CloudEvent` | [README](src/AzureFunctions.TestFramework.EventGrid/README.md) |
 | [`AzureFunctions.TestFramework.EventHubs`](https://www.nuget.org/packages/AzureFunctions.TestFramework.EventHubs) | `InvokeEventHubAsync(...)` for single event, `InvokeEventHubBatchAsync(...)` for batch-trigger functions | [README](src/AzureFunctions.TestFramework.EventHubs/README.md) |
 | [`AzureFunctions.TestFramework.CosmosDB`](https://www.nuget.org/packages/AzureFunctions.TestFramework.CosmosDB) | `InvokeCosmosDBAsync(...)` for change-feed trigger, `WithCosmosDBInputDocuments(...)` for input binding injection | [README](src/AzureFunctions.TestFramework.CosmosDB/README.md) |
+| [`AzureFunctions.TestFramework.Sql`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Sql) | `InvokeSqlAsync(...)` for change-tracking trigger, `WithSqlInputRows(...)` for input binding injection | [README](src/AzureFunctions.TestFramework.Sql/README.md) |
 | [`AzureFunctions.TestFramework.Tables`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Tables) | `WithTableEntity(...)`, `WithTableEntities(...)` (input binding injection); `[TableOutput]` capture works generically via Core | [README](src/AzureFunctions.TestFramework.Tables/README.md) |
 | [`AzureFunctions.TestFramework.SignalR`](https://www.nuget.org/packages/AzureFunctions.TestFramework.SignalR) | `InvokeSignalRAsync(...)` for `[SignalRTrigger]`; `WithSignalRConnectionInfo(...)`, `WithSignalRNegotiation(...)`, `WithSignalREndpoints(...)` for input binding injection; `[SignalROutput]` captured via Core | [README](src/AzureFunctions.TestFramework.SignalR/README.md) |
 | [`AzureFunctions.TestFramework.Durable`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Durable) | Fake-backed durable helpers, `ConfigureFakeDurableSupport(...)`, `FakeDurableTaskClient`, activity invocation, external events | [README](src/AzureFunctions.TestFramework.Durable/README.md) |
@@ -127,6 +129,7 @@ src/
   AzureFunctions.TestFramework.EventGrid/    # EventGridTrigger invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.EventHubs/    # EventHubTrigger invocation — single + batch (net8.0;net10.0)
   AzureFunctions.TestFramework.CosmosDB/     # CosmosDBTrigger invocation + CosmosDBInput injection (net8.0;net10.0)
+  AzureFunctions.TestFramework.Sql/          # SqlTrigger invocation + SqlInput injection (net8.0;net10.0)
   AzureFunctions.TestFramework.Tables/       # TableInput injection via ISyntheticBindingProvider (net8.0;net10.0)
   AzureFunctions.TestFramework.SignalR/      # SignalRTrigger invocation + SignalR input binding injection (net8.0;net10.0)
   AzureFunctions.TestFramework.Durable/      # Fake durable support (net8.0;net10.0)

@@ -29,6 +29,7 @@
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.EventHubs\AzureFunctions.TestFramework.EventHubs.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Tables\AzureFunctions.TestFramework.Tables.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.CosmosDB\AzureFunctions.TestFramework.CosmosDB.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Sql\AzureFunctions.TestFramework.Sql.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Durable\AzureFunctions.TestFramework.Durable.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.SignalR\AzureFunctions.TestFramework.SignalR.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Mcp\AzureFunctions.TestFramework.Mcp.csproj" />
