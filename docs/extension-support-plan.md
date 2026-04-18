@@ -119,6 +119,17 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 > **Note:** MCP triggers require `FunctionsMcpContextMiddleware` to populate `FunctionContext.Items` before the function body executes. The framework automatically invokes the extension startup code from the functions assembly (working around the SDK's `Assembly.GetEntryAssembly()` limitation in test runners). See `docs/Reflection.md` §§ 10–11 for details.
 
+#### `AzureFunctions.TestFramework.Sql` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[SqlTrigger]` — change-tracking batch (`IReadOnlyList<SqlChange<T>>`) | ✅ | ✅ `InvokeSqlAsync<T>(IReadOnlyList<SqlChange<T>>)` | ✅ |
+| `[SqlTrigger]` — raw JSON string | ✅ | ✅ `InvokeSqlAsync(string changesJson)` | ✅ |
+| `[SqlInput]` (input) | ✅ | ✅ `WithSqlInputRows(...)` via `SqlInputSyntheticBindingProvider` | ✅ |
+| `[SqlOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+> **`[SqlInput]` scope:** `WithSqlInputRows(commandText, rows)` injects a list of rows for parameters typed as `IEnumerable<T>`. The key is the `commandText` value declared in the `[SqlInput]` attribute (case-insensitive). For raw JSON injection use `WithSqlInputJson(commandText, json)`. When using `InvokeSqlAsync(string changesJson)`, `SqlChangeOperation` values must be integers (0=Insert, 1=Update, 2=Delete).
+
 ### Not Yet Supported
 
 | Extension | NuGet Package | Trigger | Input | Output |
@@ -127,7 +138,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 | **RabbitMQ** | `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ` | `[RabbitMQTrigger]` | — | `[RabbitMQOutput]` |
 | **SendGrid** | `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` | — | — | `[SendGrid]` |
 | **Warmup** | `Microsoft.Azure.Functions.Worker.Extensions.Warmup` | `[WarmupTrigger]` | — | — |
-| **Azure SQL** | `Microsoft.Azure.Functions.Worker.Extensions.Sql` | `[SqlTrigger]` | `[SqlInput]` | `[SqlOutput]` |
 | **Redis** | `Microsoft.Azure.Functions.Worker.Extensions.Redis` | `[RedisPubSubTrigger]`, `[RedisListTrigger]`, `[RedisStreamTrigger]` | `[RedisInput]` | `[RedisOutput]` |
 | **Azure Data Explorer** | `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)* | — | `[KustoInput]` | `[KustoOutput]` |
 | **Dapr** | `Microsoft.Azure.Functions.Worker.Extensions.Dapr` | `[DaprBindingTrigger]`, `[DaprServiceInvocationTrigger]`, `[DaprTopicTrigger]` | `[DaprStateInput]`, `[DaprSecretInput]` | `[DaprStateOutput]`, `[DaprInvokeOutput]`, `[DaprPublishOutput]`, `[DaprBindingOutput]` |
@@ -288,21 +298,18 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 9: Azure SQL Trigger, Input & Output bindings
+### ~~Issue 9: Azure SQL Trigger, Input & Output bindings~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.Sql`
+**Package:** `AzureFunctions.TestFramework.Sql` — shipped.
 
-**Bindings:**
-- **Trigger:** `[SqlTrigger]` — fires when rows in a SQL table change (change-tracking based)
-- **Input:** `[SqlInput]` — reads rows from a SQL table or view
-- **Output:** `[SqlOutput]` — upserts rows into a SQL table
-
-**Scope:**
-- New package: `AzureFunctions.TestFramework.Sql`
-- Extension method: `InvokeSqlAsync<T>(this IFunctionsTestHost host, string functionName, IReadOnlyList<SqlChange<T>> changes)` — batch change-feed trigger
-- `ISyntheticBindingProvider` (`SqlInputSyntheticBindingProvider`): `WithSqlInputRows(tableName, rows)` — injects fake query results for `[SqlInput]`
-- Output bindings captured generically by `FunctionInvocationResult.OutputData`
-- Test across 4-flavour matrix
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeSqlAsync<T>(functionName, IReadOnlyList<SqlChange<T>> changes)` — strongly-typed SQL change-tracking trigger
+- `InvokeSqlAsync(functionName, string changesJson)` — raw JSON SQL trigger; enum values must be integers (0=Insert, 1=Update, 2=Delete)
+- `WithSqlInputRows(commandText, row)` — injects a single row for `[SqlInput(commandText: "...")]`
+- `WithSqlInputRows(commandText, IReadOnlyList<T> rows)` — injects a list of rows
+- `WithSqlInputJson(commandText, json)` — injects raw JSON for `[SqlInput]`
+- `[SqlOutput]` captured generically by `FunctionInvocationResult.OutputData` or `ReadReturnValueAs<T>()`
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Sql`
 
@@ -429,7 +436,7 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 1. **CosmosDB** — Very high demand, commonly used with Azure Functions
 2. **Event Hubs** — High demand for event-driven architectures
 3. **SignalR** — Real-time scenarios, most complex
-4. **Azure SQL** — High demand for data-driven functions; trigger + input + output
+4. ~~**Azure SQL** — High demand for data-driven functions; trigger + input + output~~ ✅ Done
 5. **Redis** — Growing adoption for caching and event-driven patterns; three trigger variants
 6. **Kafka** — Growing adoption
 7. ~~**MCP** — New AI/agent integration pattern; trigger-only, relatively simple~~ ✅ Done
