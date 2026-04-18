@@ -37,7 +37,7 @@ public sealed class SqlInputSyntheticBindingProvider : ISyntheticBindingProvider
     private readonly IReadOnlyDictionary<string, string> _jsonByCommandText;
 
     /// <summary>
-    /// Initialises a new instance of <see cref="SqlInputSyntheticBindingProvider"/> with the
+    /// Initializes a new instance of <see cref="SqlInputSyntheticBindingProvider"/> with the
     /// specified commandText-to-JSON mappings.
     /// </summary>
     /// <param name="jsonByCommandText">
