@@ -123,7 +123,7 @@ public static class FunctionsTestHostRedisExtensions
         ArgumentNullException.ThrowIfNull(key);
         ArgumentNullException.ThrowIfNull(entries);
         if (entries.Count == 0)
-            throw new ArgumentException("The entries list must contain at least one entry.", nameof(entries));
+            throw new ArgumentOutOfRangeException(nameof(entries), "The entries list must contain at least one entry.");
 
         var entriesJson = JsonSerializer.Serialize(
             entries.Select(e => new { name = e.Key, value = e.Value }).ToArray(),

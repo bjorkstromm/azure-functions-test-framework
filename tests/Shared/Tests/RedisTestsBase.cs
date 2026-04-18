@@ -21,9 +21,10 @@ public abstract class RedisTestsBase : TestHostTestBase
 
     /// <summary>
     /// Creates the test host with the given <see cref="InMemoryProcessedItemsService"/>.
-    /// Concrete implementations must register the processed items service and configure
-    /// <see cref="FunctionsTestHostBuilderRedisExtensions.WithRedisInput(IFunctionsTestHostBuilder, string, string)"/>
-    /// with <see cref="RedisInputTestValue"/> for <see cref="RedisFunction.InputCommand"/>.
+    /// Concrete implementations must register the processed items service and call
+    /// <c>.WithRedisInput(<see cref="RedisFunction.InputCommand"/>, <see cref="RedisInputTestValue"/>)</c>
+    /// on the builder so that the <see cref="InvokeQueueAsync_WithRedisInput_ReadsRegisteredValue"/> test
+    /// receives the expected value.
     /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(
         InMemoryProcessedItemsService processedItems);
