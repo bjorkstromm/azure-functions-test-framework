@@ -376,6 +376,18 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
     /// <param name="httpMethod">The HTTP method (e.g. "GET", "POST").</param>
     /// <param name="requestPath">The raw request path (e.g. "/api/todos/123").</param>
     /// <param name="routePrefix">The functions route prefix (default "api").</param>
+    /// <param name="headers">
+    /// HTTP request headers to include in <c>TriggerMetadata["Headers"]</c>.
+    /// When provided, the real Azure Functions host behavior is replicated.
+    /// </param>
+    /// <param name="queryParams">
+    /// HTTP query-string parameters to include in <c>TriggerMetadata["Query"]</c>.
+    /// </param>
+    /// <param name="body">
+    /// Raw request body string. When non-empty and <paramref name="contentType"/> indicates JSON,
+    /// top-level scalar/object properties are added to <c>TriggerMetadata</c> individually.
+    /// </param>
+    /// <param name="contentType">Value of the <c>Content-Type</c> header (used to detect JSON bodies).</param>
     /// <returns>
     /// <see langword="true"/> when the <c>InvocationRequest</c> was dispatched to the worker;
     /// <see langword="false"/> when no registered route matched the request (constraint mismatch,
@@ -385,7 +397,11 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         string invocationId,
         string httpMethod,
         string requestPath,
-        string routePrefix = "api")
+        string routePrefix = "api",
+        IReadOnlyDictionary<string, string>? headers = null,
+        IReadOnlyDictionary<string, string>? queryParams = null,
+        string? body = null,
+        string? contentType = null)
     {
         var (functionId, routeParams) = FindFunctionMatch(httpMethod, requestPath, routePrefix);
         if (functionId == null)
@@ -419,6 +435,15 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             });
             invocationRequest.TriggerMetadata[name] = new TypedData { String = value };
         }
+
+        // Populate TriggerMetadata with Headers, Query, and JSON body properties to match real
+        // Azure Functions host behavior and make them available in BindingContext.BindingData.
+        HttpTriggerMetadataHelper.PopulateTriggerMetadata(
+            invocationRequest.TriggerMetadata,
+            headers,
+            queryParams,
+            body,
+            contentType);
 
         // The real Azure Functions host always includes a ParameterBinding for the HTTP trigger
         // binding (e.g. "req") with an empty RpcHttp payload. Without this entry the worker's
