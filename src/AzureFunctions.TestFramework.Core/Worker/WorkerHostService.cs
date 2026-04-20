@@ -728,6 +728,38 @@ public class WorkerHostService : IAsyncDisposable
                     var method = context.Request.Method;
                     var path = context.Request.Path.Value ?? string.Empty;
 
+                    // Enable buffering so we can read the body here AND leave it available for
+                    // the downstream ASP.NET Core pipeline / function body.
+                    context.Request.EnableBuffering();
+
+                    string? body = null;
+                    try
+                    {
+                        if (context.Request.ContentLength is > 0 ||
+                            context.Request.Headers.ContainsKey("Transfer-Encoding"))
+                        {
+                            using var reader = new System.IO.StreamReader(
+                                context.Request.Body,
+                                leaveOpen: true);
+                            body = await reader.ReadToEndAsync();
+                            context.Request.Body.Seek(0, System.IO.SeekOrigin.Begin);
+                        }
+                    }
+                    catch
+                    {
+                        // If body reading fails, proceed without body metadata.
+                    }
+
+                    var headers = context.Request.Headers
+                        .ToDictionary(h => h.Key, h => h.Value.ToString(),
+                            StringComparer.OrdinalIgnoreCase);
+
+                    var queryParams = context.Request.Query
+                        .ToDictionary(q => q.Key, q => q.Value.ToString(),
+                            StringComparer.OrdinalIgnoreCase);
+
+                    var contentType = context.Request.ContentType;
+
                     // Send the InvocationRequest first and wait for it to be written to the
                     // gRPC stream. The worker picks it up (loopback TCP, sub-millisecond) and
                     // calls FunctionsHttpProxyingMiddleware.SetFunctionContextAsync, which
@@ -737,7 +769,9 @@ public class WorkerHostService : IAsyncDisposable
                     // called, so there is no race condition.
                     try
                     {
-                        var dispatched = await grpc.SendInvocationRequestAsync(invocationId, method, path, routePrefix);
+                        var dispatched = await grpc.SendInvocationRequestAsync(
+                            invocationId, method, path, routePrefix,
+                            headers, queryParams, body, contentType);
                         if (!dispatched)
                         {
                             // No function matched (constraint mismatch, unknown route, etc.).

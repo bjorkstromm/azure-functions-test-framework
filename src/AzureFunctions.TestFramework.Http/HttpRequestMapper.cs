@@ -1,3 +1,4 @@
+using AzureFunctions.TestFramework.Core.Grpc;
 using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using System.Text.Json;
 
@@ -79,9 +80,18 @@ public class HttpRequestMapper
             }
         });
 
-        // Add trigger metadata
+        // Add trigger metadata: sys fields, then HTTP-derived fields (Headers, Query, JSON body properties).
         request.InvocationRequest.TriggerMetadata.Add("sys.MethodName", new TypedData { String = method });
         request.InvocationRequest.TriggerMetadata.Add("sys.UtcNow", new TypedData { String = DateTime.UtcNow.ToString("o") });
+
+        var contentType = headers != null &&
+                          headers.TryGetValue("Content-Type", out var ct) ? ct : null;
+        HttpTriggerMetadataHelper.PopulateTriggerMetadata(
+            request.InvocationRequest.TriggerMetadata,
+            headers,
+            queryParams,
+            body,
+            contentType);
 
         return request;
     }
