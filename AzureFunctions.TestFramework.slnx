@@ -28,6 +28,7 @@
     <Project Path="src/AzureFunctions.TestFramework.Http/AzureFunctions.TestFramework.Http.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Mcp/AzureFunctions.TestFramework.Mcp.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Queue/AzureFunctions.TestFramework.Queue.csproj" />
+    <Project Path="src/AzureFunctions.TestFramework.RabbitMQ/AzureFunctions.TestFramework.RabbitMQ.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Redis/AzureFunctions.TestFramework.Redis.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.ServiceBus/AzureFunctions.TestFramework.ServiceBus.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Tables/AzureFunctions.TestFramework.Tables.csproj" />

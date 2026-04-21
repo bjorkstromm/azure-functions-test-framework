@@ -34,6 +34,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.SignalRService" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Mcp" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Redis" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
   </ItemGroup>
