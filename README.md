@@ -15,7 +15,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 |------|--------|
 | **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core integration modes |
 | **`BindingContext.BindingData` from HTTP request** | ✅ JSON body top-level properties, `Query`, and `Headers` populated — matches real Azure Functions host behavior |
-| **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis) | ✅ Extension methods + result capture |
+| **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis, RabbitMQ) | ✅ Extension methods + result capture |
 | **Table input bindings** (`[TableInput]`) | ✅ `WithTableEntity` / `WithTableEntities` via `ISyntheticBindingProvider` |
 | **CosmosDB input bindings** (`[CosmosDBInput]`) | ✅ `WithCosmosDBInputDocuments` via `ISyntheticBindingProvider` |
 | **SQL input bindings** (`[SqlInput]`) | ✅ `WithSqlInputRows` via `ISyntheticBindingProvider` |
@@ -63,6 +63,7 @@ This framework aims to provide:
 | [`AzureFunctions.TestFramework.Durable`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Durable) | Fake-backed durable helpers, `ConfigureFakeDurableSupport(...)`, `FakeDurableTaskClient`, activity invocation, external events | [README](src/AzureFunctions.TestFramework.Durable/README.md) |
 | [`AzureFunctions.TestFramework.Mcp`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Mcp) | `InvokeMcpToolAsync(...)`, `InvokeMcpResourceAsync(...)`, `InvokeMcpPromptAsync(...)` for MCP (Model Context Protocol) triggers | [README](src/AzureFunctions.TestFramework.Mcp/README.md) |
 | [`AzureFunctions.TestFramework.Redis`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Redis) | `InvokeRedisPubSubAsync(...)`, `InvokeRedisListAsync(...)`, `InvokeRedisStreamAsync(...)` for Redis triggers; `WithRedisInput(...)` for `[RedisInput]` binding injection; `[RedisOutput]` captured via Core | [README](src/AzureFunctions.TestFramework.Redis/README.md) |
+| [`AzureFunctions.TestFramework.RabbitMQ`](https://www.nuget.org/packages/AzureFunctions.TestFramework.RabbitMQ) | `InvokeRabbitMQAsync(...)` for `string`, `byte[]` (UTF-8 body), and JSON POCO trigger parameters; optional `RabbitMqTriggerMessageProperties` for trigger metadata; named `[RabbitMQOutput]` payloads via `OutputData` / `ReadOutputAs<T>(...)` | [README](src/AzureFunctions.TestFramework.RabbitMQ/README.md) |
 
 ## Project setup requirements
 
@@ -117,7 +118,7 @@ dotnet pack --configuration Release --output ./artifacts
 - Richer durable lifecycle helpers (terminate/suspend/resume and more management helpers)
 - Additional typed helpers for more complex output payloads
 - More middleware scenarios such as authorization and exception handling
-- More binding types such as Kafka, RabbitMQ, and SendGrid
+- More binding types such as Kafka and SendGrid
 
 ## Project Structure
 

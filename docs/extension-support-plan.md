@@ -147,12 +147,24 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Redis`
 
+#### `AzureFunctions.TestFramework.RabbitMQ` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[RabbitMQTrigger]` — `string` / `byte[]` / `BinaryData` | ✅ | ✅ `InvokeRabbitMQAsync(string)` / `InvokeRabbitMQAsync(byte[])` (UTF-8 body) | ✅ |
+| `[RabbitMQTrigger]` — JSON POCO | ✅ | ✅ `InvokeRabbitMQAsync<T>(T payload)` | ✅ |
+| `[RabbitMQTrigger]` — optional message properties | ✅ | ✅ overload with `RabbitMqTriggerMessageProperties` (exchange, routing key, headers, etc.) merged into trigger metadata for `BindingContext.BindingData` | ✅ |
+| `[RabbitMQOutput]` (output) | ✅ | ✅ `FunctionInvocationResult.OutputData` / `ReadOutputAs<T>(bindingName)` (property name for POCO return bindings) | ✅ |
+
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ`
+
 ### Not Yet Supported
 
 | Extension | NuGet Package | Trigger | Input | Output |
 |-----------|---------------|---------|-------|--------|
 | **Kafka** | `Microsoft.Azure.Functions.Worker.Extensions.Kafka` | `[KafkaTrigger]` | — | `[KafkaOutput]` |
-| **RabbitMQ** | `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ` | `[RabbitMQTrigger]` | — | `[RabbitMQOutput]` |
 | **SendGrid** | `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` | — | — | `[SendGrid]` |
 | **Warmup** | `Microsoft.Azure.Functions.Worker.Extensions.Warmup` | `[WarmupTrigger]` | — | — |
 | **Azure Data Explorer** | `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)* | — | `[KustoInput]` | `[KustoOutput]` |
@@ -261,19 +273,17 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 6: RabbitMQ Trigger & Output binding
+### ~~Issue 6: RabbitMQ Trigger & Output binding~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.RabbitMQ`
+**Package:** `AzureFunctions.TestFramework.RabbitMQ` — shipped.
 
 **Bindings:**
 - **Trigger:** `[RabbitMQTrigger]` — receives messages from RabbitMQ queues
 - **Output:** `[RabbitMQOutput]` — sends messages to RabbitMQ exchanges
 
-**Scope:**
-- New package: `AzureFunctions.TestFramework.RabbitMQ`
-- Extension method: `InvokeRabbitMQAsync(this IFunctionsTestHost host, string functionName, byte[] body, ...)` — single message with body and optional basic properties
-- Output bindings captured via `FunctionInvocationResult.OutputData`
-- Test across 4-flavour matrix
+**Implemented:**
+- Extension methods: `InvokeRabbitMQAsync(...)` for `string`, `byte[]`, and JSON POCO payloads; optional `RabbitMqTriggerMessageProperties` for binding metadata; output bindings asserted via `OutputData` / `ReadOutputAs<T>`
+- Tests across the 4-flavour matrix (`RabbitMqTriggerTests`)
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ`
 
@@ -456,7 +466,7 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 5. **Redis** — Growing adoption for caching and event-driven patterns; three trigger variants
 6. **Kafka** — Growing adoption
 7. ~~**MCP** — New AI/agent integration pattern; trigger-only, relatively simple~~ ✅ Done
-8. **RabbitMQ** — Niche but important
+8. ~~**RabbitMQ** — Niche but important~~ ✅ Done
 9. **SendGrid** — Output-only, low complexity
 10. **Dapr** — Kubernetes/Container Apps only; rich binding set
 11. **Azure Data Explorer** — Preview, input/output only; niche data-engineering scenarios
