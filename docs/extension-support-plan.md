@@ -341,26 +341,18 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 10: Redis Triggers, Input & Output bindings
+### ~~Issue 10: Redis Triggers, Input & Output bindings~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.Redis`
+**Package:** `AzureFunctions.TestFramework.Redis` — shipped.
 
-**Bindings:**
-- **Trigger:** `[RedisPubSubTrigger]` — fires on Redis pub/sub channel messages
-- **Trigger:** `[RedisListTrigger]` — fires on Redis list push events (LPUSH/RPUSH)
-- **Trigger:** `[RedisStreamTrigger]` — fires on Redis stream entries
-- **Input:** `[RedisInput]` — reads a value from the Redis cache
-- **Output:** `[RedisOutput]` — writes a value to the Redis cache
-
-**Scope:**
-- New package: `AzureFunctions.TestFramework.Redis`
-- Extension methods per trigger type:
-  - `InvokeRedisPubSubAsync(functionName, channel, message)` — pub/sub trigger
-  - `InvokeRedisListAsync(functionName, key, value)` — list trigger
-  - `InvokeRedisStreamAsync(functionName, key, entries)` — stream trigger
-- `ISyntheticBindingProvider` (`RedisInputSyntheticBindingProvider`): `WithRedisInput(key, value)` — injects fake cached value for `[RedisInput]`
-- Output bindings captured generically by `FunctionInvocationResult.OutputData`
-- Test across 4-flavour matrix
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeRedisPubSubAsync(functionName, channel, message)` — pub/sub trigger
+- `InvokeRedisListAsync(functionName, key, value)` — list trigger
+- `InvokeRedisStreamAsync(functionName, key, entries)` — stream trigger; entries serialized as JSON array of `{"name":"…","value":"…"}` objects
+- `WithRedisInput(command, value)` — injects a string result for `[RedisInput]`; key is the full `command` string (case-insensitive)
+- `WithRedisInputJson(command, json)` — injects pre-serialized JSON for `[RedisInput]`
+- `[RedisOutput]` captured generically by `FunctionInvocationResult.OutputData` or `ReadReturnValueAs<T>()`
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Redis`
 
@@ -463,7 +455,7 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 2. **Event Hubs** — High demand for event-driven architectures
 3. **SignalR** — Real-time scenarios, most complex
 4. ~~**Azure SQL** — High demand for data-driven functions; trigger + input + output~~ ✅ Done
-5. **Redis** — Growing adoption for caching and event-driven patterns; three trigger variants
+5. ~~**Redis** — Growing adoption for caching and event-driven patterns; three trigger variants~~ ✅ Done
 6. **Kafka** — Growing adoption
 7. ~~**MCP** — New AI/agent integration pattern; trigger-only, relatively simple~~ ✅ Done
 8. ~~**RabbitMQ** — Niche but important~~ ✅ Done
