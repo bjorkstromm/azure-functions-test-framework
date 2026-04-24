@@ -131,27 +131,14 @@ public void Run(
 
 ## Output bindings
 
-Output bindings are captured automatically via `FunctionInvocationResult`:
+Output bindings are captured automatically via `FunctionInvocationResult` when the worker SDK correctly marks them as output bindings.
 
-```csharp
-var result = await host.InvokeDaprBindingAsync("PublishOrder", data: "trigger");
-
-Assert.True(result.Success);
-var published = result.ReadOutputAs<Order>("orderOutput");
-Assert.Equal("ord-1", published!.Id);
-```
-
-### Function example
-
-```csharp
-[Function("PublishOrder")]
-[DaprPublishOutput(PubSubName = "my-pubsub", Topic = "orders")]
-public Order? Run(
-    [DaprBindingTrigger(BindingName = "trigger")] string trigger)
-{
-    return new Order { Id = "ord-1", Amount = 99.99m };
-}
-```
+> **Note:** Due to a known bug in the Dapr extension's source generator (v1.0.1), properties decorated
+> with Dapr output binding attributes (e.g. `[DaprPublishOutput]`, `[DaprStateOutput]`, etc.) on POCO
+> return types are generated with `direction: "In"` instead of `direction: "Out"`. As a result, the
+> worker SDK does not populate `InvocationResponse.OutputData` for these properties and
+> `FunctionInvocationResult.OutputData` will be empty. Functions with Dapr output bindings still
+> execute successfully.
 
 ## Dapr input binding limitations
 
