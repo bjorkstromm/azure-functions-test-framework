@@ -13,9 +13,9 @@ namespace AzureFunctions.TestFramework.Dapr;
 /// (e.g. <c>string</c>, <c>IDictionary&lt;string, string&gt;</c>, or a JSON-deserializable type).
 /// </para>
 /// <para>
-/// The source-generated binding metadata for <c>[DaprSecretInput]</c> uses type <c>"daprSecret"</c>
-/// with <c>direction: "In"</c>. This provider matches on <c>"daprSecret"</c> and skips
-/// output-direction bindings automatically.
+/// When <c>daprSecret</c> binding metadata is present (for example in <c>function.json</c>), it
+/// uses type <c>"daprSecret"</c> with <c>direction: "In"</c>. This provider matches on
+/// <c>"daprSecret"</c> and ignores non-input bindings automatically.
 /// </para>
 /// <para>
 /// Lookup is keyed by <c>"{secretStoreName}/{key}"</c> (case-insensitive). For example
@@ -66,14 +66,14 @@ public sealed class DaprSecretInputSyntheticBindingProvider : ISyntheticBindingP
     public string BindingType => "daprSecret";
 
     /// <inheritdoc/>
-    public FunctionBindingData CreateSyntheticParameter(string parameterName, JsonElement bindingConfig)
+    public FunctionBindingData? CreateSyntheticParameter(string parameterName, JsonElement bindingConfig)
     {
-        // Only inject data for input bindings (direction "In").
+        // Only inject data for input bindings (direction "In"). Return null to skip.
         var direction = bindingConfig.TryGetProperty("direction", out var dir) ? dir.GetString() : null;
         if (direction is not null &&
             !direction.Equals("In", StringComparison.OrdinalIgnoreCase))
         {
-            return FunctionBindingData.WithString(parameterName, string.Empty);
+            return null;
         }
 
         var secretStoreName = bindingConfig.TryGetProperty("secretStoreName", out var ssn) ? ssn.GetString() : null;
@@ -90,7 +90,7 @@ public sealed class DaprSecretInputSyntheticBindingProvider : ISyntheticBindingP
             }
         }
 
-        // No registered value — inject an empty string.
-        return FunctionBindingData.WithString(parameterName, string.Empty);
+        // No registered value — skip injection.
+        return null;
     }
 }

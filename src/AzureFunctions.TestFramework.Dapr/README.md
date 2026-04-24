@@ -17,10 +17,10 @@ dotnet add package AzureFunctions.TestFramework.Dapr
 | `[DaprTopicTrigger]` | Trigger | Fires on a Dapr pub/sub topic message |
 | `[DaprStateInput]` | Input | Reads state from a Dapr state store (see [limitations](#dapr-input-binding-limitations)) |
 | `[DaprSecretInput]` | Input | Reads a secret from a Dapr secret store (see [limitations](#dapr-input-binding-limitations)) |
-| `[DaprStateOutput]` | Output | Saves state to a Dapr state store — captured via `FunctionInvocationResult` |
-| `[DaprInvokeOutput]` | Output | Invokes another Dapr app — captured via `FunctionInvocationResult` |
-| `[DaprPublishOutput]` | Output | Publishes a message to a Dapr topic — captured via `FunctionInvocationResult` |
-| `[DaprBindingOutput]` | Output | Sends a value to a Dapr output binding — captured via `FunctionInvocationResult` |
+| `[DaprStateOutput]` | Output | Saves state to a Dapr state store — `OutputData` is currently empty with Dapr extension v1.0.1 (see [known limitation](#output-bindings)) |
+| `[DaprInvokeOutput]` | Output | Invokes another Dapr app — `OutputData` is currently empty with Dapr extension v1.0.1 (see [known limitation](#output-bindings)) |
+| `[DaprPublishOutput]` | Output | Publishes a message to a Dapr topic — `OutputData` is currently empty with Dapr extension v1.0.1 (see [known limitation](#output-bindings)) |
+| `[DaprBindingOutput]` | Output | Sends a value to a Dapr output binding — `OutputData` is currently empty with Dapr extension v1.0.1 (see [known limitation](#output-bindings)) |
 
 > **Note:** The Dapr extension is supported in Kubernetes, Azure Container Apps, Azure IoT Edge, and other self-hosted modes only. It is not available in the Azure Functions Consumption plan.
 

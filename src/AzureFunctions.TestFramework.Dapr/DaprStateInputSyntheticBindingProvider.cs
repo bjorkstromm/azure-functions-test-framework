@@ -13,9 +13,9 @@ namespace AzureFunctions.TestFramework.Dapr;
 /// (e.g. <c>string</c>, or any JSON-deserializable type).
 /// </para>
 /// <para>
-/// The source-generated binding metadata for <c>[DaprStateInput]</c> uses type <c>"daprState"</c>
-/// with <c>direction: "In"</c>. This provider matches on <c>"daprState"</c> and skips
-/// output-direction bindings automatically.
+/// When <c>daprState</c> binding metadata is present (for example in <c>function.json</c>), it
+/// uses type <c>"daprState"</c> with <c>direction: "In"</c>. This provider matches on
+/// <c>"daprState"</c> and skips non-input bindings automatically.
 /// </para>
 /// <para>
 /// Lookup is keyed by <c>"{stateStore}/{key}"</c> (case-insensitive). For example
@@ -66,14 +66,14 @@ public sealed class DaprStateInputSyntheticBindingProvider : ISyntheticBindingPr
     public string BindingType => "daprState";
 
     /// <inheritdoc/>
-    public FunctionBindingData CreateSyntheticParameter(string parameterName, JsonElement bindingConfig)
+    public FunctionBindingData? CreateSyntheticParameter(string parameterName, JsonElement bindingConfig)
     {
-        // Only inject data for input bindings (direction "In").
+        // Only inject data for input bindings (direction "In"). Return null to skip.
         var direction = bindingConfig.TryGetProperty("direction", out var dir) ? dir.GetString() : null;
         if (direction is not null &&
             !direction.Equals("In", StringComparison.OrdinalIgnoreCase))
         {
-            return FunctionBindingData.WithString(parameterName, string.Empty);
+            return null;
         }
 
         var stateStore = bindingConfig.TryGetProperty("stateStore", out var ss) ? ss.GetString() : null;
@@ -90,7 +90,7 @@ public sealed class DaprStateInputSyntheticBindingProvider : ISyntheticBindingPr
             }
         }
 
-        // No registered value — inject an empty string.
-        return FunctionBindingData.WithString(parameterName, string.Empty);
+        // No registered value — skip injection.
+        return null;
     }
 }
