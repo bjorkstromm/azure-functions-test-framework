@@ -35,5 +35,6 @@
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Mcp\AzureFunctions.TestFramework.Mcp.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Redis\AzureFunctions.TestFramework.Redis.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.RabbitMQ\AzureFunctions.TestFramework.RabbitMQ.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Dapr\AzureFunctions.TestFramework.Dapr.csproj" />
   </ItemGroup>
 </Project>
