@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      actions: write
 
     steps:
       - uses: actions/checkout@v4
@@ -103,7 +104,7 @@ jobs:
         run: dotnet tool install --global dotnet-reportgenerator-globaltool
 
       - name: Generate HTML coverage report
-        run: reportgenerator -reports:"./coverage/Cobertura.xml" -targetdir:"./coverage-html" -reporttypes:"Html"
+        run: reportgenerator -reports:"./coverage/Cobertura.xml" -targetdir:"./coverage-html" -reporttypes:"HtmlInline_AzurePipelines"
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
