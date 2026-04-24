@@ -37,22 +37,31 @@ jobs:
       - name: Build samples
         run: dotnet build Samples.slnx --no-restore --configuration Release
 
+      - name: Install dotnet-coverage
+        run: dotnet tool install --global dotnet-coverage
+
       - name: Test framework (with coverage)
         run: >
-          dotnet test AzureFunctions.TestFramework.slnx
+          dotnet-coverage collect
+          --output ./coverage/framework.cobertura.xml
+          --output-format cobertura
+          --
+          dotnet test --solution AzureFunctions.TestFramework.slnx
           --no-build --configuration Release --verbosity normal
-          /p:CollectCoverage=true
-          /p:CoverletOutputFormat=cobertura
-          "/p:Include=[AzureFunctions.TestFramework.*]*"
 
       - name: Test samples
-        run: dotnet test Samples.slnx --no-build --configuration Release --verbosity normal
+        run: dotnet test --solution Samples.slnx --no-build --configuration Release --verbosity normal
 
       - name: Install ReportGenerator
         run: dotnet tool install --global dotnet-reportgenerator-globaltool
 
-      - name: Merge coverage reports
-        run: reportgenerator -reports:"tests/**/coverage.cobertura.xml" -targetdir:"./coverage" -reporttypes:"Cobertura"
+      - name: Generate merged coverage report
+        run: >
+          reportgenerator
+          -reports:"./coverage/framework.cobertura.xml"
+          -targetdir:"./coverage"
+          -reporttypes:"Cobertura"
+          "-assemblyfilters:+AzureFunctions.TestFramework.*"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4

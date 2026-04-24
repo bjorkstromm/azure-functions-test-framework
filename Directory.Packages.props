@@ -6,7 +6,7 @@
     <PackageVersion Include="Azure.Messaging.EventGrid" Version="5.0.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Dapr" Version="1.0.1" />
     <PackageVersion Include="Azure.Messaging.EventHubs" Version="5.12.2" />
-    <PackageVersion Include="coverlet.msbuild" Version="10.0.0" />
+    
     <PackageVersion Include="Grpc.AspNetCore" Version="2.76.0" />
     <PackageVersion Include="Grpc.Tools" Version="2.80.0" />
     <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.26" />
