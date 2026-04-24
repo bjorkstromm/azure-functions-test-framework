@@ -434,6 +434,7 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
    - `AzureFunctions.TestFramework.{ExtensionName}/`
      - `AzureFunctions.TestFramework.{ExtensionName}.csproj` — targets `net8.0;net10.0`, references Core + the Worker extension NuGet package
      - `FunctionsTestHost{ExtensionName}Extensions.cs` — static extension class with `Invoke*Async` methods
+     - `README.md` — package-specific documentation covering all supported bindings, extension method signatures, function examples, and known limitations
    
 2. **Extension method pattern:**
    ```
@@ -460,6 +461,6 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 7. ~~**MCP** — New AI/agent integration pattern; trigger-only, relatively simple~~ ✅ Done
 8. ~~**RabbitMQ** — Niche but important~~ ✅ Done
 9. **SendGrid** — Output-only, low complexity
-10. **Dapr** — Kubernetes/Container Apps only; rich binding set
+10. ~~**Dapr** — Kubernetes/Container Apps only; rich binding set~~ ✅ Done
 11. **Azure Data Explorer** — Preview, input/output only; niche data-engineering scenarios
 12. **Warmup** — Simplest, rarely tested in isolation
