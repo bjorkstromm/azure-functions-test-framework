@@ -160,6 +160,30 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ`
 
+#### `AzureFunctions.TestFramework.Dapr` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[DaprBindingTrigger]` (trigger) | ✅ | ✅ `InvokeDaprBindingAsync(functionName, data)` | ✅ |
+| `[DaprServiceInvocationTrigger]` (trigger) | ✅ | ✅ `InvokeDaprServiceInvocationAsync(functionName, body)` | ✅ |
+| `[DaprTopicTrigger]` (trigger) | ✅ | ✅ `InvokeDaprTopicAsync(functionName, message)` | ✅ |
+| `[DaprStateInput]` (input) | ✅ | ⚠️ `WithDaprStateInput(key, value)` via `DaprStateInputSyntheticBindingProvider` (see [limitations](#dapr-input-binding-limitations)) | ⚠️ |
+| `[DaprSecretInput]` (input) | ✅ | ⚠️ `WithDaprSecretInput(secretStoreName, key, value)` via `DaprSecretInputSyntheticBindingProvider` (see [limitations](#dapr-input-binding-limitations)) | ⚠️ |
+| `[DaprStateOutput]` (output) | ✅ | ✅ Generic output capture (see [known limitation](#output-bindings)) | ⚠️ |
+| `[DaprInvokeOutput]` (output) | ✅ | ✅ Generic output capture (see [known limitation](#output-bindings)) | ⚠️ |
+| `[DaprPublishOutput]` (output) | ✅ | ✅ Generic output capture (see [known limitation](#output-bindings)) | ⚠️ |
+| `[DaprBindingOutput]` (output) | ✅ | ✅ Generic output capture (see [known limitation](#output-bindings)) | ⚠️ |
+
+> **Note:** The Dapr extension is supported in Kubernetes, Azure Container Apps, Azure IoT Edge, and other self-hosted modes only. It is not available in the Azure Functions Consumption plan.
+
+> **Dapr input binding limitations:** The Azure Functions Worker SDK source generator (as of v2.0.7) does not emit binding metadata for `[DaprStateInput]` or `[DaprSecretInput]` parameters. The `WithDaprStateInput` and `WithDaprSecretInput` builder extensions have no effect in source-generated mode. As a workaround, override the Dapr HTTP client in DI to return fake sidecar responses via `ConfigureServices`.
+
+> **Dapr output binding limitations:** Due to a known bug in the Dapr extension's source generator (v1.0.1), output binding attributes (`[DaprPublishOutput]`, `[DaprStateOutput]`, etc.) on POCO return types are generated with `direction: "In"` instead of `direction: "Out"`. As a result, `InvocationResponse.OutputData` is not populated and `FunctionInvocationResult.OutputData` will be empty. Functions with Dapr output bindings still execute successfully.
+
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Dapr`
+
 ### Not Yet Supported
 
 | Extension | NuGet Package | Trigger | Input | Output |
@@ -168,7 +192,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 | **SendGrid** | `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` | — | — | `[SendGrid]` |
 | **Warmup** | `Microsoft.Azure.Functions.Worker.Extensions.Warmup` | `[WarmupTrigger]` | — | — |
 | **Azure Data Explorer** | `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)* | — | `[KustoInput]` | `[KustoOutput]` |
-| **Dapr** | `Microsoft.Azure.Functions.Worker.Extensions.Dapr` | `[DaprBindingTrigger]`, `[DaprServiceInvocationTrigger]`, `[DaprTopicTrigger]` | `[DaprStateInput]`, `[DaprSecretInput]` | `[DaprStateOutput]`, `[DaprInvokeOutput]`, `[DaprPublishOutput]`, `[DaprBindingOutput]` |
 
 ### Not Applicable — No Isolated Worker Support
 
@@ -393,32 +416,18 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 13: Dapr Triggers, Input & Output bindings
+### ~~Issue 13: Dapr Triggers, Input & Output bindings~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.Dapr`
+**Package:** `AzureFunctions.TestFramework.Dapr` — shipped.
 
-**Bindings:**
-- **Trigger:** `[DaprBindingTrigger]` — fires on a Dapr input binding event
-- **Trigger:** `[DaprServiceInvocationTrigger]` — fires on a Dapr service invocation call
-- **Trigger:** `[DaprTopicTrigger]` — fires on a Dapr pub/sub topic message
-- **Input:** `[DaprStateInput]` — reads state from a Dapr state store
-- **Input:** `[DaprSecretInput]` — reads a secret from a Dapr secret store
-- **Output:** `[DaprStateOutput]` — saves state to a Dapr state store
-- **Output:** `[DaprInvokeOutput]` — invokes another Dapr app
-- **Output:** `[DaprPublishOutput]` — publishes a message to a Dapr topic
-- **Output:** `[DaprBindingOutput]` — sends a value to a Dapr output binding
-
-> **Note:** The Dapr extension is supported in Kubernetes, Azure Container Apps, Azure IoT Edge, and other self-hosted modes only. It is not available in the Azure Functions Consumption plan.
-
-**Scope:**
-- New package: `AzureFunctions.TestFramework.Dapr`
-- Extension methods per trigger type:
-  - `InvokeDaprBindingAsync(functionName, bindingName, operation, data)` — Dapr input binding trigger
-  - `InvokeDaprServiceInvocationAsync(functionName, appId, methodName, body)` — service invocation trigger
-  - `InvokeDaprTopicAsync(functionName, pubSubName, topic, data)` — pub/sub topic trigger
-- `ISyntheticBindingProvider` implementations for state and secret input bindings
-- Output bindings captured generically by `FunctionInvocationResult.OutputData`
-- Test across 4-flavour matrix
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeDaprBindingAsync(functionName, data)` — Dapr input binding trigger (`[DaprBindingTrigger]`)
+- `InvokeDaprServiceInvocationAsync(functionName, body)` — Dapr service invocation trigger (`[DaprServiceInvocationTrigger]`)
+- `InvokeDaprTopicAsync(functionName, message)` — Dapr pub/sub topic trigger (`[DaprTopicTrigger]`)
+- `WithDaprStateInput(key, value)` — injects fake state for `[DaprStateInput]` (limited by SDK source generator; see known limitation)
+- `WithDaprSecretInput(secretStoreName, key, value)` — injects fake secret for `[DaprSecretInput]` (limited by SDK source generator; see known limitation)
+- Dapr output bindings (`[DaprStateOutput]`, `[DaprInvokeOutput]`, `[DaprPublishOutput]`, `[DaprBindingOutput]`) execute successfully; `OutputData` is currently empty due to a known bug in the Dapr extension v1.0.1 source generator (`direction: "In"` instead of `direction: "Out"`)
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Dapr`
 
