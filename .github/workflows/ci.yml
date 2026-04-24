@@ -25,20 +25,34 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore dependencies
-        run: dotnet restore
+      - name: Restore framework
+        run: dotnet restore AzureFunctions.TestFramework.slnx
 
-      - name: Build
-        run: dotnet build --no-restore --configuration Release
+      - name: Restore samples
+        run: dotnet restore Samples.slnx
 
-      - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal --settings coverlet.runsettings --collect "XPlat Code Coverage" --results-directory ./TestResults
+      - name: Build framework
+        run: dotnet build AzureFunctions.TestFramework.slnx --no-restore --configuration Release
+
+      - name: Build samples
+        run: dotnet build Samples.slnx --no-restore --configuration Release
+
+      - name: Test framework (with coverage)
+        run: >
+          dotnet test AzureFunctions.TestFramework.slnx
+          --no-build --configuration Release --verbosity normal
+          /p:CollectCoverage=true
+          /p:CoverletOutputFormat=cobertura
+          "/p:Include=[AzureFunctions.TestFramework.*]*"
+
+      - name: Test samples
+        run: dotnet test Samples.slnx --no-build --configuration Release --verbosity normal
 
       - name: Install ReportGenerator
         run: dotnet tool install --global dotnet-reportgenerator-globaltool
 
       - name: Merge coverage reports
-        run: reportgenerator -reports:"./TestResults/**/coverage.cobertura.xml" -targetdir:"./coverage" -reporttypes:"Cobertura"
+        run: reportgenerator -reports:"tests/**/coverage.cobertura.xml" -targetdir:"./coverage" -reporttypes:"Cobertura"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
@@ -48,7 +62,7 @@ jobs:
           retention-days: 7
 
       - name: Pack
-        run: dotnet pack --no-build --configuration Release --output ./artifacts
+        run: dotnet pack AzureFunctions.TestFramework.slnx --no-build --configuration Release --output ./artifacts
 
   coverage-comment:
     if: github.event_name == 'pull_request'
