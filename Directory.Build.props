@@ -18,10 +18,4 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
   </PropertyGroup>
-
-  <!-- Enable dotnet test solution-mode compatibility with MTP runner for .NET 10 SDK -->
-  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
-    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
-  </PropertyGroup>
-
 </Project>
