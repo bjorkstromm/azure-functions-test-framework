@@ -35,6 +35,7 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Mcp" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Redis" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Dapr" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
   </ItemGroup>
   <ItemGroup>
