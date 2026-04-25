@@ -4,20 +4,6 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Folder Name="/samples/">
-    <Project Path="samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.Tests.csproj" />
-    <Project Path="samples/Sample.FunctionApp.CustomRoutePrefix.AspNetCore/Sample.FunctionApp.CustomRoutePrefix.AspNetCore.csproj" />
-    <Project Path="samples/Sample.FunctionApp.CustomRoutePrefix.Tests/Sample.FunctionApp.CustomRoutePrefix.Tests.csproj" />
-    <Project Path="samples/Sample.FunctionApp.CustomRoutePrefix/Sample.FunctionApp.CustomRoutePrefix.csproj" />
-    <Project Path="samples/Sample.FunctionApp.Durable.Tests/Sample.FunctionApp.Durable.Tests.csproj" />
-    <Project Path="samples/Sample.FunctionApp.Durable/Sample.FunctionApp.Durable.csproj" />
-    <Project Path="samples/Sample.FunctionApp.Tests.NUnit/Sample.FunctionApp.Tests.NUnit.csproj" />
-    <Project Path="samples/Sample.FunctionApp.Tests.TUnit/Sample.FunctionApp.Tests.TUnit.csproj" />
-    <Project Path="samples/Sample.FunctionApp.Tests.XUnit/Sample.FunctionApp.Tests.XUnit.csproj" />
-    <Project Path="samples/Sample.FunctionApp.Worker.Tests/Sample.FunctionApp.Worker.Tests.csproj" />
-    <Project Path="samples/Sample.FunctionApp.Worker/Sample.FunctionApp.Worker.csproj" />
-    <Project Path="samples/Sample.FunctionApp/Sample.FunctionApp.csproj" />
-  </Folder>
   <Folder Name="/src/">
     <Project Path="src/AzureFunctions.TestFramework.Blob/AzureFunctions.TestFramework.Blob.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.CosmosDB/AzureFunctions.TestFramework.CosmosDB.csproj" />
