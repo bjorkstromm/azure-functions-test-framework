@@ -89,6 +89,7 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         var state = new FakeDurableInstanceState(orchestratorName.Name, instanceId, input);
 
         // Allow re-scheduling over a terminal instance (matches real Azure backend behaviour).
+        FakeDurableInstanceState? replacedState = null;
         _instances.AddOrUpdate(
             instanceId,
             addValue: state,
@@ -99,12 +100,14 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
                     OrchestrationRuntimeStatus.Failed or
                     OrchestrationRuntimeStatus.Terminated)
                 {
+                    replacedState = existing;
                     return state;
                 }
 
                 throw new InvalidOperationException(
                     $"A fake durable orchestration with instance ID '{id}' already exists.");
             });
+        replacedState?.Dispose();
 
         state.MarkRunning();
         var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, state.TerminationToken);
@@ -136,7 +139,7 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
             {
                 linkedCts.Dispose();
             }
-        }, cancellation);
+        }, CancellationToken.None);
 
         return Task.FromResult(instanceId);
     }
@@ -192,7 +195,8 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         CancellationToken cancellation = default)
     {
         cancellation.ThrowIfCancellationRequested();
-        var removed = _instances.TryRemove(instanceId, out _);
+        var removed = _instances.TryRemove(instanceId, out var removedState);
+        removedState?.Dispose();
         _logger.LogInformation("Fake durable instance {InstanceId} purged (found={Found})", instanceId, removed);
         return Task.FromResult(new PurgeResult(removed ? 1 : 0));
     }
