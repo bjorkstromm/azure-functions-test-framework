@@ -12,6 +12,7 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
     private readonly Func<string, string, CancellationToken, Task<object?>> _externalEventDispatcher;
     private readonly Func<TaskName, object?, CancellationToken, Task<object?>> _subOrchestrationDispatcher;
     private readonly Action<object?>? _customStatusSink;
+    private readonly CancellationToken _executionCancellationToken;
     private readonly object? _input;
     private readonly IServiceProvider _serviceProvider;
 
@@ -24,7 +25,8 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         Func<TaskName, object?, CancellationToken, Task<object?>> subOrchestrationDispatcher,
         Func<string, string, CancellationToken, Task<object?>> externalEventDispatcher,
         Action<object?>? customStatusSink = null,
-        FakeDurableEntityRunner? entityRunner = null)
+        FakeDurableEntityRunner? entityRunner = null,
+        CancellationToken executionCancellationToken = default)
     {
         Name = orchestrationName;
         InstanceId = instanceId;
@@ -34,14 +36,17 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         _subOrchestrationDispatcher = subOrchestrationDispatcher;
         _externalEventDispatcher = externalEventDispatcher;
         _customStatusSink = customStatusSink;
+        _executionCancellationToken = executionCancellationToken;
         Entities = entityRunner is not null
             ? new FakeTaskOrchestrationEntityFeature(entityRunner)
             : base.Entities;
     }
 
-    public object? ContinueAsNewParameter { get; private set; }
+    public object? ContinueAsNewInput { get; private set; }
 
     public object? CustomStatus { get; private set; }
+
+    public bool IsContinueAsNew { get; private set; }
 
     public override DateTime CurrentUtcDateTime => DateTime.UtcNow;
 
@@ -82,7 +87,8 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
 
     public override void ContinueAsNew(object? newInput = null, bool preserveUnprocessedEvents = true)
     {
-        ContinueAsNewParameter = newInput;
+        IsContinueAsNew = true;
+        ContinueAsNewInput = newInput;
     }
 
     public override Task CreateTimer(DateTime fireAt, CancellationToken cancellationToken)
@@ -121,7 +127,11 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
 
     public override async Task<T> WaitForExternalEvent<T>(string eventName, CancellationToken cancellationToken = default)
     {
-        var payload = await _externalEventDispatcher(InstanceId, eventName, cancellationToken).ConfigureAwait(false);
+        // Combine the call-site token with the instance's execution token so that termination
+        // (which cancels _executionCancellationToken) always unblocks a waiting orchestration,
+        // even when the orchestration itself did not pass a cancellation token.
+        using var combined = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, _executionCancellationToken);
+        var payload = await _externalEventDispatcher(InstanceId, eventName, combined.Token).ConfigureAwait(false);
         return (T?)FakeDurableOrchestrationRunner.ConvertValue(payload, typeof(T))!;
     }
 }
