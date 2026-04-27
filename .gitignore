@@ -162,6 +162,7 @@ coverage*.json
 coverage*.xml
 coverage*.info
 coverage/
+coverage-html/
 
 # Visual Studio code coverage results
 *.coverage
