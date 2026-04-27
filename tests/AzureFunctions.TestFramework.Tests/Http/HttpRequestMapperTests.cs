@@ -1,7 +1,7 @@
 using AzureFunctions.TestFramework.Http;
 using Xunit;
 
-namespace AzureFunctions.TestFramework.UnitTests.Http;
+namespace AzureFunctions.TestFramework.Tests.Http;
 
 /// <summary>
 /// Unit tests for <see cref="HttpRequestMapper.ExtractRouteParameters"/>.

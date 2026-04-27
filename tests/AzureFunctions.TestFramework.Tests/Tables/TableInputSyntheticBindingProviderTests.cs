@@ -2,7 +2,7 @@ using AzureFunctions.TestFramework.Tables;
 using System.Text.Json;
 using Xunit;
 
-namespace AzureFunctions.TestFramework.UnitTests.Tables;
+namespace AzureFunctions.TestFramework.Tests.Tables;
 
 /// <summary>
 /// Unit tests for <see cref="TableInputSyntheticBindingProvider.CreateSyntheticParameter"/>.

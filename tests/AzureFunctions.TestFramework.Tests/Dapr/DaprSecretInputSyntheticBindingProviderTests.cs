@@ -2,7 +2,7 @@ using AzureFunctions.TestFramework.Dapr;
 using System.Text.Json;
 using Xunit;
 
-namespace AzureFunctions.TestFramework.UnitTests.Dapr;
+namespace AzureFunctions.TestFramework.Tests.Dapr;
 
 /// <summary>
 /// Unit tests for <see cref="DaprSecretInputSyntheticBindingProvider.CreateSyntheticParameter"/>.

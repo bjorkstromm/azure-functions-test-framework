@@ -2,7 +2,7 @@ using AzureFunctions.TestFramework.Durable;
 using System.Text.Json;
 using Xunit;
 
-namespace AzureFunctions.TestFramework.UnitTests.Durable;
+namespace AzureFunctions.TestFramework.Tests.Durable;
 
 /// <summary>
 /// Unit tests for <see cref="DurableOrchestrationStatus"/>.

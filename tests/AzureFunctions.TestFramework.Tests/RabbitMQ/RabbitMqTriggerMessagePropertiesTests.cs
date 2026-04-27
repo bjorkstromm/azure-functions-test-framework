@@ -1,7 +1,7 @@
 using AzureFunctions.TestFramework.RabbitMQ;
 using Xunit;
 
-namespace AzureFunctions.TestFramework.UnitTests.RabbitMQ;
+namespace AzureFunctions.TestFramework.Tests.RabbitMQ;
 
 /// <summary>
 /// Unit tests for <see cref="RabbitMqTriggerMessageProperties"/>.

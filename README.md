@@ -33,7 +33,6 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 | **Metadata discovery** | ✅ `IFunctionsTestHost.GetFunctions()` |
 | **NuGet packaging** | ✅ `net8.0;net10.0`, Source Link, symbol packages, central package management |
 | **CI** | ✅ xUnit + NUnit + TUnit, push + PR |
-| **Unit tests for framework internals** | ✅ `AzureFunctions.TestFramework.UnitTests` — 132 tests covering `TypedDataConverter`, Dapr/Table/RabbitMQ synthetic binding providers, Durable helpers, `HttpRequestMapper`, `FakeDurableExternalEventHub`, and more |
 
 
 ## Goals

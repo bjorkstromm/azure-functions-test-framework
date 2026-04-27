@@ -4,7 +4,7 @@ using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
 using System.Text.Json;
 using Xunit;
 
-namespace AzureFunctions.TestFramework.UnitTests.Core;
+namespace AzureFunctions.TestFramework.Tests.Core;
 
 /// <summary>
 /// Unit tests for <see cref="TypedDataConverter.Convert"/>.
