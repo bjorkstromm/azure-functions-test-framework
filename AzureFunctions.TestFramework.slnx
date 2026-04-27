@@ -35,6 +35,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/AzureFunctions.TestFramework.ReflectionTests/AzureFunctions.TestFramework.ReflectionTests.csproj" />
+    <Project Path="tests/AzureFunctions.TestFramework.Tests/AzureFunctions.TestFramework.Tests.csproj" />
     <Project Path="tests/TestProject.HostBuilder.Tests/TestProject.HostBuilder.Tests.csproj" />
     <Project Path="tests/TestProject.HostBuilder.AspNetCore.Tests/TestProject.HostBuilder.AspNetCore.Tests.csproj" />
     <Project Path="tests/TestProject.HostApplicationBuilder.Tests/TestProject.HostApplicationBuilder.Tests.csproj" />

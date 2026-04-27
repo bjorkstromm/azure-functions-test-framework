@@ -550,7 +550,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         {
             foreach (var output in invocationResponse.OutputData)
             {
-                outputData[output.Name] = ConvertTypedData(output.Data);
+                outputData[output.Name] = TypedDataConverter.Convert(output.Data);
             }
         }
 
@@ -559,60 +559,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             InvocationId = invocationId,
             Success = success,
             Error = success ? null : invocationResponse?.Result?.Exception?.Message,
-            ReturnValue = invocationResponse is null ? null : ConvertTypedData(invocationResponse.ReturnValue),
+            ReturnValue = invocationResponse is null ? null : TypedDataConverter.Convert(invocationResponse.ReturnValue),
             OutputData = outputData,
             Logs = logs
-        };
-    }
-
-    private static object? ConvertTypedData(TypedData? data)
-    {
-        if (data == null)
-        {
-            return null;
-        }
-
-        return data.DataCase switch
-        {
-            TypedData.DataOneofCase.None => null,
-            TypedData.DataOneofCase.String => data.String,
-            TypedData.DataOneofCase.Json => ParseJsonValue(data.Json),
-            TypedData.DataOneofCase.Bytes => data.Bytes.ToByteArray(),
-            TypedData.DataOneofCase.Stream => data.Stream.ToByteArray(),
-            TypedData.DataOneofCase.Int => data.Int,
-            TypedData.DataOneofCase.Double => data.Double,
-            TypedData.DataOneofCase.CollectionString => data.CollectionString.String.ToArray(),
-            TypedData.DataOneofCase.CollectionBytes => data.CollectionBytes.Bytes.Select(static b => b.ToByteArray()).ToArray(),
-            TypedData.DataOneofCase.CollectionDouble => data.CollectionDouble.Double.ToArray(),
-            TypedData.DataOneofCase.CollectionSint64 => data.CollectionSint64.Sint64.ToArray(),
-            TypedData.DataOneofCase.ModelBindingData => ConvertModelBindingData(data.ModelBindingData),
-            TypedData.DataOneofCase.CollectionModelBindingData => data.CollectionModelBindingData.ModelBindingData
-                .Select(ConvertModelBindingData)
-                .ToArray(),
-            TypedData.DataOneofCase.Http => data.Http,
-            _ => null
-        };
-    }
-
-    private static object? ParseJsonValue(string json)
-    {
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return null;
-        }
-
-        using var document = JsonDocument.Parse(json);
-        return document.RootElement.Clone();
-    }
-
-    private static object ConvertModelBindingData(ModelBindingData data)
-    {
-        return new
-        {
-            data.Version,
-            Source = data.Source,
-            ContentType = data.ContentType,
-            Content = data.Content.ToByteArray()
         };
     }
 
@@ -748,154 +697,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 var functions = metadataResponse.FunctionMetadataResponse.FunctionMetadataResults;
                 _logger.LogInformation("Received {Count} function(s) from worker", functions.Count);
 
-                // Send FunctionLoadRequest for each function and build the route map
-                foreach (var functionMetadata in functions)
-                {
-                    var loadRequest = new StreamingMessage
-                    {
-                        RequestId = Guid.NewGuid().ToString(),
-                        FunctionLoadRequest = new FunctionLoadRequest
-                        {
-                            FunctionId = functionMetadata.FunctionId,
-                            Metadata = functionMetadata
-                        }
-                    };
-
-                    var loadResponse = await SendMessageAsync(loadRequest, cancellationToken);
-                    var loadStatus = loadResponse.FunctionLoadResponse?.Result?.Status;
-                    if (loadStatus == StatusResult.Types.Status.Success)
-                    {
-                        _logger.LogInformation("Loaded function: {FunctionName} (ID: {FunctionId})",
-                            functionMetadata.Name, functionMetadata.FunctionId);
-                    }
-                    else
-                    {
-                        var errorMessage = loadResponse.FunctionLoadResponse?.Result?.Exception?.Message ?? "Unknown error";
-                        _logger.LogError("Failed to load function {FunctionName}: {Error}", functionMetadata.Name, errorMessage);
-                        continue;
-                    }
-
-                    // Parse raw bindings to populate route maps and unified function registry
-                    foreach (var rawBinding in functionMetadata.RawBindings)
-                    {
-                        try
-                        {
-                            using var doc = JsonDocument.Parse(rawBinding);
-                            var root = doc.RootElement;
-                            if (!root.TryGetProperty("type", out var typeProp)) continue;
-
-                            var bindingType = typeProp.GetString() ?? string.Empty;
-
-                            if (bindingType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase))
-                            {
-                                // When Route is not explicitly set on [HttpTrigger], the source-generated
-                                // binding JSON omits the "route" property or sets it to null.
-                                // Azure Functions defaults the route to the function name in that case.
-                                var route = root.TryGetProperty("route", out var routeProp)
-                                    ? routeProp.GetString()
-                                    : null;
-
-                                if (string.IsNullOrEmpty(route))
-                                {
-                                    route = functionMetadata.Name;
-                                }
-
-                                // Store the actual HTTP trigger binding parameter name so callers can
-                                // use it in InputData (instead of the hardcoded default "req").
-                                var httpBindingName = root.TryGetProperty("name", out var httpNameProp)
-                                    ? httpNameProp.GetString() ?? "req"
-                                    : "req";
-                                _httpBindingNameByFunctionId[functionMetadata.FunctionId] = httpBindingName;
-
-                                // Extract accepted HTTP methods; default to all if not specified
-                                var methods = new List<string>();
-                                if (root.TryGetProperty("methods", out var methodsProp) &&
-                                    methodsProp.ValueKind == JsonValueKind.Array)
-                                {
-                                    foreach (var m in methodsProp.EnumerateArray())
-                                    {
-                                        var methodStr = m.GetString();
-                                        if (!string.IsNullOrEmpty(methodStr))
-                                        {
-                                            methods.Add(methodStr.ToUpperInvariant());
-                                        }
-                                    }
-                                }
-
-                                if (methods.Count == 0)
-                                {
-                                    // No methods specified means all methods are accepted; use wildcard
-                                    methods.AddRange(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
-                                }
-
-                                foreach (var httpMethod in methods)
-                                {
-                                    var key = $"{httpMethod}:{route}";
-                                    _functionRouteToId[key] = functionMetadata.FunctionId;
-                                    _routeMatcher.AddRoute(httpMethod, route, functionMetadata.FunctionId);
-                                    _logger.LogDebug("Mapped '{Key}' to function ID '{FunctionId}'",
-                                        key, functionMetadata.FunctionId);
-                                }
-                            }
-                            else if (bindingType.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
-                            {
-                                // All non-HTTP triggers: populate the unified function registry.
-                                // The "name" field is the binding parameter name in the function signature.
-                                var paramName = root.TryGetProperty("name", out var nameProp)
-                                    ? nameProp.GetString() ?? string.Empty
-                                    : string.Empty;
-                                _functionsByName[functionMetadata.Name] = new FunctionRegistration(
-                                    functionMetadata.FunctionId,
-                                    functionMetadata.Name,
-                                    bindingType,
-                                    paramName);
-                                _logger.LogDebug(
-                                    "Mapped {TriggerType} function '{Name}' (param '{Param}') to ID '{FunctionId}'",
-                                    bindingType, functionMetadata.Name, paramName, functionMetadata.FunctionId);
-                            }
-
-                            // Allow registered ISyntheticBindingProvider implementations to inject
-                            // synthetic input bindings for any binding type (e.g. durableClient).
-                            foreach (var provider in _syntheticBindingProviders)
-                            {
-                                if (!bindingType.Equals(provider.BindingType, StringComparison.OrdinalIgnoreCase))
-                                    continue;
-
-                                var providerParamName = root.TryGetProperty("name", out var providerNameProp)
-                                    ? providerNameProp.GetString() ?? provider.BindingType
-                                    : provider.BindingType;
-
-                                if (!_syntheticInputByFunctionId.TryGetValue(functionMetadata.FunctionId, out var bindings))
-                                {
-                                    bindings = [];
-                                    _syntheticInputByFunctionId[functionMetadata.FunctionId] = bindings;
-                                }
-
-                                var syntheticParam = provider.CreateSyntheticParameter(providerParamName, root);
-                                if (syntheticParam is null)
-                                    continue;
-
-                                bindings.Add(syntheticParam);
-                                _logger.LogDebug(
-                                    "Added synthetic '{BindingType}' binding '{BindingName}' for function '{Name}'",
-                                    provider.BindingType, providerParamName, functionMetadata.Name);
-                            }
-                        }
-                        catch (JsonException)
-                        {
-                            // Ignore malformed bindings
-                        }
-                    }
-
-                    // Store IFunctionMetadata for this function using DefaultFunctionMetadata
-                    _functionMetadataMap[functionMetadata.Name] = new DefaultFunctionMetadata
-                    {
-                        Name = functionMetadata.Name,
-                        EntryPoint = functionMetadata.EntryPoint,
-                        ScriptFile = functionMetadata.ScriptFile,
-                        RawBindings = functionMetadata.RawBindings.ToList()
-                    };
-                }
+                await LoadFunctionsAsync(functions, cancellationToken);
 
                 _functionsLoadedTcs.TrySetResult(true);
                 _logger.LogInformation("All functions loaded successfully");
@@ -906,6 +708,185 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 _functionsLoadedTcs.TrySetException(ex);
             }
         }, cancellationToken);
+    }
+
+    private async Task LoadFunctionsAsync(
+        IEnumerable<RpcFunctionMetadata> functions,
+        CancellationToken cancellationToken)
+    {
+        foreach (var functionMetadata in functions)
+        {
+            var loadRequest = new StreamingMessage
+            {
+                RequestId = Guid.NewGuid().ToString(),
+                FunctionLoadRequest = new FunctionLoadRequest
+                {
+                    FunctionId = functionMetadata.FunctionId,
+                    Metadata = functionMetadata
+                }
+            };
+
+            var loadResponse = await SendMessageAsync(loadRequest, cancellationToken);
+            var loadStatus = loadResponse.FunctionLoadResponse?.Result?.Status;
+            if (loadStatus == StatusResult.Types.Status.Success)
+            {
+                _logger.LogInformation("Loaded function: {FunctionName} (ID: {FunctionId})",
+                    functionMetadata.Name, functionMetadata.FunctionId);
+            }
+            else
+            {
+                var errorMessage = loadResponse.FunctionLoadResponse?.Result?.Exception?.Message ?? "Unknown error";
+                _logger.LogError("Failed to load function {FunctionName}: {Error}", functionMetadata.Name, errorMessage);
+                continue;
+            }
+
+            // Parse raw bindings to populate route maps and unified function registry
+            foreach (var rawBinding in functionMetadata.RawBindings)
+            {
+                ProcessRawBinding(functionMetadata, rawBinding);
+            }
+
+            // Store IFunctionMetadata for this function using DefaultFunctionMetadata
+            _functionMetadataMap[functionMetadata.Name] = new DefaultFunctionMetadata
+            {
+                Name = functionMetadata.Name,
+                EntryPoint = functionMetadata.EntryPoint,
+                ScriptFile = functionMetadata.ScriptFile,
+                RawBindings = functionMetadata.RawBindings.ToList()
+            };
+        }
+    }
+
+    private void ProcessRawBinding(RpcFunctionMetadata functionMetadata, string rawBinding)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(rawBinding);
+            var root = doc.RootElement;
+            if (!root.TryGetProperty("type", out var typeProp)) return;
+
+            var bindingType = typeProp.GetString() ?? string.Empty;
+
+            if (bindingType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase))
+            {
+                RegisterHttpTriggerRoutes(functionMetadata, root);
+            }
+            else if (bindingType.EndsWith("Trigger", StringComparison.OrdinalIgnoreCase))
+            {
+                RegisterNonHttpTrigger(functionMetadata, root, bindingType);
+            }
+
+            RegisterSyntheticBindings(functionMetadata, root, bindingType);
+        }
+        catch (JsonException)
+        {
+            // Ignore malformed bindings
+        }
+    }
+
+    private void RegisterHttpTriggerRoutes(RpcFunctionMetadata functionMetadata, JsonElement root)
+    {
+        // When Route is not explicitly set on [HttpTrigger], the source-generated
+        // binding JSON omits the "route" property or sets it to null.
+        // Azure Functions defaults the route to the function name in that case.
+        var route = root.TryGetProperty("route", out var routeProp)
+            ? routeProp.GetString()
+            : null;
+
+        if (string.IsNullOrEmpty(route))
+        {
+            route = functionMetadata.Name;
+        }
+
+        // Store the actual HTTP trigger binding parameter name so callers can
+        // use it in InputData (instead of the hardcoded default "req").
+        var httpBindingName = root.TryGetProperty("name", out var httpNameProp)
+            ? httpNameProp.GetString() ?? "req"
+            : "req";
+        _httpBindingNameByFunctionId[functionMetadata.FunctionId] = httpBindingName;
+
+        var methods = ExtractHttpMethods(root);
+
+        foreach (var httpMethod in methods)
+        {
+            var key = $"{httpMethod}:{route}";
+            _functionRouteToId[key] = functionMetadata.FunctionId;
+            _routeMatcher.AddRoute(httpMethod, route, functionMetadata.FunctionId);
+            _logger.LogDebug("Mapped '{Key}' to function ID '{FunctionId}'",
+                key, functionMetadata.FunctionId);
+        }
+    }
+
+    private static List<string> ExtractHttpMethods(JsonElement root)
+    {
+        var methods = new List<string>();
+        if (root.TryGetProperty("methods", out var methodsProp) &&
+            methodsProp.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var m in methodsProp.EnumerateArray())
+            {
+                var methodStr = m.GetString();
+                if (!string.IsNullOrEmpty(methodStr))
+                {
+                    methods.Add(methodStr.ToUpperInvariant());
+                }
+            }
+        }
+
+        if (methods.Count == 0)
+        {
+            // No methods specified means all methods are accepted; use wildcard
+            methods.AddRange(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]);
+        }
+
+        return methods;
+    }
+
+    private void RegisterNonHttpTrigger(RpcFunctionMetadata functionMetadata, JsonElement root, string bindingType)
+    {
+        // All non-HTTP triggers: populate the unified function registry.
+        // The "name" field is the binding parameter name in the function signature.
+        var paramName = root.TryGetProperty("name", out var nameProp)
+            ? nameProp.GetString() ?? string.Empty
+            : string.Empty;
+        _functionsByName[functionMetadata.Name] = new FunctionRegistration(
+            functionMetadata.FunctionId,
+            functionMetadata.Name,
+            bindingType,
+            paramName);
+        _logger.LogDebug(
+            "Mapped {TriggerType} function '{Name}' (param '{Param}') to ID '{FunctionId}'",
+            bindingType, functionMetadata.Name, paramName, functionMetadata.FunctionId);
+    }
+
+    private void RegisterSyntheticBindings(RpcFunctionMetadata functionMetadata, JsonElement root, string bindingType)
+    {
+        // Allow registered ISyntheticBindingProvider implementations to inject
+        // synthetic input bindings for any binding type (e.g. durableClient).
+        foreach (var provider in _syntheticBindingProviders)
+        {
+            if (!bindingType.Equals(provider.BindingType, StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var providerParamName = root.TryGetProperty("name", out var providerNameProp)
+                ? providerNameProp.GetString() ?? provider.BindingType
+                : provider.BindingType;
+
+            if (!_syntheticInputByFunctionId.TryGetValue(functionMetadata.FunctionId, out var bindings))
+            {
+                bindings = [];
+                _syntheticInputByFunctionId[functionMetadata.FunctionId] = bindings;
+            }
+
+            var syntheticParam = provider.CreateSyntheticParameter(providerParamName, root);
+            if (syntheticParam is null)
+                continue;
+
+            bindings.Add(syntheticParam);
+            _logger.LogDebug(
+                "Added synthetic '{BindingType}' binding '{BindingName}' for function '{Name}'",
+                provider.BindingType, providerParamName, functionMetadata.Name);
+        }
     }
 
     private void CompleteRequest(StreamingMessage message)

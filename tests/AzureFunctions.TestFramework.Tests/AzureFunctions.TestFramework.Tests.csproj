@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>net8.0;net10.0</TargetFrameworks>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+    <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <RootNamespace>AzureFunctions.TestFramework.Tests</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.v3.mtp-v2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Dapr\AzureFunctions.TestFramework.Dapr.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Durable\AzureFunctions.TestFramework.Durable.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Http\AzureFunctions.TestFramework.Http.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.RabbitMQ\AzureFunctions.TestFramework.RabbitMQ.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Tables\AzureFunctions.TestFramework.Tables.csproj" />
+  </ItemGroup>
+
+  <!-- Worker SDK packages -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Azure.Functions.Worker" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Grpc" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" />
+  </ItemGroup>
+
+</Project>
