@@ -54,7 +54,19 @@ internal sealed class FakeDurableOrchestrationRunner
         Action<object?>? customStatusSink,
         CancellationToken cancellationToken)
     {
-        return await RunOrchestrationCoreAsync(orchestratorName, instanceId, input, customStatusSink, cancellationToken).ConfigureAwait(false);
+        var currentInput = input;
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var result = await RunOrchestrationCoreAsync(orchestratorName, instanceId, currentInput, customStatusSink, cancellationToken).ConfigureAwait(false);
+            if (!result.IsContinueAsNew)
+            {
+                return result;
+            }
+
+            // Eternal orchestrator pattern: loop with the new input supplied by ContinueAsNew.
+            currentInput = result.ContinueAsNewInput;
+        }
     }
 
     internal Task<object?> InvokeActivityAsync(
@@ -138,7 +150,8 @@ internal sealed class FakeDurableOrchestrationRunner
             (waitingInstanceId, eventName, eventCancellationToken) =>
                 _externalEventHub.WaitForEventAsync(waitingInstanceId, eventName, eventCancellationToken),
             customStatusSink,
-            _entityRunner);
+            _entityRunner,
+            executionCancellationToken: cancellationToken);
 
         var target = CreateTarget(orchestrator.Method, scope.ServiceProvider);
         var arguments = BuildArguments(
@@ -152,7 +165,10 @@ internal sealed class FakeDurableOrchestrationRunner
 
         var result = await InvokeMethodAsync(orchestrator.Method, target, arguments);
         _logger.LogInformation("Completed fake durable orchestrator {OrchestratorName} for instance {InstanceId}", orchestratorName, instanceId);
-        return new FakeDurableOrchestrationResult(result, orchestrationContext.CustomStatus);
+
+        return orchestrationContext.IsContinueAsNew
+            ? new FakeDurableOrchestrationResult(null, orchestrationContext.CustomStatus, IsContinueAsNew: true, ContinueAsNewInput: orchestrationContext.ContinueAsNewInput)
+            : new FakeDurableOrchestrationResult(result, orchestrationContext.CustomStatus);
     }
 
     private string CreateSubOrchestrationInstanceId(string parentInstanceId, string orchestratorName)
@@ -281,5 +297,9 @@ internal sealed class FakeDurableOrchestrationRunner
         return JsonSerializer.Deserialize(json, targetType);
     }
 
-    internal sealed record FakeDurableOrchestrationResult(object? Output, object? CustomStatus);
+    internal sealed record FakeDurableOrchestrationResult(
+        object? Output,
+        object? CustomStatus,
+        bool IsContinueAsNew = false,
+        object? ContinueAsNewInput = null);
 }
