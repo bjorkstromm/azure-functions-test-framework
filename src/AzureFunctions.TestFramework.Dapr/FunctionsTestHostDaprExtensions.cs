@@ -236,6 +236,9 @@ public static class FunctionsTestHostDaprExtensions
     // Binding data factories
     // -------------------------------------------------------------------------
 
+    private static string GetJsonFromContext(FunctionInvocationContext context, string key)
+        => context.InputData.TryGetValue(key, out var j) ? j?.ToString() ?? "{}" : "{}";
+
     private static TriggerBindingData CreateBindingDataFromBytes(
         FunctionInvocationContext context,
         FunctionRegistration function)
@@ -254,10 +257,7 @@ public static class FunctionsTestHostDaprExtensions
         FunctionInvocationContext context,
         FunctionRegistration function)
     {
-        var json = context.InputData.TryGetValue("$daprBindingJson", out var j)
-            ? j?.ToString() ?? "{}"
-            : "{}";
-
+        var json = GetJsonFromContext(context, "$daprBindingJson");
         return new TriggerBindingData
         {
             InputData = [FunctionBindingData.WithJson(function.ParameterName, json)]
@@ -278,14 +278,11 @@ public static class FunctionsTestHostDaprExtensions
         };
     }
 
-    private static TriggerBindingData CreateInvocationBindingDataFromJson(
+    internal static TriggerBindingData CreateInvocationBindingDataFromJson(
         FunctionInvocationContext context,
         FunctionRegistration function)
     {
-        var json = context.InputData.TryGetValue("$daprInvocationJson", out var j)
-            ? j?.ToString() ?? "{}"
-            : "{}";
-
+        var json = GetJsonFromContext(context, "$daprInvocationJson");
         return new TriggerBindingData
         {
             InputData = [FunctionBindingData.WithJson(function.ParameterName, json)]
@@ -306,14 +303,11 @@ public static class FunctionsTestHostDaprExtensions
         };
     }
 
-    private static TriggerBindingData CreateTopicBindingDataFromJson(
+    internal static TriggerBindingData CreateTopicBindingDataFromJson(
         FunctionInvocationContext context,
         FunctionRegistration function)
     {
-        var json = context.InputData.TryGetValue("$daprTopicJson", out var j)
-            ? j?.ToString() ?? "{}"
-            : "{}";
-
+        var json = GetJsonFromContext(context, "$daprTopicJson");
         return new TriggerBindingData
         {
             InputData = [FunctionBindingData.WithJson(function.ParameterName, json)]

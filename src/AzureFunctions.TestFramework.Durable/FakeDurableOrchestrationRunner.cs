@@ -187,7 +187,7 @@ internal sealed class FakeDurableOrchestrationRunner
         return ActivatorUtilities.GetServiceOrCreateInstance(serviceProvider, method.DeclaringType!);
     }
 
-    private static object?[] BuildArguments(
+    internal static object?[] BuildArguments(
         MethodInfo method,
         FunctionContext functionContext,
         CancellationToken cancellationToken,
@@ -238,7 +238,7 @@ internal sealed class FakeDurableOrchestrationRunner
         return arguments;
     }
 
-    private static async Task<object?> InvokeMethodAsync(MethodInfo method, object? target, object?[] arguments)
+    internal static async Task<object?> InvokeMethodAsync(MethodInfo method, object? target, object?[] arguments)
     {
         var result = method.Invoke(target, arguments);
         if (result is null)

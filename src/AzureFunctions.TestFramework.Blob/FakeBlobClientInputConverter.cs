@@ -109,6 +109,15 @@ public sealed class FakeBlobClientInputConverter : IInputConverter
         }
     }
 
+    private static readonly Dictionary<string, Func<BlobContainerClient, string, object>> _blobClientFactories = new()
+    {
+        [typeof(BlobClient).FullName!] = (containerClient, blobName) => containerClient.GetBlobClient(blobName),
+        [typeof(BlockBlobClient).FullName!] = (containerClient, blobName) => containerClient.GetBlockBlobClient(blobName),
+        [typeof(PageBlobClient).FullName!] = (containerClient, blobName) => containerClient.GetPageBlobClient(blobName),
+        [typeof(AppendBlobClient).FullName!] = (containerClient, blobName) => containerClient.GetAppendBlobClient(blobName),
+        [typeof(BlobBaseClient).FullName!] = (containerClient, blobName) => containerClient.GetBlobBaseClient(blobName),
+    };
+
     private static object CreateClient(Type targetType, BlobContainerClient containerClient, string? blobName)
     {
         var targetFullName = targetType.FullName;
@@ -119,16 +128,8 @@ public sealed class FakeBlobClientInputConverter : IInputConverter
         if (string.IsNullOrEmpty(blobName))
             throw new InvalidOperationException("BlobName is required when binding to a blob client type.");
 
-        if (targetFullName == typeof(BlobClient).FullName)
-            return containerClient.GetBlobClient(blobName);
-        if (targetFullName == typeof(BlockBlobClient).FullName)
-            return containerClient.GetBlockBlobClient(blobName);
-        if (targetFullName == typeof(PageBlobClient).FullName)
-            return containerClient.GetPageBlobClient(blobName);
-        if (targetFullName == typeof(AppendBlobClient).FullName)
-            return containerClient.GetAppendBlobClient(blobName);
-        if (targetFullName == typeof(BlobBaseClient).FullName)
-            return containerClient.GetBlobBaseClient(blobName);
+        if (targetFullName is not null && _blobClientFactories.TryGetValue(targetFullName, out var factory))
+            return factory(containerClient, blobName);
 
         throw new InvalidOperationException($"Unsupported blob client type: {targetType.FullName}");
     }
