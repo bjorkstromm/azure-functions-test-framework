@@ -605,46 +605,70 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         return _routeMatcher.Match(httpMethod, path);
     }
 
-    private async Task HandleWorkerMessageAsync(
+    internal Task HandleWorkerMessageAsync(
         StreamingMessage message,
         CancellationToken cancellationToken)
     {
         _logger.LogDebug("Received message: {MessageType}, RequestId: {RequestId}",
             GetMessageType(message), message.RequestId);
 
-        switch (message.ContentCase)
+        return message.ContentCase switch
         {
-            case StreamingMessage.ContentOneofCase.StartStream:
-                await HandleStartStreamAsync(message, cancellationToken);
-                break;
+            StreamingMessage.ContentOneofCase.StartStream
+                => HandleStartStreamAsync(message, cancellationToken),
+            StreamingMessage.ContentOneofCase.WorkerInitResponse
+                => HandleWorkerInitResponse(message),
+            StreamingMessage.ContentOneofCase.FunctionLoadResponse
+                or StreamingMessage.ContentOneofCase.FunctionMetadataResponse
+                => HandleLoadOrMetadataResponse(message),
+            StreamingMessage.ContentOneofCase.InvocationResponse
+                => HandleInvocationResponse(message),
+            StreamingMessage.ContentOneofCase.RpcLog
+                => HandleRpcLogMessage(message),
+            _ => HandleUnknownMessage(message)
+        };
+    }
 
-            case StreamingMessage.ContentOneofCase.WorkerInitResponse:
-                _workerInitTcs?.TrySetResult(message);
-                break;
+    internal Task HandleWorkerInitResponse(StreamingMessage message)
+    {
+        _workerInitTcs?.TrySetResult(message);
+        return Task.CompletedTask;
+    }
 
-            case StreamingMessage.ContentOneofCase.FunctionLoadResponse:
-            case StreamingMessage.ContentOneofCase.FunctionMetadataResponse:
-                CompleteRequest(message);
-                break;
+    internal Task HandleLoadOrMetadataResponse(StreamingMessage message)
+    {
+        CompleteRequest(message);
+        return Task.CompletedTask;
+    }
 
-            case StreamingMessage.ContentOneofCase.InvocationResponse:
-                if (message.InvocationResponse?.Result?.Status != StatusResult.Types.Status.Success)
-                {
-                    var errMsg = message.InvocationResponse?.Result?.Exception?.Message ?? "unknown";
-                    _logger.LogError("Invocation failed for {InvocationId}: {Error}",
-                        message.InvocationResponse?.InvocationId, errMsg);
-                }
-                CompleteRequest(message);
-                break;
-
-            case StreamingMessage.ContentOneofCase.RpcLog:
-                HandleRpcLog(message.RpcLog);
-                break;
-
-            default:
-                _logger.LogWarning("Unhandled message type: {MessageType}", message.ContentCase);
-                break;
+    internal Task HandleInvocationResponse(StreamingMessage message)
+    {
+        var response = message.InvocationResponse;
+        if (response?.Result?.Status != StatusResult.Types.Status.Success)
+        {
+            LogInvocationFailure(response);
         }
+        CompleteRequest(message);
+        return Task.CompletedTask;
+    }
+
+    internal void LogInvocationFailure(InvocationResponse? response)
+    {
+        var errMsg = response?.Result?.Exception?.Message ?? "unknown";
+        _logger.LogError("Invocation failed for {InvocationId}: {Error}",
+            response?.InvocationId, errMsg);
+    }
+
+    internal Task HandleRpcLogMessage(StreamingMessage message)
+    {
+        HandleRpcLog(message.RpcLog);
+        return Task.CompletedTask;
+    }
+
+    internal Task HandleUnknownMessage(StreamingMessage message)
+    {
+        _logger.LogWarning("Unhandled message type: {MessageType}", message.ContentCase);
+        return Task.CompletedTask;
     }
 
     private async Task HandleStartStreamAsync(
