@@ -910,19 +910,22 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         }
     }
 
+    private static readonly Dictionary<RpcLog.Types.Level, LogLevel> _rpcLogLevelMap = new()
+    {
+        [RpcLog.Types.Level.Trace] = LogLevel.Trace,
+        [RpcLog.Types.Level.Debug] = LogLevel.Debug,
+        [RpcLog.Types.Level.Information] = LogLevel.Information,
+        [RpcLog.Types.Level.Warning] = LogLevel.Warning,
+        [RpcLog.Types.Level.Error] = LogLevel.Error,
+        [RpcLog.Types.Level.Critical] = LogLevel.Critical,
+    };
+
+    internal static LogLevel MapRpcLogLevel(RpcLog.Types.Level level)
+        => _rpcLogLevelMap.TryGetValue(level, out var mapped) ? mapped : LogLevel.None;
+
     private void HandleRpcLog(RpcLog log)
     {
-        var logLevel = log.Level switch
-        {
-            RpcLog.Types.Level.Trace => LogLevel.Trace,
-            RpcLog.Types.Level.Debug => LogLevel.Debug,
-            RpcLog.Types.Level.Information => LogLevel.Information,
-            RpcLog.Types.Level.Warning => LogLevel.Warning,
-            RpcLog.Types.Level.Error => LogLevel.Error,
-            RpcLog.Types.Level.Critical => LogLevel.Critical,
-            _ => LogLevel.None
-        };
-
+        var logLevel = MapRpcLogLevel(log.Level);
         var category = string.IsNullOrEmpty(log.Category) ? "Worker" : log.Category;
         _logger.Log(logLevel, "[{Category}] {Message}", category, log.Message);
     }

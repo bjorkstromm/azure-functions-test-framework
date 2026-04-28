@@ -110,16 +110,18 @@ internal sealed class FakeDurableEntityRunner : IDisposable
     // for far-future SignalTime values.
     private static readonly TimeSpan MaxDelay = TimeSpan.FromMilliseconds(int.MaxValue);
 
-    private static TimeSpan ComputeDelay(SignalEntityOptions? options)
+    internal static TimeSpan ComputeDelay(SignalEntityOptions? options)
     {
-        if (options?.SignalTime is { } signalTime)
-        {
-            var delay = signalTime - DateTimeOffset.UtcNow;
-            if (delay <= TimeSpan.Zero) return TimeSpan.Zero;
-            return delay < MaxDelay ? delay : MaxDelay;
-        }
+        if (options?.SignalTime is not { } signalTime)
+            return TimeSpan.Zero;
 
-        return TimeSpan.Zero;
+        return ClampDelay(signalTime - DateTimeOffset.UtcNow);
+    }
+
+    private static TimeSpan ClampDelay(TimeSpan delay)
+    {
+        if (delay <= TimeSpan.Zero) return TimeSpan.Zero;
+        return delay < MaxDelay ? delay : MaxDelay;
     }
 
     /// <summary>Calls an entity and returns its result.</summary>

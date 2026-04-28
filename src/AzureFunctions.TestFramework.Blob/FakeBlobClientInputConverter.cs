@@ -109,6 +109,15 @@ public sealed class FakeBlobClientInputConverter : IInputConverter
         }
     }
 
+    private static readonly Dictionary<string, Func<BlobContainerClient, string, object>> _blobClientFactories = new()
+    {
+        [typeof(BlobClient).FullName!] = (c, n) => c.GetBlobClient(n),
+        [typeof(BlockBlobClient).FullName!] = (c, n) => c.GetBlockBlobClient(n),
+        [typeof(PageBlobClient).FullName!] = (c, n) => c.GetPageBlobClient(n),
+        [typeof(AppendBlobClient).FullName!] = (c, n) => c.GetAppendBlobClient(n),
+        [typeof(BlobBaseClient).FullName!] = (c, n) => c.GetBlobBaseClient(n),
+    };
+
     private static object CreateClient(Type targetType, BlobContainerClient containerClient, string? blobName)
     {
         var targetFullName = targetType.FullName;
@@ -119,16 +128,8 @@ public sealed class FakeBlobClientInputConverter : IInputConverter
         if (string.IsNullOrEmpty(blobName))
             throw new InvalidOperationException("BlobName is required when binding to a blob client type.");
 
-        if (targetFullName == typeof(BlobClient).FullName)
-            return containerClient.GetBlobClient(blobName);
-        if (targetFullName == typeof(BlockBlobClient).FullName)
-            return containerClient.GetBlockBlobClient(blobName);
-        if (targetFullName == typeof(PageBlobClient).FullName)
-            return containerClient.GetPageBlobClient(blobName);
-        if (targetFullName == typeof(AppendBlobClient).FullName)
-            return containerClient.GetAppendBlobClient(blobName);
-        if (targetFullName == typeof(BlobBaseClient).FullName)
-            return containerClient.GetBlobBaseClient(blobName);
+        if (targetFullName is not null && _blobClientFactories.TryGetValue(targetFullName, out var factory))
+            return factory(containerClient, blobName);
 
         throw new InvalidOperationException($"Unsupported blob client type: {targetType.FullName}");
     }
