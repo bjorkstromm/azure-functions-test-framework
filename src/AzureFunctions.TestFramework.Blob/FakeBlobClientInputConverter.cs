@@ -111,11 +111,11 @@ public sealed class FakeBlobClientInputConverter : IInputConverter
 
     private static readonly Dictionary<string, Func<BlobContainerClient, string, object>> _blobClientFactories = new()
     {
-        [typeof(BlobClient).FullName!] = (c, n) => c.GetBlobClient(n),
-        [typeof(BlockBlobClient).FullName!] = (c, n) => c.GetBlockBlobClient(n),
-        [typeof(PageBlobClient).FullName!] = (c, n) => c.GetPageBlobClient(n),
-        [typeof(AppendBlobClient).FullName!] = (c, n) => c.GetAppendBlobClient(n),
-        [typeof(BlobBaseClient).FullName!] = (c, n) => c.GetBlobBaseClient(n),
+        [typeof(BlobClient).FullName!] = (containerClient, blobName) => containerClient.GetBlobClient(blobName),
+        [typeof(BlockBlobClient).FullName!] = (containerClient, blobName) => containerClient.GetBlockBlobClient(blobName),
+        [typeof(PageBlobClient).FullName!] = (containerClient, blobName) => containerClient.GetPageBlobClient(blobName),
+        [typeof(AppendBlobClient).FullName!] = (containerClient, blobName) => containerClient.GetAppendBlobClient(blobName),
+        [typeof(BlobBaseClient).FullName!] = (containerClient, blobName) => containerClient.GetBlobBaseClient(blobName),
     };
 
     private static object CreateClient(Type targetType, BlobContainerClient containerClient, string? blobName)
