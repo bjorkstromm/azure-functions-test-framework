@@ -18,16 +18,7 @@ Your report will be sent privately to the maintainers. We will acknowledge recei
 
 ### Option 2 — NuGet Contact
 
-If you prefer to report via the NuGet package page, visit any of the packages listed below and use the **"Report package"** link provided by NuGet:
-
-- [AzureFunctions.TestFramework.Core](https://www.nuget.org/packages/AzureFunctions.TestFramework.Core)
-- [AzureFunctions.TestFramework.Http](https://www.nuget.org/packages/AzureFunctions.TestFramework.Http)
-- [AzureFunctions.TestFramework.Timer](https://www.nuget.org/packages/AzureFunctions.TestFramework.Timer)
-- [AzureFunctions.TestFramework.Queue](https://www.nuget.org/packages/AzureFunctions.TestFramework.Queue)
-- [AzureFunctions.TestFramework.ServiceBus](https://www.nuget.org/packages/AzureFunctions.TestFramework.ServiceBus)
-- [AzureFunctions.TestFramework.Blob](https://www.nuget.org/packages/AzureFunctions.TestFramework.Blob)
-- [AzureFunctions.TestFramework.EventGrid](https://www.nuget.org/packages/AzureFunctions.TestFramework.EventGrid)
-- [AzureFunctions.TestFramework.Durable](https://www.nuget.org/packages/AzureFunctions.TestFramework.Durable)
+If you prefer to report via NuGet, visit the [azure-functions-test-framework NuGet profile](https://www.nuget.org/profiles/azure-functions-test-framework), select the affected package, and use the **"Report package"** link provided by NuGet.
 
 ## Supported Versions
 
