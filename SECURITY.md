@@ -14,7 +14,7 @@ Use GitHub's built-in private vulnerability reporting:
 2. Click **"Report a vulnerability"**.
 3. Fill in the details and submit.
 
-Your report will be sent privately to the maintainers. We will acknowledge receipt within **5 business days** and aim to provide a fix or mitigation within **90 days**, depending on severity.
+Your report will be sent privately to the maintainers. We will acknowledge receipt within **10 business days** and aim to provide a fix or mitigation within **90 days**, depending on severity.
 
 ### Option 2 — NuGet Contact
 
