@@ -25,9 +25,13 @@
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Dapr\AzureFunctions.TestFramework.Dapr.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Durable\AzureFunctions.TestFramework.Durable.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.EventGrid\AzureFunctions.TestFramework.EventGrid.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Http\AzureFunctions.TestFramework.Http.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Queue\AzureFunctions.TestFramework.Queue.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.RabbitMQ\AzureFunctions.TestFramework.RabbitMQ.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.ServiceBus\AzureFunctions.TestFramework.ServiceBus.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Tables\AzureFunctions.TestFramework.Tables.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Timer\AzureFunctions.TestFramework.Timer.csproj" />
   </ItemGroup>
 
   <!-- Worker SDK packages -->
