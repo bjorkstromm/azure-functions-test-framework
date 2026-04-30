@@ -71,6 +71,15 @@ public static class HttpTriggerMetadataHelper
 
             foreach (var prop in doc.RootElement.EnumerateObject())
             {
+                // Skip body properties that case-insensitively conflict with keys already in the map
+                // (e.g. a body property named "query" must not overwrite the "Query" entry added from
+                // the query string). The real Azure Functions host uses a case-insensitive BindingData
+                // dictionary, so such conflicts never produce duplicate entries there.
+                if (triggerMetadata.Keys.Any(k => string.Equals(k, prop.Name, StringComparison.OrdinalIgnoreCase)))
+                {
+                    continue;
+                }
+
                 switch (prop.Value.ValueKind)
                 {
                     case JsonValueKind.String:

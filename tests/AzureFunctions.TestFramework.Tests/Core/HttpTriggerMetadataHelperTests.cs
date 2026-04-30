@@ -189,4 +189,65 @@ public class HttpTriggerMetadataHelperTests
 
         Assert.True(map.ContainsKey("title"));
     }
+
+    // ── Case-insensitive conflict resolution ───────────────────────────────────
+
+    [Fact]
+    public void PopulateTriggerMetadata_BodyPropertyNamedQuery_DoesNotOverwriteQueryKey()
+    {
+        // Regression test: a JSON body property named "query" (lowercase) must not produce a
+        // second "query" entry that conflicts with the pre-existing "Query" entry added from
+        // the query-string parameters.  The worker SDK creates the BindingData dictionary with
+        // OrdinalIgnoreCase, so duplicate case-insensitive keys cause an ArgumentException.
+        var map = NewMap();
+        var queryParams = new Dictionary<string, string> { ["foo"] = "bar" };
+        HttpTriggerMetadataHelper.PopulateTriggerMetadata(
+            map,
+            headers: null,
+            queryParams: queryParams,
+            body: """{"query":{"filter":"value"}}""",
+            contentType: "application/json");
+
+        // The existing "Query" entry (from query params) must still be present.
+        Assert.True(map.ContainsKey("Query"), "The 'Query' entry from query params must be present.");
+        // There must be exactly one key that case-insensitively equals "query".
+        var queryKeys = map.Keys.Where(k => string.Equals(k, "query", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.Single(queryKeys);
+    }
+
+    [Fact]
+    public void PopulateTriggerMetadata_BodyPropertyNamedHeaders_DoesNotOverwriteHeadersKey()
+    {
+        var map = NewMap();
+        var headers = new Dictionary<string, string> { ["X-Foo"] = "bar" };
+        HttpTriggerMetadataHelper.PopulateTriggerMetadata(
+            map,
+            headers: headers,
+            queryParams: null,
+            body: """{"headers":"should-be-skipped"}""",
+            contentType: "application/json");
+
+        Assert.True(map.ContainsKey("Headers"), "The 'Headers' entry must be present.");
+        var headerKeys = map.Keys.Where(k => string.Equals(k, "headers", StringComparison.OrdinalIgnoreCase)).ToList();
+        Assert.Single(headerKeys);
+    }
+
+    [Fact]
+    public void PopulateTriggerMetadata_BodyPropertyQueryCaseVariants_DoesNotDuplicate()
+    {
+        // Verify that any case variant of "query" in the body is skipped.
+        foreach (var bodyKey in new[] { "query", "QUERY", "Query", "qUeRy" })
+        {
+            var map = NewMap();
+            HttpTriggerMetadataHelper.PopulateTriggerMetadata(
+                map,
+                headers: null,
+                queryParams: new Dictionary<string, string> { ["x"] = "1" },
+                body: $$"""{"{{bodyKey}}":"v"}""",
+                contentType: "application/json");
+
+            var queryKeys = map.Keys.Where(k => string.Equals(k, "query", StringComparison.OrdinalIgnoreCase)).ToList();
+            Assert.Single(queryKeys);
+        }
+    }
 }
