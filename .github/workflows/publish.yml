@@ -28,16 +28,16 @@ jobs:
           dotnet-version: '10.0.x'
 
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore AzureFunctions.TestFramework.slnx
 
       - name: Build
-        run: dotnet build --no-restore --configuration Release
+        run: dotnet build AzureFunctions.TestFramework.slnx --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test --no-build --configuration Release --verbosity normal
+        run: dotnet test AzureFunctions.TestFramework.slnx --no-build --configuration Release --verbosity normal
 
       - name: Pack
-        run: dotnet pack --no-build --configuration Release --output ./artifacts
+        run: dotnet pack AzureFunctions.TestFramework.slnx --no-build --configuration Release --output ./artifacts
 
       - name: NuGet login (Trusted Publishing — OIDC → short-lived API key)
         uses: NuGet/login@v1
