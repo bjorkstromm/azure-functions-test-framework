@@ -34,7 +34,7 @@ jobs:
         run: dotnet build AzureFunctions.TestFramework.slnx --no-restore --configuration Release
 
       - name: Test
-        run: dotnet test AzureFunctions.TestFramework.slnx --no-build --configuration Release --verbosity normal
+        run: dotnet test --solution AzureFunctions.TestFramework.slnx --no-build --configuration Release --verbosity normal
 
       - name: Pack
         run: dotnet pack AzureFunctions.TestFramework.slnx --no-build --configuration Release --output ./artifacts
