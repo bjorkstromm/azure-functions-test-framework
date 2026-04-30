@@ -69,13 +69,15 @@ public static class HttpTriggerMetadataHelper
                 return;
             }
 
+            // Build a case-insensitive set of existing keys once to allow O(1) lookup per property.
+            // This prevents body properties (e.g. "query") from producing a second case-insensitive
+            // duplicate of a pre-existing key (e.g. "Query"). The real Azure Functions host uses a
+            // case-insensitive BindingData dictionary, so such conflicts never produce duplicates there.
+            var existingKeys = new HashSet<string>(triggerMetadata.Keys, StringComparer.OrdinalIgnoreCase);
+
             foreach (var prop in doc.RootElement.EnumerateObject())
             {
-                // Skip body properties that case-insensitively conflict with keys already in the map
-                // (e.g. a body property named "query" must not overwrite the "Query" entry added from
-                // the query string). The real Azure Functions host uses a case-insensitive BindingData
-                // dictionary, so such conflicts never produce duplicate entries there.
-                if (triggerMetadata.Keys.Any(k => string.Equals(k, prop.Name, StringComparison.OrdinalIgnoreCase)))
+                if (existingKeys.Contains(prop.Name))
                 {
                     continue;
                 }
