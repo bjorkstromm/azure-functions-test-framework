@@ -1,5 +1,7 @@
 using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Client.Entities;
+using Microsoft.DurableTask.Converters;
 using Microsoft.DurableTask.Entities;
 
 namespace AzureFunctions.TestFramework.Durable;
@@ -35,17 +37,50 @@ internal sealed class FakeDurableEntityClient : DurableEntityClient
         EntityInstanceId id,
         bool includeState,
         CancellationToken cancellation)
-        => throw new NotSupportedException("Use the generic GetEntityAsync<TState> overload.");
+    {
+        cancellation.ThrowIfCancellationRequested();
+        var raw = _entityRunner.GetEntityRaw(id);
+        if (raw is null)
+        {
+            return Task.FromResult<EntityMetadata?>(null);
+        }
+
+        SerializedData? state = includeState
+            ? new SerializedData(raw.Value.SerializedState, JsonDataConverter.Default)
+            : null;
+
+        EntityMetadata metadata = new(id, state)
+        {
+            LastModifiedTime = raw.Value.LastModifiedTime,
+        };
+
+        return Task.FromResult<EntityMetadata?>(metadata);
+    }
 
     public override AsyncPageable<EntityMetadata> GetAllEntitiesAsync(EntityQuery? filter)
-        => throw new NotSupportedException("Querying all entity instances is not supported by the fake entity client.");
+    {
+        var metadata = _entityRunner.GetAllEntities(filter);
+        return new SinglePageAsyncPageable<EntityMetadata>(metadata);
+    }
 
     public override AsyncPageable<EntityMetadata<TState>> GetAllEntitiesAsync<TState>(EntityQuery? filter)
-        => throw new NotSupportedException("Querying all entity instances is not supported by the fake entity client.");
+    {
+        var metadata = _entityRunner.GetAllEntities<TState>(filter);
+        return new SinglePageAsyncPageable<EntityMetadata<TState>>(metadata);
+    }
 
     public override Task<CleanEntityStorageResult> CleanEntityStorageAsync(
         CleanEntityStorageRequest? request,
         bool continueUntilComplete,
         CancellationToken cancellation)
-        => throw new NotSupportedException("Clean entity storage is not supported by the fake entity client.");
+    {
+        cancellation.ThrowIfCancellationRequested();
+        var removedCount = _entityRunner.CleanEntityStorage(request);
+        return Task.FromResult(new CleanEntityStorageResult
+        {
+            EmptyEntitiesRemoved = removedCount,
+            OrphanedLocksReleased = 0,
+            ContinuationToken = null,
+        });
+    }
 }

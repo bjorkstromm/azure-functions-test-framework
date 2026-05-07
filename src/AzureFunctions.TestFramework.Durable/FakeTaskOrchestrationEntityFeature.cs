@@ -40,11 +40,18 @@ internal sealed class FakeTaskOrchestrationEntityFeature : TaskOrchestrationEnti
         => _entityRunner.SignalEntityAsync(id, operationName, input, options, CancellationToken.None);
 
     public override Task<IAsyncDisposable> LockEntitiesAsync(IEnumerable<EntityInstanceId> entityIds)
-        => throw new NotSupportedException("Entity locking from orchestrations is not supported by the fake.");
+        => Task.FromResult<IAsyncDisposable>(NoOpLock.Instance);
 
     public override bool InCriticalSection(out IReadOnlyList<EntityInstanceId> entityIds)
     {
         entityIds = [];
         return false;
+    }
+
+    private sealed class NoOpLock : IAsyncDisposable
+    {
+        public static NoOpLock Instance { get; } = new();
+
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }
 }

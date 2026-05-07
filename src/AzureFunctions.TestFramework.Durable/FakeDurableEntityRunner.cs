@@ -1,5 +1,8 @@
 using System.Collections.Concurrent;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Client.Entities;
+using Microsoft.DurableTask.Converters;
 using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -9,6 +12,7 @@ namespace AzureFunctions.TestFramework.Durable;
 internal sealed class FakeDurableEntityRunner : IDisposable
 {
     private readonly FakeDurableFunctionCatalog _catalog;
+    private readonly JsonDataConverter _dataConverter = JsonDataConverter.Default;
     private readonly ConcurrentDictionary<EntityInstanceId, FakeEntityInstanceState> _entities = new();
     private readonly ILogger<FakeDurableEntityRunner> _logger;
     private readonly IServiceProvider _serviceProvider;
@@ -159,6 +163,112 @@ internal sealed class FakeDurableEntityRunner : IDisposable
         };
     }
 
+    public EntityRawState? GetEntityRaw(EntityInstanceId entityId)
+    {
+        if (!_entities.TryGetValue(entityId, out var instance) || !instance.EntityState.HasState)
+        {
+            return null;
+        }
+
+        return new EntityRawState(instance.EntityState.SerializedState!, instance.LastModifiedTime);
+    }
+
+    public IReadOnlyList<EntityMetadata> GetAllEntities(EntityQuery? filter)
+    {
+        var includeState = filter?.IncludeState ?? false;
+        return ApplyEntityQueryFilter(filter)
+            .Select(entry =>
+            {
+                SerializedData? serializedData = includeState && entry.Value.EntityState.HasState
+                    ? new SerializedData(entry.Value.EntityState.SerializedState!, _dataConverter)
+                    : null;
+
+                return new EntityMetadata(entry.Key, serializedData)
+                {
+                    LastModifiedTime = entry.Value.LastModifiedTime,
+                };
+            })
+            .ToArray();
+    }
+
+    public IReadOnlyList<EntityMetadata<TState>> GetAllEntities<TState>(EntityQuery? filter)
+    {
+        var includeState = filter?.IncludeState ?? false;
+        return ApplyEntityQueryFilter(filter)
+            .Select(entry =>
+            {
+                return includeState && entry.Value.EntityState.HasState
+                    ? new EntityMetadata<TState>(entry.Key, entry.Value.EntityState.GetState<TState>()!)
+                    {
+                        LastModifiedTime = entry.Value.LastModifiedTime,
+                    }
+                    : new EntityMetadata<TState>(entry.Key)
+                    {
+                        LastModifiedTime = entry.Value.LastModifiedTime,
+                    };
+            })
+            .ToArray();
+    }
+
+    public int CleanEntityStorage(CleanEntityStorageRequest? request)
+    {
+        var removeEmptyEntities = request?.RemoveEmptyEntities ?? true;
+        if (!removeEmptyEntities)
+        {
+            return 0;
+        }
+
+        var removedCount = 0;
+        foreach (var entry in _entities.ToArray())
+        {
+            if (entry.Value.EntityState.HasState)
+            {
+                continue;
+            }
+
+            if (_entities.TryRemove(entry))
+            {
+                entry.Value.Dispose();
+                removedCount++;
+            }
+        }
+
+        return removedCount;
+    }
+
+    private IEnumerable<KeyValuePair<EntityInstanceId, FakeEntityInstanceState>> ApplyEntityQueryFilter(EntityQuery? filter)
+    {
+        IEnumerable<KeyValuePair<EntityInstanceId, FakeEntityInstanceState>> entities = _entities.ToArray();
+
+        if (!string.IsNullOrWhiteSpace(filter?.InstanceIdStartsWith))
+        {
+            entities = entities.Where(entry =>
+                entry.Key.Key.StartsWith(filter.InstanceIdStartsWith, StringComparison.Ordinal));
+        }
+
+        if (filter?.LastModifiedFrom is { } lastModifiedFrom)
+        {
+            entities = entities.Where(entry => entry.Value.LastModifiedTime >= lastModifiedFrom);
+        }
+
+        if (filter?.LastModifiedTo is { } lastModifiedTo)
+        {
+            entities = entities.Where(entry => entry.Value.LastModifiedTime <= lastModifiedTo);
+        }
+
+        if (!(filter?.IncludeTransient ?? false))
+        {
+            entities = entities.Where(entry => entry.Value.EntityState.HasState);
+        }
+
+        if (filter?.PageSize is > 0)
+        {
+            entities = entities.Take(filter.PageSize.Value);
+        }
+
+        return entities;
+    }
+
     private async Task<object?> ExecuteOperationAsync(
         EntityInstanceId entityId,
         FakeEntityInstanceState instance,
@@ -170,7 +280,7 @@ internal sealed class FakeDurableEntityRunner : IDisposable
         var entityType = _catalog.GetEntityType(entityId.Name);
 
         await using var scope = _serviceProvider.CreateAsyncScope();
-        var context = new FakeTaskEntityContext(entityId, this, _logger);
+        var context = new FakeTaskEntityContext(entityId, this, _logger, ScheduleOrchestration);
         var operation = new FakeTaskEntityOperation(operationName, input, context, instance.EntityState);
 
         var entity = (ITaskEntity)ActivatorUtilities.GetServiceOrCreateInstance(scope.ServiceProvider, entityType);
@@ -179,6 +289,41 @@ internal sealed class FakeDurableEntityRunner : IDisposable
 
         _logger.LogInformation("Completed entity operation {Operation} on {EntityId}", operationName, entityId);
         return result;
+    }
+
+    private string ScheduleOrchestration(
+        string orchestrationName,
+        object? input,
+        StartOrchestrationOptions? options)
+    {
+        var instanceId = options?.InstanceId ?? Guid.NewGuid().ToString("N");
+        var scheduleOptions = new StartOrchestrationOptions
+        {
+            InstanceId = instanceId,
+            StartAt = options?.StartAt,
+            Tags = options?.Tags ?? new Dictionary<string, string>(),
+            Version = options?.Version,
+            DedupeStatuses = options?.DedupeStatuses ?? Array.Empty<string>(),
+        };
+
+        _ = Task.Run(async () =>
+            {
+                var client = _serviceProvider.GetRequiredService<FakeDurableTaskClient>();
+                await client.ScheduleNewOrchestrationInstanceAsync(
+                        new TaskName(orchestrationName),
+                        input,
+                        scheduleOptions,
+                        CancellationToken.None)
+                    .ConfigureAwait(false);
+            })
+            .ContinueWith(
+                t => _logger.LogError(
+                    t.Exception,
+                    "Unhandled exception while scheduling orchestration {OrchestrationName} from entity context",
+                    orchestrationName),
+                TaskContinuationOptions.OnlyOnFaulted);
+
+        return instanceId;
     }
 
     /// <summary>
@@ -213,4 +358,6 @@ internal sealed class FakeDurableEntityRunner : IDisposable
 
         public void Dispose() => Semaphore.Dispose();
     }
+
+    public readonly record struct EntityRawState(string SerializedState, DateTimeOffset LastModifiedTime);
 }

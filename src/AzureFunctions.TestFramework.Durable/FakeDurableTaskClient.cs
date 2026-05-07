@@ -34,7 +34,37 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
 
     public override AsyncPageable<OrchestrationMetadata> GetAllInstancesAsync(OrchestrationQuery? filter = null)
     {
-        throw new NotSupportedException("Querying all orchestration instances is not supported by the fake durable client.");
+        IEnumerable<FakeDurableInstanceState> states = _instances.Values.ToArray();
+
+        if (filter?.Statuses is { } statuses)
+        {
+            var allowedStatuses = statuses.ToHashSet();
+            states = states.Where(state => allowedStatuses.Contains(state.RuntimeStatus));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter?.InstanceIdPrefix))
+        {
+            states = states.Where(state => state.InstanceId.StartsWith(filter.InstanceIdPrefix, StringComparison.Ordinal));
+        }
+
+        if (filter?.CreatedFrom is { } createdFrom)
+        {
+            states = states.Where(state => state.CreatedAt >= createdFrom);
+        }
+
+        if (filter?.CreatedTo is { } createdTo)
+        {
+            states = states.Where(state => state.CreatedAt <= createdTo);
+        }
+
+        var pageSize = filter?.PageSize is > 0 ? filter.PageSize : int.MaxValue;
+        var metadata = states
+            .OrderByDescending(state => state.CreatedAt)
+            .Take(pageSize)
+            .Select(state => state.CreateMetadata(_dataConverter, filter?.FetchInputsAndOutputs ?? false))
+            .ToArray();
+
+        return new SinglePageAsyncPageable<OrchestrationMetadata>(metadata);
     }
 
     public override Task<OrchestrationMetadata?> GetInstancesAsync(

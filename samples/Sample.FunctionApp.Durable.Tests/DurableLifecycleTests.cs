@@ -286,6 +286,97 @@ public sealed class DurableLifecycleTests
         Assert.Equal(0, result.PurgedInstanceCount);
     }
 
+    [Fact]
+    public async Task GetAllInstances_ReturnsScheduledInstances_WithStatusAndPrefixFilter()
+    {
+        await using var host = await CreateHostAsync();
+        var client = GetDurableClient(host);
+
+#pragma warning disable xUnit1051
+        await client.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunGreetingOrchestration),
+            "martin",
+            new StartOrchestrationOptions { InstanceId = "query-completed-1" });
+        await client.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunGreetingOrchestration),
+            "world",
+            new StartOrchestrationOptions { InstanceId = "query-completed-2" });
+        await client.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunGreetingAwaitEventOrchestration),
+            "pending",
+            new StartOrchestrationOptions { InstanceId = "query-running-1" });
+
+        await client.WaitForInstanceCompletionAsync("query-completed-1", getInputsAndOutputs: true);
+        await client.WaitForInstanceCompletionAsync("query-completed-2", getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
+
+        await WaitForStatusAsync(client, "query-running-1", OrchestrationRuntimeStatus.Running);
+
+        var query = new OrchestrationQuery
+        {
+            InstanceIdPrefix = "query-completed",
+            Statuses = [OrchestrationRuntimeStatus.Completed],
+            FetchInputsAndOutputs = true,
+        };
+
+        var completedInstances = await ToListAsync(client.GetAllInstancesAsync(query), TestCancellation);
+
+        Assert.Equal(2, completedInstances.Count);
+        Assert.All(completedInstances, metadata =>
+        {
+            Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
+            Assert.StartsWith("query-completed", metadata.InstanceId);
+            Assert.NotNull(metadata.SerializedOutput);
+        });
+
+        await client.TerminateInstanceAsync("query-running-1", cancellation: TestCancellation);
+#pragma warning disable xUnit1051
+        await client.WaitForInstanceCompletionAsync("query-running-1");
+#pragma warning restore xUnit1051
+    }
+
+    [Fact]
+    public async Task SendEvent_RaisesEventToAnotherOrchestration()
+    {
+        await using var host = await CreateHostAsync();
+        var client = GetDurableClient(host);
+
+#pragma warning disable xUnit1051
+        await client.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunReceiveForwardedEventOrchestration),
+            input: (object?)null,
+            options: new StartOrchestrationOptions { InstanceId = "forwarded-event-target" });
+        await client.WaitForInstanceStartAsync("forwarded-event-target", getInputsAndOutputs: false);
+
+        var senderId = await client.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunSendForwardedEventOrchestration),
+            new ForwardedEventInput("forwarded-event-target", "payload-from-sender"));
+        await client.WaitForInstanceCompletionAsync(senderId, getInputsAndOutputs: true);
+
+        var receiver = await client.WaitForInstanceCompletionAsync("forwarded-event-target", getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
+
+        Assert.Equal(OrchestrationRuntimeStatus.Completed, receiver.RuntimeStatus);
+        Assert.Equal("payload-from-sender", receiver.ReadOutputAs<string>());
+    }
+
+    [Fact]
+    public async Task LockEntitiesAsync_ReturnsNoOpDisposable()
+    {
+        await using var host = await CreateHostAsync();
+        var client = GetDurableClient(host);
+
+#pragma warning disable xUnit1051
+        var instanceId = await client.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunEntityLockOrchestration),
+            "lock-test");
+        var metadata = await client.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
+
+        Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
+        Assert.Equal(5, metadata.ReadOutputAs<int>());
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private Task<IFunctionsTestHost> CreateHostAsync()
@@ -322,5 +413,16 @@ public sealed class DurableLifecycleTests
 
             await Task.Delay(25, linked.Token);
         }
+    }
+
+    private static async Task<List<T>> ToListAsync<T>(IAsyncEnumerable<T> source, CancellationToken cancellationToken)
+    {
+        List<T> items = [];
+        await foreach (var item in source.WithCancellation(cancellationToken))
+        {
+            items.Add(item);
+        }
+
+        return items;
     }
 }

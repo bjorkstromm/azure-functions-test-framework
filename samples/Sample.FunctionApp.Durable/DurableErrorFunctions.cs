@@ -39,9 +39,8 @@ public static class DurableErrorFunctions
     }
 
     /// <summary>
-    /// Orchestrator that calls <see cref="TaskOrchestrationContext.SendEvent"/>, which is not
-    /// supported by the fake runner and throws <see cref="NotSupportedException"/>, causing the
-    /// orchestration to transition to the <c>Failed</c> status.
+    /// Orchestrator that calls <see cref="TaskOrchestrationContext.SendEvent"/> to verify
+    /// orchestration-to-orchestration event forwarding in the fake runner.
     /// </summary>
     [Function(nameof(SendEventOrchestration))]
     public static void SendEventOrchestration([OrchestrationTrigger] TaskOrchestrationContext context)

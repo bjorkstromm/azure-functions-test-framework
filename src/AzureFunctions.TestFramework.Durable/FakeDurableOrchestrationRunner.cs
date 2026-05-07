@@ -149,6 +149,8 @@ internal sealed class FakeDurableOrchestrationRunner
                 InvokeSubOrchestrationAsync(childName, instanceId, childInput, childCancellationToken),
             (waitingInstanceId, eventName, eventCancellationToken) =>
                 _externalEventHub.WaitForEventAsync(waitingInstanceId, eventName, eventCancellationToken),
+            (targetInstanceId, eventName, payload) =>
+                _externalEventHub.RaiseEventAsync(targetInstanceId, eventName, payload, CancellationToken.None),
             customStatusSink,
             _entityRunner,
             executionCancellationToken: cancellationToken);

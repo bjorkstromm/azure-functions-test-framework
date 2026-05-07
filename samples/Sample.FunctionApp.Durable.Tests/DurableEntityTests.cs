@@ -1,5 +1,7 @@
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.Durable;
+using Microsoft.DurableTask;
+using Microsoft.DurableTask.Client;
 using Microsoft.DurableTask.Entities;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -206,6 +208,106 @@ public sealed class DurableEntityTests
     }
 
     [Fact]
+    public async Task GetEntityAsync_NonGeneric_ReturnsSerializedState()
+    {
+        await using var host = await CreateHostAsync();
+        var durableClient = host.Services.GetRequiredService<FunctionsDurableClientProvider>().Client;
+        var entityId = new EntityInstanceId(nameof(Counter), "non-generic-counter");
+
+#pragma warning disable xUnit1051
+        await durableClient.Entities.SignalEntityAsync(entityId, "add", 12);
+        var metadata = await durableClient.Entities.GetEntityAsync(entityId);
+#pragma warning restore xUnit1051
+
+        Assert.NotNull(metadata);
+        Assert.True(metadata.IncludesState);
+        Assert.Equal(12, metadata.State.ReadAs<int>());
+    }
+
+    [Fact]
+    public async Task GetAllEntitiesAsync_ReturnsAllEntities_WithAndWithoutFilter()
+    {
+        await using var host = await CreateHostAsync();
+        var durableClient = host.Services.GetRequiredService<FunctionsDurableClientProvider>().Client;
+
+#pragma warning disable xUnit1051
+        await durableClient.Entities.SignalEntityAsync(new EntityInstanceId(nameof(Counter), "all-1"), "add", 1);
+        await durableClient.Entities.SignalEntityAsync(new EntityInstanceId(nameof(Counter), "all-2"), "add", 2);
+        await durableClient.Entities.SignalEntityAsync(new EntityInstanceId(nameof(Counter), "other-3"), "add", 3);
+#pragma warning restore xUnit1051
+
+        var allEntities = await ToListAsync(
+            durableClient.Entities.GetAllEntitiesAsync<int>(new Microsoft.DurableTask.Client.Entities.EntityQuery
+            {
+                IncludeState = true,
+                IncludeTransient = true,
+            }),
+            TestCancellation);
+
+        var filtered = await ToListAsync(
+            durableClient.Entities.GetAllEntitiesAsync<int>(new Microsoft.DurableTask.Client.Entities.EntityQuery
+            {
+                IncludeState = true,
+                IncludeTransient = true,
+                PageSize = 2,
+            }),
+            TestCancellation);
+
+        Assert.True(allEntities.Count >= 3);
+        Assert.Equal(2, filtered.Count);
+    }
+
+    [Fact]
+    public async Task CleanEntityStorageAsync_RemovesEmptyEntities()
+    {
+        await using var host = await CreateHostAsync();
+        var durableClient = host.Services.GetRequiredService<FunctionsDurableClientProvider>().Client;
+        var emptyEntityId = new EntityInstanceId(nameof(OrchestrationSchedulerEntity), "empty-cleanup");
+        var statefulEntityId = new EntityInstanceId(nameof(Counter), "stateful-cleanup");
+
+#pragma warning disable xUnit1051
+        await durableClient.Entities.SignalEntityAsync(emptyEntityId, "schedule", "cleanup");
+        await durableClient.Entities.SignalEntityAsync(statefulEntityId, "add", 5);
+
+        var cleanup = await durableClient.Entities.CleanEntityStorageAsync(
+            new Microsoft.DurableTask.Client.Entities.CleanEntityStorageRequest
+            {
+                RemoveEmptyEntities = true,
+            });
+        var emptyMetadata = await durableClient.Entities.GetEntityAsync(emptyEntityId);
+        var statefulMetadata = await durableClient.Entities.GetEntityAsync<int>(statefulEntityId);
+#pragma warning restore xUnit1051
+
+        Assert.True(cleanup.EmptyEntitiesRemoved >= 1);
+        Assert.Null(emptyMetadata);
+        Assert.NotNull(statefulMetadata);
+        Assert.Equal(5, statefulMetadata.State);
+    }
+
+    [Fact]
+    public async Task ScheduleNewOrchestration_FromEntity_StartsOrchestration()
+    {
+        await using var host = await CreateHostAsync();
+        var durableClient = host.Services.GetRequiredService<FunctionsDurableClientProvider>().Client;
+        var entityId = new EntityInstanceId(nameof(OrchestrationSchedulerEntity), "scheduler-1");
+
+        var scheduledInstanceId = await host.CallEntityAsync<string>(
+            entityId,
+            "schedule",
+            "entity-scheduled",
+            cancellationToken: TestCancellation);
+        Assert.NotNull(scheduledInstanceId);
+
+#pragma warning disable xUnit1051
+        await WaitForInstanceToExistAsync(durableClient, scheduledInstanceId!, TestCancellation);
+        var metadata = await durableClient.WaitForInstanceCompletionAsync(scheduledInstanceId!, getInputsAndOutputs: true);
+#pragma warning restore xUnit1051
+
+        Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
+        Assert.Equal("Hello, entity-scheduled!", metadata.ReadOutputAs<string>());
+    }
+
+    [Fact]
     public async Task Invoker_GetFunctions_IncludesEntityTrigger()
     {
         // Arrange
@@ -250,5 +352,36 @@ public sealed class DurableEntityTests
                 .ConfigureServices(s => s.AddSingleton<GreetingFormatter>()))
             .ConfigureFakeDurableSupport(typeof(DurableGreetingFunctions).Assembly)
             .BuildAndStartAsync(TestCancellation);
+    }
+
+    private static async Task<List<T>> ToListAsync<T>(IAsyncEnumerable<T> source, CancellationToken cancellationToken)
+    {
+        List<T> items = [];
+        await foreach (var item in source.WithCancellation(cancellationToken))
+        {
+            items.Add(item);
+        }
+
+        return items;
+    }
+
+    private static async Task WaitForInstanceToExistAsync(
+        Microsoft.DurableTask.Client.DurableTaskClient client,
+        string instanceId,
+        CancellationToken cancellationToken)
+    {
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(5);
+        while (DateTimeOffset.UtcNow < deadline)
+        {
+            var metadata = await client.GetInstancesAsync(instanceId, getInputsAndOutputs: false, cancellationToken);
+            if (metadata is not null)
+            {
+                return;
+            }
+
+            await Task.Delay(25, cancellationToken);
+        }
+
+        throw new TimeoutException($"Timed out waiting for instance '{instanceId}' to be created.");
     }
 }

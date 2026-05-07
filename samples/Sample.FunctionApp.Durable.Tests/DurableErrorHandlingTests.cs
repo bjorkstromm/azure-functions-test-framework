@@ -84,13 +84,12 @@ public sealed class DurableErrorHandlingTests
         Assert.Equal("timer-completed", metadata.ReadOutputAs<string>());
     }
 
-    // ── SendEvent (not supported) ─────────────────────────────────────────────
+    // ── SendEvent (supported) ─────────────────────────────────────────────────
 
     [Fact]
-    public async Task Orchestration_WithSendEvent_FailsWithNotSupportedError()
+    public async Task Orchestration_WithSendEvent_CompletesSuccessfully()
     {
-        // Arrange — SendEvent is not supported by the fake runner and throws
-        // NotSupportedException, which propagates as a Failed orchestration.
+        // Arrange — SendEvent is supported by the fake runner.
         await using var host = await CreateHostAsync();
         var client = GetDurableClient(host);
 
@@ -100,19 +99,26 @@ public sealed class DurableErrorHandlingTests
         var metadata = await client.WaitForInstanceCompletionAsync(instanceId, getInputsAndOutputs: true);
 #pragma warning restore xUnit1051
 
-        Assert.Equal(OrchestrationRuntimeStatus.Failed, metadata.RuntimeStatus);
-        Assert.NotNull(metadata.FailureDetails);
+        Assert.Equal(OrchestrationRuntimeStatus.Completed, metadata.RuntimeStatus);
+        Assert.Null(metadata.FailureDetails);
     }
 
-    // ── Not-supported client APIs ─────────────────────────────────────────────
+    // ── Client query APIs ─────────────────────────────────────────────────────
 
     [Fact]
-    public async Task GetAllInstancesAsync_ThrowsNotSupportedException()
+    public async Task GetAllInstancesAsync_ReturnsResults()
     {
         await using var host = await CreateHostAsync();
         var client = GetDurableClient(host);
 
-        Assert.Throws<NotSupportedException>(() => client.GetAllInstancesAsync());
+#pragma warning disable xUnit1051
+        await client.ScheduleNewOrchestrationInstanceAsync(
+            nameof(DurableGreetingFunctions.RunGreetingOrchestration),
+            "query-test");
+#pragma warning restore xUnit1051
+
+        var instances = await ToListAsync(client.GetAllInstancesAsync(), TestCancellation);
+        Assert.NotEmpty(instances);
     }
 
     // ── Non-existent instance guard ───────────────────────────────────────────
@@ -207,4 +213,15 @@ public sealed class DurableErrorHandlingTests
 
     private static DurableTaskClient GetDurableClient(IFunctionsTestHost host) =>
         host.Services.GetRequiredService<FunctionsDurableClientProvider>().GetClient();
+
+    private static async Task<List<T>> ToListAsync<T>(IAsyncEnumerable<T> source, CancellationToken cancellationToken)
+    {
+        List<T> items = [];
+        await foreach (var item in source.WithCancellation(cancellationToken))
+        {
+            items.Add(item);
+        }
+
+        return items;
+    }
 }
