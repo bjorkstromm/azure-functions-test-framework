@@ -313,9 +313,9 @@ internal sealed class FakeDurableEntityRunner : IDisposable
                         new TaskName(orchestrationName),
                         input,
                         scheduleOptions,
-                        CancellationToken.None)
+                        _shutdownCts.Token)
                     .ConfigureAwait(false);
-            })
+            }, _shutdownCts.Token)
             .ContinueWith(
                 t => _logger.LogError(
                     t.Exception,

@@ -8,6 +8,7 @@ namespace AzureFunctions.TestFramework.Durable;
 
 internal sealed class FakeDurableEntityClient : DurableEntityClient
 {
+    private readonly JsonDataConverter _dataConverter = JsonDataConverter.Default;
     private readonly FakeDurableEntityRunner _entityRunner;
 
     public FakeDurableEntityClient(FakeDurableEntityRunner entityRunner)
@@ -46,7 +47,7 @@ internal sealed class FakeDurableEntityClient : DurableEntityClient
         }
 
         SerializedData? state = includeState
-            ? new SerializedData(raw.Value.SerializedState, JsonDataConverter.Default)
+            ? new SerializedData(raw.Value.SerializedState, _dataConverter)
             : null;
 
         EntityMetadata metadata = new(id, state)

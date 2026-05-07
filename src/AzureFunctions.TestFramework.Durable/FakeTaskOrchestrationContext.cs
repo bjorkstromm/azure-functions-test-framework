@@ -121,7 +121,7 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
 
     public override void SendEvent(string instanceId, string eventName, object payload)
     {
-        _ = Task.Run(() => _eventRaiser(instanceId, eventName, payload))
+        _ = _eventRaiser(instanceId, eventName, payload)
             .ContinueWith(
                 t => _logger.LogError(
                     t.Exception,

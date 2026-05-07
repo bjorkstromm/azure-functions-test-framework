@@ -21,7 +21,9 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 | **SQL input bindings** (`[SqlInput]`) | ✅ `WithSqlInputRows` via `ISyntheticBindingProvider` |
 | **Redis input bindings** (`[RedisInput]`) | ✅ `WithRedisInput` via `ISyntheticBindingProvider` |
 | **SignalR input bindings** (`[SignalRConnectionInfoInput]`, `[SignalREndpointsInput]`, `[SignalRNegotiationInput]`) | ✅ `WithSignalRConnectionInfo` / `WithSignalREndpoints` / `WithSignalRNegotiation` via `ISyntheticBindingProvider` |
-| **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events) | ✅ Fake-backed in-process |
+| **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events, orchestration-to-orchestration `SendEvent`) | ✅ Fake-backed in-process |
+| **Durable entity APIs** (`GetEntityAsync` non-generic, `GetAllEntitiesAsync`, `CleanEntityStorageAsync`, entity→orchestration scheduling, orchestration entity locks) | ✅ Supported in fake durable client/runner |
+| **Durable orchestration query API** (`GetAllInstancesAsync` with query filters) | ✅ Supported in fake durable client |
 | **ASP.NET Core integration** (`ConfigureFunctionsWebApplication`) | ✅ Full parameter binding incl. `HttpRequest`, `FunctionContext`, typed route params, `CancellationToken` |
 | **`WithHostBuilderFactory` + `ConfigureServices`** (`IHostBuilder`) | ✅ DI overrides, inherited app services |
 | **`WithHostApplicationBuilderFactory`** (`FunctionsApplicationBuilder`) | ✅ Support for the modern `FunctionsApplication.CreateBuilder()` startup style |
@@ -115,7 +117,7 @@ dotnet pack --configuration Release --output ./artifacts
 
 ## Next likely areas
 
-- Richer durable lifecycle helpers (terminate/suspend/resume and more management helpers)
+- Richer durable lifecycle helpers and pagination/continuation behavior parity
 - Additional typed helpers for more complex output payloads
 - More middleware scenarios such as authorization and exception handling
 - More binding types such as Kafka and SendGrid

@@ -11,7 +11,12 @@ internal sealed class SinglePageAsyncPageable<T> : AsyncPageable<T> where T : no
         _values = values;
     }
 
-    public override async IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null)
+    public override IAsyncEnumerable<Page<T>> AsPages(string? continuationToken = null, int? pageSizeHint = null)
+    {
+        return GetPages();
+    }
+
+    private async IAsyncEnumerable<Page<T>> GetPages()
     {
         yield return new Page<T>(_values, continuationToken: null);
     }
