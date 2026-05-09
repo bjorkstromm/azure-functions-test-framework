@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text.Json;
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.SignalR;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
 

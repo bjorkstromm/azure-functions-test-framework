@@ -9,7 +9,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 `FunctionsTestHost` — the single unified test host — is **fully functional** for the Worker SDK 2.x (.NET 10) samples and test suites. It supports both **direct gRPC mode** (`ConfigureFunctionsWorkerDefaults()`) and **ASP.NET Core integration mode** (`ConfigureFunctionsWebApplication()`), and works with both the classic `IHostBuilder` API and the newer `IHostApplicationBuilder` / `FunctionsApplicationBuilder` API introduced in Worker SDK 2.x. No active blockers.
 
-Recent durable fake-path follow-up: the previously unsupported Durable query/entity APIs now have matching unit-test coverage in `tests/AzureFunctions.TestFramework.Tests`.
+Recent test-coverage follow-up: the previously unsupported Durable query/entity APIs now have matching unit-test coverage in `tests/AzureFunctions.TestFramework.Tests`, and the SignalR package now has focused unit coverage for its invocation helpers and synthetic binding providers.
 
 ### Capabilities
 

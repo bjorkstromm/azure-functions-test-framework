@@ -1,6 +1,6 @@
 # Known Issues
 
-For current capabilities, package layout, and common commands, see `README.md`. For architectural rationale (ALC isolation, FrameworkReference, GrpcWorker no-op, durable converter interception), see the "Architecture & Design Decisions" section in `README.md`. This file is limited to active blockers and known caveats.
+For current capabilities, package layout, and common commands, see `README.md`. For architectural rationale (ALC isolation, FrameworkReference, GrpcWorker no-op, durable converter interception), see the "Architecture & Design Decisions" section in `README.md`. Latest session update: focused SignalR unit coverage was added in `tests/AzureFunctions.TestFramework.Tests` and introduced no new blockers. This file is limited to active blockers and known caveats.
 
 ## Active blockers
 

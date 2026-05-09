@@ -1,6 +1,7 @@
 using System.Text.Json;
 using AzureFunctions.TestFramework.Core;
 using AzureFunctions.TestFramework.SignalR;
+using Microsoft.Azure.Functions.Worker;
 using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.SignalR;
