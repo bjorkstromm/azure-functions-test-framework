@@ -8,22 +8,38 @@ using Xunit;
 namespace AzureFunctions.TestFramework.Tests.Durable;
 
 /// <summary>
-/// Unit tests for <see cref="FakeDurableTaskClient"/>, covering the not-supported
-/// <see cref="FakeDurableTaskClient.GetAllInstancesAsync"/> method, the null-return
+/// Unit tests for <see cref="FakeDurableTaskClient"/>, covering
+/// <see cref="FakeDurableTaskClient.GetAllInstancesAsync"/>, the null-return
 /// for missing instances, and the <see cref="InvalidOperationException"/> thrown when
 /// operations target an instance that has not been scheduled.
 /// </summary>
 public class FakeDurableTaskClientTests
 {
-    // ── GetAllInstancesAsync (not supported) ──────────────────────────────────
+    // ── GetAllInstancesAsync ───────────────────────────────────────────────────
 
     [Fact]
-    public void GetAllInstancesAsync_ThrowsNotSupportedException()
+    public async Task GetAllInstancesAsync_ReturnsScheduledInstances()
     {
         using var resources = CreateResources();
+        const string instanceId = "query-instance-1";
 
-        Assert.Throws<NotSupportedException>(() =>
-            resources.Client.GetAllInstancesAsync());
+#pragma warning disable xUnit1051
+        await resources.Client.ScheduleNewOrchestrationInstanceAsync(
+            "AnyOrchestrator",
+            options: new StartOrchestrationOptions { InstanceId = instanceId },
+            cancellation: CancellationToken.None);
+#pragma warning restore xUnit1051
+
+        var results = new List<OrchestrationMetadata>();
+        await foreach (var item in resources.Client.GetAllInstancesAsync(new OrchestrationQuery
+                       {
+                           InstanceIdPrefix = "query-instance-",
+                       }))
+        {
+            results.Add(item);
+        }
+
+        Assert.Contains(results, item => item.InstanceId == instanceId);
     }
 
     // ── GetInstancesAsync ─────────────────────────────────────────────────────
