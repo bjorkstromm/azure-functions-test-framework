@@ -1,4 +1,5 @@
 using AzureFunctions.TestFramework.Durable;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.DurableTask;
 using Microsoft.DurableTask.Client;
 using Microsoft.Extensions.DependencyInjection;
@@ -177,8 +178,10 @@ public class FakeDurableTaskClientTests
         const string instanceId = "duplicate-id";
 
 #pragma warning disable xUnit1051
+        // Use a blocking orchestrator so the instance stays in Running state
+        // long enough for the second scheduling attempt to observe it.
         await resources.Client.ScheduleNewOrchestrationInstanceAsync(
-            "First",
+            BlockingOrchestratorName,
             options: new StartOrchestrationOptions { InstanceId = instanceId },
             cancellation: CancellationToken.None);
 
@@ -186,7 +189,7 @@ public class FakeDurableTaskClientTests
         // Running (or Pending) should throw.
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             resources.Client.ScheduleNewOrchestrationInstanceAsync(
-                "Second",
+                BlockingOrchestratorName,
                 options: new StartOrchestrationOptions { InstanceId = instanceId },
                 cancellation: CancellationToken.None));
 #pragma warning restore xUnit1051
@@ -206,6 +209,17 @@ public class FakeDurableTaskClientTests
     }
 
     // ── Factory ───────────────────────────────────────────────────────────────
+
+    private const string BlockingOrchestratorName = "FakeDurableTaskClientBlockingOrchestrator";
+
+    /// <summary>
+    /// A helper orchestrator that waits for an external event, keeping the
+    /// instance in the <see cref="OrchestrationRuntimeStatus.Running"/> state
+    /// until it is terminated or the event arrives.
+    /// </summary>
+    [Function(BlockingOrchestratorName)]
+    public static Task BlockingOrchestratorFn([OrchestrationTrigger] TaskOrchestrationContext ctx)
+        => ctx.WaitForExternalEvent<object>("Unblock");
 
     private static TestResources CreateResources()
     {
