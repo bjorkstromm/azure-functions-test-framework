@@ -64,7 +64,8 @@ public class FunctionsTestHostSignalRExtensionsTests
             FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(
                 null!,
                 "SignalRFunc",
-                new SignalRInvocationContext()));
+                new SignalRInvocationContext(),
+                TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -73,7 +74,11 @@ public class FunctionsTestHostSignalRExtensionsTests
         var host = new FakeHost();
 
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", null!));
+            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(
+                host,
+                "SignalRFunc",
+                null!,
+                TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -90,7 +95,7 @@ public class FunctionsTestHostSignalRExtensionsTests
             Arguments = ["hello"]
         };
 
-        _ = host.InvokeSignalRAsync("SignalRFunc", invocationContext);
+        _ = host.InvokeSignalRAsync("SignalRFunc", invocationContext, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         Assert.Equal("signalRTrigger", host.LastContext!.TriggerType);
