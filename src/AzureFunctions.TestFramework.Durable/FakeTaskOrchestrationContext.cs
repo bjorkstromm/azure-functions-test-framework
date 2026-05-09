@@ -13,7 +13,9 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
     private readonly Func<TaskName, object?, CancellationToken, Task<object?>> _subOrchestrationDispatcher;
     private readonly Action<object?>? _customStatusSink;
     private readonly CancellationToken _executionCancellationToken;
+    private readonly Func<string, string, object?, Task> _eventRaiser;
     private readonly object? _input;
+    private readonly ILogger<FakeTaskOrchestrationContext> _logger;
     private readonly IServiceProvider _serviceProvider;
 
     public FakeTaskOrchestrationContext(
@@ -24,6 +26,7 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         Func<TaskName, object?, CancellationToken, Task<object?>> activityDispatcher,
         Func<TaskName, object?, CancellationToken, Task<object?>> subOrchestrationDispatcher,
         Func<string, string, CancellationToken, Task<object?>> externalEventDispatcher,
+        Func<string, string, object?, Task>? eventRaiser = null,
         Action<object?>? customStatusSink = null,
         FakeDurableEntityRunner? entityRunner = null,
         CancellationToken executionCancellationToken = default)
@@ -35,8 +38,10 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
         _activityDispatcher = activityDispatcher;
         _subOrchestrationDispatcher = subOrchestrationDispatcher;
         _externalEventDispatcher = externalEventDispatcher;
+        _eventRaiser = eventRaiser ?? ((_, _, _) => Task.CompletedTask);
         _customStatusSink = customStatusSink;
         _executionCancellationToken = executionCancellationToken;
+        _logger = serviceProvider.GetRequiredService<ILogger<FakeTaskOrchestrationContext>>();
         Entities = entityRunner is not null
             ? new FakeTaskOrchestrationEntityFeature(entityRunner)
             : base.Entities;
@@ -116,7 +121,14 @@ internal sealed class FakeTaskOrchestrationContext : TaskOrchestrationContext
 
     public override void SendEvent(string instanceId, string eventName, object payload)
     {
-        throw new NotSupportedException("External events are not supported by the fake durable runner.");
+        _ = _eventRaiser(instanceId, eventName, payload)
+            .ContinueWith(
+                t => _logger.LogError(
+                    t.Exception,
+                    "Unhandled exception while raising durable event {EventName} to instance {InstanceId}",
+                    eventName,
+                    instanceId),
+                TaskContinuationOptions.OnlyOnFaulted);
     }
 
     public override void SetCustomStatus(object? customStatus)
