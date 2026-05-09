@@ -98,6 +98,21 @@ public class TableInputSyntheticBindingProviderTests
     }
 
     [Fact]
+    public void CreateSyntheticParameter_MissingDirection_TreatsBindingAsInput()
+    {
+        var jsonByKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Orders"] = """[{"PartitionKey":"A"}]"""
+        };
+        var provider = new TableInputSyntheticBindingProvider(jsonByKey);
+        var config = ParseConfig("""{"tableName":"Orders"}""");
+
+        var result = provider.CreateSyntheticParameter("entities", config);
+
+        Assert.Equal("""[{"PartitionKey":"A"}]""", result.Json);
+    }
+
+    [Fact]
     public void CreateSyntheticParameter_ExactKeyPreferredOverPartition()
     {
         var jsonByKey = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
