@@ -23,7 +23,7 @@
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.SignalRService" Version="2.0.1" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ" Version="2.1.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Redis" Version="1.0.0" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Sql" Version="3.1.527" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Sql" Version="3.1.536" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs" Version="6.8.1" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.5.4" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Tables" Version="1.5.0" />
