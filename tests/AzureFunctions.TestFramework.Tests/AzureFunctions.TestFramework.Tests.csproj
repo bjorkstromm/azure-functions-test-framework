@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Queue\AzureFunctions.TestFramework.Queue.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.RabbitMQ\AzureFunctions.TestFramework.RabbitMQ.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.ServiceBus\AzureFunctions.TestFramework.ServiceBus.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.SignalR\AzureFunctions.TestFramework.SignalR.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Tables\AzureFunctions.TestFramework.Tables.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Timer\AzureFunctions.TestFramework.Timer.csproj" />
   </ItemGroup>
