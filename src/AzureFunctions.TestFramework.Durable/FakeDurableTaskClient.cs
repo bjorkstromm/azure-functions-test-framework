@@ -9,6 +9,7 @@ namespace AzureFunctions.TestFramework.Durable;
 
 internal sealed class FakeDurableTaskClient : DurableTaskClient
 {
+    private static readonly TimeSpan CompletionPollInterval = TimeSpan.FromMilliseconds(25);
     private readonly JsonDataConverter _dataConverter = JsonDataConverter.Default;
     private readonly FakeDurableExternalEventHub _externalEventHub;
     private readonly ConcurrentDictionary<string, FakeDurableInstanceState> _instances = new(StringComparer.OrdinalIgnoreCase);
@@ -217,7 +218,7 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
                 return metadata;
             }
 
-            await Task.Delay(25, cancellation).ConfigureAwait(false);
+            await Task.Delay(CompletionPollInterval, cancellation).ConfigureAwait(false);
         }
     }
 
