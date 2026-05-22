@@ -203,9 +203,22 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         bool getInputsAndOutputs = false,
         CancellationToken cancellation = default)
     {
-        var state = GetRequiredInstance(instanceId);
-        await state.Execution.WaitAsync(cancellation).ConfigureAwait(false);
-        return state.CreateMetadata(_dataConverter, getInputsAndOutputs);
+        while (true)
+        {
+            var state = GetRequiredInstance(instanceId);
+            await state.Execution.WaitAsync(cancellation).ConfigureAwait(false);
+
+            var metadata = state.CreateMetadata(_dataConverter, getInputsAndOutputs);
+            if (metadata.RuntimeStatus is
+                OrchestrationRuntimeStatus.Completed or
+                OrchestrationRuntimeStatus.Failed or
+                OrchestrationRuntimeStatus.Terminated)
+            {
+                return metadata;
+            }
+
+            await Task.Delay(25, cancellation).ConfigureAwait(false);
+        }
     }
 
     public override async Task<OrchestrationMetadata> WaitForInstanceStartAsync(
