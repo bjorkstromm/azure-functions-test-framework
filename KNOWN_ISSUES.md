@@ -5,6 +5,7 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 ## Active blockers
 
 - No active blockers for the current Worker SDK 2.x sample/test suites (including the latest Durable fake API support and CI-aligned test expectations).
+- No active coverage blockers for framework libraries: CI coverage now reports 80%+ line coverage across all `AzureFunctions.TestFramework.*` libraries.
 
 ## Known issues
 
@@ -23,6 +24,7 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 - **`[RedisInput]` supports string-typed parameters only via `WithRedisInput`.** The `WithRedisInput(command, value)` builder extension injects a string value keyed by the full `command` string declared in the `[RedisInput]` attribute (case-insensitive, e.g. `"GET mykey"`). For JSON-typed injection use `WithRedisInputJson(command, json)`. Redis trigger methods (`InvokeRedisPubSubAsync`, `InvokeRedisListAsync`, `InvokeRedisStreamAsync`) pass trigger values as `string` binding data; functions whose parameters are typed as `string` receive the raw value directly.
 - **`SignalRMessageAction` / `SignalRGroupAction` cannot be deserialized directly via `ReadReturnValueAs<T>()`.** Both types have multiple parameterized constructors with no `[JsonConstructor]` attribute, so `System.Text.Json` cannot select one unambiguously. Read the `[SignalROutput]` return value as `JsonElement` and inspect properties via `GetProperty(...)` instead.
 - **MCP trigger support requires the `AzureFunctions.TestFramework.Mcp` package.** MCP (Model Context Protocol) tool, resource, and prompt triggers are invoked via `InvokeMcpToolAsync(...)`, `InvokeMcpResourceAsync(...)`, and `InvokeMcpPromptAsync(...)` extension methods. The framework automatically invokes the MCP extension's `WorkerExtensionStartupCodeExecutor` from the functions assembly (working around the SDK's `Assembly.GetEntryAssembly()` limitation in test runners) so that `FunctionsMcpContextMiddleware` runs and populates `FunctionContext.Items` before the function body executes.
+- **Coverage reports intentionally exclude generated `obj` files.** CI report generation applies `-filefilters:-*/obj/*` so generated protobuf/codegen artifacts do not skew package-level coverage percentages.
 
 ## Design constraints
 
