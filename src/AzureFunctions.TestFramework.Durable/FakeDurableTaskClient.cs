@@ -9,6 +9,7 @@ namespace AzureFunctions.TestFramework.Durable;
 
 internal sealed class FakeDurableTaskClient : DurableTaskClient
 {
+    private static readonly TimeSpan CompletionPollInterval = TimeSpan.FromMilliseconds(25);
     private readonly JsonDataConverter _dataConverter = JsonDataConverter.Default;
     private readonly FakeDurableExternalEventHub _externalEventHub;
     private readonly ConcurrentDictionary<string, FakeDurableInstanceState> _instances = new(StringComparer.OrdinalIgnoreCase);
@@ -203,10 +204,28 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         bool getInputsAndOutputs = false,
         CancellationToken cancellation = default)
     {
-        var state = GetRequiredInstance(instanceId);
-        await state.Execution.WaitAsync(cancellation).ConfigureAwait(false);
-        return state.CreateMetadata(_dataConverter, getInputsAndOutputs);
+        while (true)
+        {
+            var state = GetRequiredInstance(instanceId);
+            await state.Execution.WaitAsync(cancellation).ConfigureAwait(false);
+
+            var metadata = state.CreateMetadata(_dataConverter, getInputsAndOutputs: false);
+            if (IsTerminal(metadata.RuntimeStatus))
+            {
+                return getInputsAndOutputs
+                    ? state.CreateMetadata(_dataConverter, getInputsAndOutputs: true)
+                    : metadata;
+            }
+
+            await Task.Delay(CompletionPollInterval, cancellation).ConfigureAwait(false);
+        }
     }
+
+    private static bool IsTerminal(OrchestrationRuntimeStatus status) =>
+        status is OrchestrationRuntimeStatus.Completed or
+            OrchestrationRuntimeStatus.Failed or
+            OrchestrationRuntimeStatus.Terminated
+        || string.Equals(status.ToString(), "Canceled", StringComparison.Ordinal);
 
     public override async Task<OrchestrationMetadata> WaitForInstanceStartAsync(
         string instanceId,
