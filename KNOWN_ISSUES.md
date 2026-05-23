@@ -4,7 +4,7 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 
 ## Active blockers
 
-- No active blockers for the current Worker SDK 2.x sample/test suites (including the latest Durable fake API support, the entity-scheduled orchestration completion race fix, and CI-aligned test expectations).
+- No active blockers for the current Worker SDK 2.x sample/test suites (including the latest Durable fake API support and CI-aligned test expectations).
 
 ## Known issues
 

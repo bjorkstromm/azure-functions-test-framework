@@ -209,18 +209,23 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
             var state = GetRequiredInstance(instanceId);
             await state.Execution.WaitAsync(cancellation).ConfigureAwait(false);
 
-            var metadata = state.CreateMetadata(_dataConverter, getInputsAndOutputs);
-            if (metadata.RuntimeStatus is
-                OrchestrationRuntimeStatus.Completed or
-                OrchestrationRuntimeStatus.Failed or
-                OrchestrationRuntimeStatus.Terminated)
+            var metadata = state.CreateMetadata(_dataConverter, getInputsAndOutputs: false);
+            if (IsTerminal(metadata.RuntimeStatus))
             {
-                return metadata;
+                return getInputsAndOutputs
+                    ? state.CreateMetadata(_dataConverter, getInputsAndOutputs: true)
+                    : metadata;
             }
 
             await Task.Delay(CompletionPollInterval, cancellation).ConfigureAwait(false);
         }
     }
+
+    private static bool IsTerminal(OrchestrationRuntimeStatus status) =>
+        status is OrchestrationRuntimeStatus.Completed or
+            OrchestrationRuntimeStatus.Failed or
+            OrchestrationRuntimeStatus.Terminated
+        || string.Equals(status.ToString(), "Canceled", StringComparison.Ordinal);
 
     public override async Task<OrchestrationMetadata> WaitForInstanceStartAsync(
         string instanceId,
