@@ -8,7 +8,6 @@ Reviewed: 2026-05-24 (README roadmap/"Next likely areas" refreshed; caveats belo
 
 - No active blockers for the current Worker SDK 2.x sample/test suites (including the latest Durable fake API support and CI-aligned test expectations).
 - No active coverage blockers for framework libraries: CI coverage now reports 80%+ line coverage across all `AzureFunctions.TestFramework.*` libraries.
-- Warmup trigger support is now available via `AzureFunctions.TestFramework.Warmup` (`InvokeWarmupAsync(...)`) and is covered in the 4-flavour test matrix.
 
 ## Known issues
 

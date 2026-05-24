@@ -94,14 +94,6 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 
 > **`[SignalROutput]` note:** `SignalRMessageAction` and `SignalRGroupAction` have multiple parameterized constructors (no `[JsonConstructor]`), so `ReadReturnValueAs<SignalRMessageAction>()` is not available directly. Read the return value as `JsonElement` and inspect properties via `GetProperty(...)` instead.
 
-#### `[SendGrid]` Output Binding ✅ Covered by Core
-
-| Binding | Worker Extension | Test Framework | Status |
-|---------|-----------------|----------------|--------|
-| `[SendGrid]` (output) | ✅ | ✅ Generic output capture via Core | ✅ |
-
-> **Note:** SendGrid is output-only — no trigger or input binding exists. No dedicated `AzureFunctions.TestFramework.SendGrid` package is needed. `[SendGrid]` output is captured generically by Core's `FunctionInvocationResult.OutputData`, the same as any other output binding (`[QueueOutput]`, `[BlobOutput]`, etc.). Read the captured email using `result.ReadOutputAs<SendGridMessage>(bindingName)` or `result.ReadReturnValueAs<SendGridMessage>()`.
-
 #### `AzureFunctions.TestFramework.Tables` ✅ Fully Covered
 
 | Binding | Worker Extension | Test Framework | Status |
@@ -220,6 +212,7 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 | Extension | NuGet Package | Trigger | Input | Output |
 |-----------|---------------|---------|-------|--------|
+| **SendGrid** | `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` | — | — | `[SendGrid]` |
 | **Warmup** | `Microsoft.Azure.Functions.Worker.Extensions.Warmup` | `[WarmupTrigger]` | — | — |
 
 ### Not Applicable — No Isolated Worker Support
@@ -340,14 +333,21 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### ~~Issue 7: SendGrid Output binding~~ ✅ Done
+### Issue 7: SendGrid Output binding
 
-No dedicated package needed. Key facts:
-- SendGrid is **output-only** — no trigger or input binding exists in the Worker extension
-- `[SendGrid]` output is captured **generically** by Core's `FunctionInvocationResult.OutputData` — no `Invoke*Async` method and no new package are needed
-- Read the captured email using `result.ReadOutputAs<SendGridMessage>(bindingName)` or `result.ReadReturnValueAs<SendGridMessage>()` (when `[SendGrid]` is the function return value)
-- Works with any trigger (HTTP, Queue, Timer, etc.) that also produces a `[SendGrid]` output
-- No separate NuGet package is published; add `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` directly to your function app project if you use the `[SendGrid]` attribute
+**Package:** `AzureFunctions.TestFramework.SendGrid`
+
+**Bindings:**
+- **Output:** `[SendGrid]` — sends emails via SendGrid
+
+**Scope:**
+- New package: `AzureFunctions.TestFramework.SendGrid`
+- No trigger invocation (output-only binding)
+- Output binding captured via `FunctionInvocationResult.OutputData` when used with other triggers (HTTP, Queue, Timer, etc.)
+- Tests should demonstrate output binding capture for email-sending functions
+- Test across 4-flavour matrix
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.SendGrid`
 
 ---
 
@@ -478,15 +478,15 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 
 ### Suggested Priority
 
-1. ~~**CosmosDB**~~ — ✅ Done
-2. ~~**Event Hubs**~~ — ✅ Done
-3. ~~**SignalR**~~ — ✅ Done
+1. **CosmosDB** — Very high demand, commonly used with Azure Functions
+2. **Event Hubs** — High demand for event-driven architectures
+3. **SignalR** — Real-time scenarios, most complex
 4. ~~**Azure SQL** — High demand for data-driven functions; trigger + input + output~~ ✅ Done
 5. ~~**Redis** — Growing adoption for caching and event-driven patterns; three trigger variants~~ ✅ Done
-6. ~~**Kafka** — Growing adoption~~ ✅ Done
+6. **Kafka** — Growing adoption
 7. ~~**MCP** — New AI/agent integration pattern; trigger-only, relatively simple~~ ✅ Done
 8. ~~**RabbitMQ** — Niche but important~~ ✅ Done
-9. ~~**SendGrid**~~ — ✅ Done (output-only; no package needed — generic output capture via Core)
+9. **SendGrid** — Output-only, low complexity
 10. ~~**Dapr** — Kubernetes/Container Apps only; rich binding set~~ ✅ Done
 11. ~~**Azure Data Explorer** — Preview, input/output only; niche data-engineering scenarios~~ ✅ Done
 12. **Warmup** — Simplest, rarely tested in isolation

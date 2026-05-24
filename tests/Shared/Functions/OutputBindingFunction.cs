@@ -42,20 +42,6 @@ public class OutputBindingFunction
         _processedItems.Add(message);
         return new EventGridOutputBindingResult { OutputEvent = $"eg:{message}" };
     }
-
-    /// <summary>
-    /// Queue-triggered function that writes to a SendGrid output binding.
-    /// The SendGrid output is captured generically via <c>FunctionInvocationResult.OutputData</c> —
-    /// no dedicated framework package is needed.
-    /// </summary>
-    [Function("CreateSendGridOutputEmail")]
-    public SendGridOutputBindingResult CreateSendGridOutputEmail(
-        [QueueTrigger("sendgrid-output-queue")] string message)
-    {
-        _logger.LogInformation("Creating SendGrid output for {Message}", message);
-        _processedItems.Add(message);
-        return new SendGridOutputBindingResult { OutputEmail = $"sg:{message}" };
-    }
 }
 
 public sealed class ServiceBusOutputBindingResult
@@ -68,10 +54,4 @@ public sealed class EventGridOutputBindingResult
 {
     [EventGridOutput(TopicEndpointUri = "https://fake.eventgrid.topic.endpoint", TopicKeySetting = "TopicKey")]
     public string OutputEvent { get; set; } = string.Empty;
-}
-
-public sealed class SendGridOutputBindingResult
-{
-    [SendGridOutput(ApiKey = "FakeSendGridApiKey")]
-    public string OutputEmail { get; set; } = string.Empty;
 }

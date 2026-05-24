@@ -21,7 +21,6 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Warmup" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs" />
@@ -39,7 +38,6 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Redis" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Dapr" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.SendGrid" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
   </ItemGroup>
   <ItemGroup>
