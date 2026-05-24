@@ -9,6 +9,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleTo">
+      <_Parameter1>AzureFunctions.TestFramework.Tests</_Parameter1>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\AzureFunctions.TestFramework.Core\AzureFunctions.TestFramework.Core.csproj" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" />
   </ItemGroup>

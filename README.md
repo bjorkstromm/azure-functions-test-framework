@@ -9,16 +9,29 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 `FunctionsTestHost` — the single unified test host — is **fully functional** for the Worker SDK 2.x (.NET 10) samples and test suites. It supports both **direct gRPC mode** (`ConfigureFunctionsWorkerDefaults()`) and **ASP.NET Core integration mode** (`ConfigureFunctionsWebApplication()`), and works with both the classic `IHostBuilder` API and the newer `IHostApplicationBuilder` / `FunctionsApplicationBuilder` API introduced in Worker SDK 2.x. No active blockers.
 
+### Latest update (2026-05-24)
+
+- Added `AzureFunctions.TestFramework.Kafka` with `InvokeKafkaAsync(...)` and `InvokeKafkaBatchAsync(...)` — full trigger invocation support for `string`, `byte[]`, `KafkaRecord`, and JSON POCO parameter types; batch overloads for `IsBatched = true`; `[KafkaOutput]` captured via Core generically.
+- Library coverage work completed for the framework solution: all `AzureFunctions.TestFramework.*` libraries are now at **80%+ line coverage** in the CI coverage report.
+- Coverage reporting now excludes generated `obj` files (`-filefilters:-*/obj/*`) so metrics reflect maintainable source code rather than generated protobuf artifacts.
+- New unit tests were added for Dapr builder extensions, CosmosDB/SQL builder and synthetic binding providers, Service Bus fake action/converter helpers, and additional Durable utility/configuration paths.
+- Added `AzureFunctions.TestFramework.DataExplorer` with `[KustoInput]` synthetic input support (`WithKustoInputRows` / `WithKustoInputJson`) and verified `[KustoOutput]` capture across the 4-flavour matrix.
+
 ### Capabilities
 
 | Area | Status |
 |------|--------|
 | **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core integration modes |
-| **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SignalR) | ✅ Extension methods + result capture |
+| **`BindingContext.BindingData` from HTTP request** | ✅ JSON body top-level properties, `Query`, and `Headers` populated — matches real Azure Functions host behavior |
+| **Trigger packages + binding helper packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis, RabbitMQ, Kafka, DataExplorer) | ✅ Extension methods + result capture |
 | **Table input bindings** (`[TableInput]`) | ✅ `WithTableEntity` / `WithTableEntities` via `ISyntheticBindingProvider` |
 | **CosmosDB input bindings** (`[CosmosDBInput]`) | ✅ `WithCosmosDBInputDocuments` via `ISyntheticBindingProvider` |
+| **SQL input bindings** (`[SqlInput]`) | ✅ `WithSqlInputRows` via `ISyntheticBindingProvider` |
+| **Redis input bindings** (`[RedisInput]`) | ✅ `WithRedisInput` via `ISyntheticBindingProvider` |
 | **SignalR input bindings** (`[SignalRConnectionInfoInput]`, `[SignalREndpointsInput]`, `[SignalRNegotiationInput]`) | ✅ `WithSignalRConnectionInfo` / `WithSignalREndpoints` / `WithSignalRNegotiation` via `ISyntheticBindingProvider` |
-| **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events) | ✅ Fake-backed in-process |
+| **Durable Functions** (starter, orchestrator, activity, sub-orchestrator, external events, orchestration-to-orchestration `SendEvent`) | ✅ Fake-backed in-process |
+| **Durable entity APIs** (`GetEntityAsync` non-generic, `GetAllEntitiesAsync`, `CleanEntityStorageAsync`, entity→orchestration scheduling, orchestration entity locks) | ✅ Supported in fake durable client/runner |
+| **Durable orchestration query API** (`GetAllInstancesAsync` with query filters) | ✅ Supported in fake durable client |
 | **ASP.NET Core integration** (`ConfigureFunctionsWebApplication`) | ✅ Full parameter binding incl. `HttpRequest`, `FunctionContext`, typed route params, `CancellationToken` |
 | **`WithHostBuilderFactory` + `ConfigureServices`** (`IHostBuilder`) | ✅ DI overrides, inherited app services |
 | **`WithHostApplicationBuilderFactory`** (`FunctionsApplicationBuilder`) | ✅ Support for the modern `FunctionsApplication.CreateBuilder()` startup style |
@@ -48,15 +61,21 @@ This framework aims to provide:
 | [`AzureFunctions.TestFramework.Core`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Core) | gRPC-based in-process test host, worker hosting, metadata inspection, shared invocation result types, `ISyntheticBindingProvider` extensibility | [README](src/AzureFunctions.TestFramework.Core/README.md) |
 | [`AzureFunctions.TestFramework.Http`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Http) | HTTP client support (`CreateHttpClient()`), request/response mapping, forwarding handlers for both modes | [README](src/AzureFunctions.TestFramework.Http/README.md) |
 | [`AzureFunctions.TestFramework.Timer`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Timer) | `InvokeTimerAsync(...)` | [README](src/AzureFunctions.TestFramework.Timer/README.md) |
-| [`AzureFunctions.TestFramework.Queue`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Queue) | `InvokeQueueAsync(...)` | [README](src/AzureFunctions.TestFramework.Queue/README.md) |
+| [`AzureFunctions.TestFramework.Queue`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Queue) | `InvokeQueueAsync(...)` for `string` and `QueueMessage` parameter types | [README](src/AzureFunctions.TestFramework.Queue/README.md) |
 | [`AzureFunctions.TestFramework.ServiceBus`](https://www.nuget.org/packages/AzureFunctions.TestFramework.ServiceBus) | `InvokeServiceBusAsync(...)`, `InvokeServiceBusBatchAsync(...)`, `ConfigureFakeServiceBusMessageActions()` | [README](src/AzureFunctions.TestFramework.ServiceBus/README.md) |
-| [`AzureFunctions.TestFramework.Blob`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Blob) | `InvokeBlobAsync(...)`, `WithBlobInputContent(...)` | [README](src/AzureFunctions.TestFramework.Blob/README.md) |
+| [`AzureFunctions.TestFramework.Blob`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Blob) | `InvokeBlobAsync(...)`, `WithBlobInputContent(...)`, `WithBlobServiceClient(...)` + `WithBlobInputClient(...)` for `BlobClient` types | [README](src/AzureFunctions.TestFramework.Blob/README.md) |
 | [`AzureFunctions.TestFramework.EventGrid`](https://www.nuget.org/packages/AzureFunctions.TestFramework.EventGrid) | `InvokeEventGridAsync(...)` for both `EventGridEvent` and `CloudEvent` | [README](src/AzureFunctions.TestFramework.EventGrid/README.md) |
 | [`AzureFunctions.TestFramework.EventHubs`](https://www.nuget.org/packages/AzureFunctions.TestFramework.EventHubs) | `InvokeEventHubAsync(...)` for single event, `InvokeEventHubBatchAsync(...)` for batch-trigger functions | [README](src/AzureFunctions.TestFramework.EventHubs/README.md) |
 | [`AzureFunctions.TestFramework.CosmosDB`](https://www.nuget.org/packages/AzureFunctions.TestFramework.CosmosDB) | `InvokeCosmosDBAsync(...)` for change-feed trigger, `WithCosmosDBInputDocuments(...)` for input binding injection | [README](src/AzureFunctions.TestFramework.CosmosDB/README.md) |
+| [`AzureFunctions.TestFramework.Sql`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Sql) | `InvokeSqlAsync(...)` for change-tracking trigger, `WithSqlInputRows(...)` for input binding injection | [README](src/AzureFunctions.TestFramework.Sql/README.md) |
+| [`AzureFunctions.TestFramework.DataExplorer`](https://www.nuget.org/packages/AzureFunctions.TestFramework.DataExplorer) | `WithKustoInputRows(...)` / `WithKustoInputJson(...)` for `[KustoInput]` binding injection; `[KustoOutput]` captured via Core | [README](src/AzureFunctions.TestFramework.DataExplorer/README.md) |
 | [`AzureFunctions.TestFramework.Tables`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Tables) | `WithTableEntity(...)`, `WithTableEntities(...)` (input binding injection); `[TableOutput]` capture works generically via Core | [README](src/AzureFunctions.TestFramework.Tables/README.md) |
 | [`AzureFunctions.TestFramework.SignalR`](https://www.nuget.org/packages/AzureFunctions.TestFramework.SignalR) | `InvokeSignalRAsync(...)` for `[SignalRTrigger]`; `WithSignalRConnectionInfo(...)`, `WithSignalRNegotiation(...)`, `WithSignalREndpoints(...)` for input binding injection; `[SignalROutput]` captured via Core | [README](src/AzureFunctions.TestFramework.SignalR/README.md) |
 | [`AzureFunctions.TestFramework.Durable`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Durable) | Fake-backed durable helpers, `ConfigureFakeDurableSupport(...)`, `FakeDurableTaskClient`, activity invocation, external events | [README](src/AzureFunctions.TestFramework.Durable/README.md) |
+| [`AzureFunctions.TestFramework.Mcp`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Mcp) | `InvokeMcpToolAsync(...)`, `InvokeMcpResourceAsync(...)`, `InvokeMcpPromptAsync(...)` for MCP (Model Context Protocol) triggers | [README](src/AzureFunctions.TestFramework.Mcp/README.md) |
+| [`AzureFunctions.TestFramework.Redis`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Redis) | `InvokeRedisPubSubAsync(...)`, `InvokeRedisListAsync(...)`, `InvokeRedisStreamAsync(...)` for Redis triggers; `WithRedisInput(...)` for `[RedisInput]` binding injection; `[RedisOutput]` captured via Core | [README](src/AzureFunctions.TestFramework.Redis/README.md) |
+| [`AzureFunctions.TestFramework.RabbitMQ`](https://www.nuget.org/packages/AzureFunctions.TestFramework.RabbitMQ) | `InvokeRabbitMQAsync(...)` for `string`, `byte[]` (UTF-8 body), and JSON POCO trigger parameters; optional `RabbitMqTriggerMessageProperties` for trigger metadata; named `[RabbitMQOutput]` payloads via `OutputData` / `ReadOutputAs<T>(...)` | [README](src/AzureFunctions.TestFramework.RabbitMQ/README.md) |
+| [`AzureFunctions.TestFramework.Kafka`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Kafka) | `InvokeKafkaAsync(...)` for `string`, `byte[]`, `KafkaRecord`, and JSON POCO trigger parameters; `InvokeKafkaBatchAsync(...)` for all batched variants (`IsBatched = true`); `[KafkaOutput]` captured via Core | [README](src/AzureFunctions.TestFramework.Kafka/README.md) |
 
 ## Project setup requirements
 
@@ -108,10 +127,10 @@ dotnet pack --configuration Release --output ./artifacts
 
 ## Next likely areas
 
-- Richer durable lifecycle helpers (terminate/suspend/resume and more management helpers)
+- Richer durable lifecycle helpers and pagination/continuation behavior parity
 - Additional typed helpers for more complex output payloads
 - More middleware scenarios such as authorization and exception handling
-- More binding types such as Kafka and RabbitMQ
+- More binding types such as RabbitMQ
 
 ## Project Structure
 
@@ -126,8 +145,11 @@ src/
   AzureFunctions.TestFramework.EventGrid/    # EventGridTrigger invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.EventHubs/    # EventHubTrigger invocation — single + batch (net8.0;net10.0)
   AzureFunctions.TestFramework.CosmosDB/     # CosmosDBTrigger invocation + CosmosDBInput injection (net8.0;net10.0)
+  AzureFunctions.TestFramework.Sql/          # SqlTrigger invocation + SqlInput injection (net8.0;net10.0)
+  AzureFunctions.TestFramework.DataExplorer/ # KustoInput injection for Azure Data Explorer + generic KustoOutput capture (net8.0;net10.0)
   AzureFunctions.TestFramework.Tables/       # TableInput injection via ISyntheticBindingProvider (net8.0;net10.0)
   AzureFunctions.TestFramework.SignalR/      # SignalRTrigger invocation + SignalR input binding injection (net8.0;net10.0)
+  AzureFunctions.TestFramework.Redis/        # RedisPubSubTrigger/RedisListTrigger/RedisStreamTrigger invocation + RedisInput injection (net8.0;net10.0)
   AzureFunctions.TestFramework.Durable/      # Fake durable support (net8.0;net10.0)
 
 samples/

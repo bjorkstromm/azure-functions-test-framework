@@ -1,4 +1,3 @@
-using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Queue;
 using Microsoft.Extensions.DependencyInjection;
 using Xunit;
@@ -28,9 +27,8 @@ public abstract class OutputBindingTestsBase : TestHostTestBase
     public async Task InvokeQueueAsync_CapturesServiceBusOutputBindingData()
     {
         var messageText = "Hello ServiceBus output!";
-        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
 
-        var result = await TestHost.InvokeQueueAsync("CreateServiceBusOutputMessage", message, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("CreateServiceBusOutputMessage", messageText, TestCancellation);
 
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         var outputMessage = result.ReadOutputAs<string>("OutputMessage");
@@ -41,9 +39,8 @@ public abstract class OutputBindingTestsBase : TestHostTestBase
     public async Task InvokeQueueAsync_CapturesEventGridOutputBindingData()
     {
         var messageText = "Hello EventGrid output!";
-        var message = QueuesModelFactory.QueueMessage(Guid.NewGuid().ToString(), "pop-receipt", messageText, 1);
 
-        var result = await TestHost.InvokeQueueAsync("CreateEventGridOutputEvent", message, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("CreateEventGridOutputEvent", messageText, TestCancellation);
 
         Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
         var outputEvent = result.ReadOutputAs<string>("OutputEvent");

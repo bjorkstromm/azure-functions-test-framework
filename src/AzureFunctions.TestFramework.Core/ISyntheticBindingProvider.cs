@@ -28,6 +28,8 @@ public interface ISyntheticBindingProvider
 
     /// <summary>
     /// Creates the synthetic binding parameter to inject into the invocation request.
+    /// Return <see langword="null"/> to skip this binding (e.g. when the path or direction
+    /// does not match this provider's scope).
     /// </summary>
     /// <param name="parameterName">
     /// The parameter name for this binding as declared in the function signature.
@@ -36,5 +38,5 @@ public interface ISyntheticBindingProvider
     /// The full binding JSON element from the function's source-generated metadata
     /// (contains fields such as <c>taskHub</c>, <c>connectionName</c>, etc.).
     /// </param>
-    FunctionBindingData CreateSyntheticParameter(string parameterName, JsonElement bindingConfig);
+    FunctionBindingData? CreateSyntheticParameter(string parameterName, JsonElement bindingConfig);
 }

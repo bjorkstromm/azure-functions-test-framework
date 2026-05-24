@@ -9,6 +9,7 @@ namespace AzureFunctions.TestFramework.Durable;
 
 internal sealed class FakeDurableTaskClient : DurableTaskClient
 {
+    private static readonly TimeSpan CompletionPollInterval = TimeSpan.FromMilliseconds(25);
     private readonly JsonDataConverter _dataConverter = JsonDataConverter.Default;
     private readonly FakeDurableExternalEventHub _externalEventHub;
     private readonly ConcurrentDictionary<string, FakeDurableInstanceState> _instances = new(StringComparer.OrdinalIgnoreCase);
@@ -34,7 +35,37 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
 
     public override AsyncPageable<OrchestrationMetadata> GetAllInstancesAsync(OrchestrationQuery? filter = null)
     {
-        throw new NotSupportedException("Querying all orchestration instances is not supported by the fake durable client.");
+        IEnumerable<FakeDurableInstanceState> states = _instances.Values.ToArray();
+
+        if (filter?.Statuses is { } statuses)
+        {
+            var allowedStatuses = statuses.ToHashSet();
+            states = states.Where(state => allowedStatuses.Contains(state.RuntimeStatus));
+        }
+
+        if (!string.IsNullOrWhiteSpace(filter?.InstanceIdPrefix))
+        {
+            states = states.Where(state => state.InstanceId.StartsWith(filter.InstanceIdPrefix, StringComparison.Ordinal));
+        }
+
+        if (filter?.CreatedFrom is { } createdFrom)
+        {
+            states = states.Where(state => state.CreatedAt >= createdFrom);
+        }
+
+        if (filter?.CreatedTo is { } createdTo)
+        {
+            states = states.Where(state => state.CreatedAt <= createdTo);
+        }
+
+        var pageSize = filter?.PageSize is > 0 ? filter.PageSize : int.MaxValue;
+        var metadata = states
+            .OrderByDescending(state => state.CreatedAt)
+            .Take(pageSize)
+            .Select(state => state.CreateMetadata(_dataConverter, filter?.FetchInputsAndOutputs ?? false))
+            .ToArray();
+
+        return new SinglePageAsyncPageable<OrchestrationMetadata>(metadata);
     }
 
     public override Task<OrchestrationMetadata?> GetInstancesAsync(
@@ -69,7 +100,11 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         string? reason = null,
         CancellationToken cancellation = default)
     {
-        throw new NotSupportedException("Suspending and resuming are not supported by the fake durable client.");
+        cancellation.ThrowIfCancellationRequested();
+        var state = GetRequiredInstance(instanceId);
+        state.MarkRunning();
+        _logger.LogInformation("Fake durable instance {InstanceId} resumed", instanceId);
+        return Task.CompletedTask;
     }
 
     public override Task<string> ScheduleNewOrchestrationInstanceAsync(
@@ -83,12 +118,30 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         var instanceId = options?.InstanceId ?? Guid.NewGuid().ToString("N");
         _logger.LogInformation("Scheduling fake durable orchestrator {OrchestratorName} as instance {InstanceId}", orchestratorName.Name, instanceId);
         var state = new FakeDurableInstanceState(orchestratorName.Name, instanceId, input);
-        if (!_instances.TryAdd(instanceId, state))
-        {
-            throw new InvalidOperationException($"A fake durable orchestration with instance ID '{instanceId}' already exists.");
-        }
+
+        // Allow re-scheduling over a terminal instance (matches real Azure backend behaviour).
+        FakeDurableInstanceState? replacedState = null;
+        _instances.AddOrUpdate(
+            instanceId,
+            addValue: state,
+            updateValueFactory: (id, existing) =>
+            {
+                if (existing.RuntimeStatus is
+                    OrchestrationRuntimeStatus.Completed or
+                    OrchestrationRuntimeStatus.Failed or
+                    OrchestrationRuntimeStatus.Terminated)
+                {
+                    replacedState = existing;
+                    return state;
+                }
+
+                throw new InvalidOperationException(
+                    $"A fake durable orchestration with instance ID '{id}' already exists.");
+            });
+        replacedState?.Dispose();
 
         state.MarkRunning();
+        var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellation, state.TerminationToken);
         state.Execution = Task.Run(async () =>
         {
             try
@@ -98,17 +151,26 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
                         instanceId,
                         input,
                         state.MarkCustomStatus,
-                        cancellation)
+                        linkedCts.Token)
                     .ConfigureAwait(false);
                 state.MarkCompleted(result.Output, result.CustomStatus);
                 _logger.LogInformation("Fake durable instance {InstanceId} completed successfully", instanceId);
+            }
+            catch (OperationCanceledException) when (state.IsTerminated)
+            {
+                // Termination was requested — status already set to Terminated.
+                _logger.LogInformation("Fake durable instance {InstanceId} was terminated", instanceId);
             }
             catch (Exception exception)
             {
                 state.MarkFailed(exception);
                 _logger.LogWarning(exception, "Fake durable instance {InstanceId} failed", instanceId);
             }
-        }, cancellation);
+            finally
+            {
+                linkedCts.Dispose();
+            }
+        }, CancellationToken.None);
 
         return Task.FromResult(instanceId);
     }
@@ -118,7 +180,23 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         string? reason = null,
         CancellationToken cancellation = default)
     {
-        throw new NotSupportedException("Suspending and resuming are not supported by the fake durable client.");
+        cancellation.ThrowIfCancellationRequested();
+        var state = GetRequiredInstance(instanceId);
+        state.MarkSuspended();
+        _logger.LogInformation("Fake durable instance {InstanceId} suspended", instanceId);
+        return Task.CompletedTask;
+    }
+
+    public override Task TerminateInstanceAsync(
+        string instanceId,
+        TerminateInstanceOptions? options = null,
+        CancellationToken cancellation = default)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        var state = GetRequiredInstance(instanceId);
+        state.MarkTerminated();
+        _logger.LogInformation("Fake durable instance {InstanceId} terminated", instanceId);
+        return Task.CompletedTask;
     }
 
     public override async Task<OrchestrationMetadata> WaitForInstanceCompletionAsync(
@@ -126,10 +204,28 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         bool getInputsAndOutputs = false,
         CancellationToken cancellation = default)
     {
-        var state = GetRequiredInstance(instanceId);
-        await state.Execution.WaitAsync(cancellation).ConfigureAwait(false);
-        return state.CreateMetadata(_dataConverter, getInputsAndOutputs);
+        while (true)
+        {
+            var state = GetRequiredInstance(instanceId);
+            await state.Execution.WaitAsync(cancellation).ConfigureAwait(false);
+
+            var metadata = state.CreateMetadata(_dataConverter, getInputsAndOutputs: false);
+            if (IsTerminal(metadata.RuntimeStatus))
+            {
+                return getInputsAndOutputs
+                    ? state.CreateMetadata(_dataConverter, getInputsAndOutputs: true)
+                    : metadata;
+            }
+
+            await Task.Delay(CompletionPollInterval, cancellation).ConfigureAwait(false);
+        }
     }
+
+    private static bool IsTerminal(OrchestrationRuntimeStatus status) =>
+        status is OrchestrationRuntimeStatus.Completed or
+            OrchestrationRuntimeStatus.Failed or
+            OrchestrationRuntimeStatus.Terminated
+        || string.Equals(status.ToString(), "Canceled", StringComparison.Ordinal);
 
     public override async Task<OrchestrationMetadata> WaitForInstanceStartAsync(
         string instanceId,
@@ -142,6 +238,18 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         return state.CreateMetadata(_dataConverter, getInputsAndOutputs);
     }
 
+    public override Task<PurgeResult> PurgeInstanceAsync(
+        string instanceId,
+        PurgeInstanceOptions? options = null,
+        CancellationToken cancellation = default)
+    {
+        cancellation.ThrowIfCancellationRequested();
+        var removed = _instances.TryRemove(instanceId, out var removedState);
+        removedState?.Dispose();
+        _logger.LogInformation("Fake durable instance {InstanceId} purged (found={Found})", instanceId, removed);
+        return Task.FromResult(new PurgeResult(removed ? 1 : 0));
+    }
+
     private FakeDurableInstanceState GetRequiredInstance(string instanceId)
     {
         if (_instances.TryGetValue(instanceId, out var state))
@@ -152,9 +260,10 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
         throw new InvalidOperationException($"A fake durable orchestration with instance ID '{instanceId}' does not exist.");
     }
 
-    private sealed class FakeDurableInstanceState
+    private sealed class FakeDurableInstanceState : IDisposable
     {
         private readonly object _syncLock = new();
+        private readonly CancellationTokenSource _terminationCts = new();
         private object? _customStatus;
         private Exception? _exception;
         private object? _output;
@@ -178,11 +287,17 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
 
         public string InstanceId { get; }
 
+        public bool IsTerminated { get; private set; }
+
         public DateTimeOffset LastUpdatedAt { get; private set; }
 
         public string OrchestratorName { get; }
 
         public OrchestrationRuntimeStatus RuntimeStatus { get; private set; }
+
+        public CancellationToken TerminationToken => _terminationCts.Token;
+
+        public void Dispose() => _terminationCts.Dispose();
 
         public void MarkCompleted(object? output, object? customStatus)
         {
@@ -221,6 +336,27 @@ internal sealed class FakeDurableTaskClient : DurableTaskClient
                 RuntimeStatus = OrchestrationRuntimeStatus.Running;
                 LastUpdatedAt = DateTimeOffset.UtcNow;
             }
+        }
+
+        public void MarkSuspended()
+        {
+            lock (_syncLock)
+            {
+                RuntimeStatus = OrchestrationRuntimeStatus.Suspended;
+                LastUpdatedAt = DateTimeOffset.UtcNow;
+            }
+        }
+
+        public void MarkTerminated()
+        {
+            lock (_syncLock)
+            {
+                IsTerminated = true;
+                RuntimeStatus = OrchestrationRuntimeStatus.Terminated;
+                LastUpdatedAt = DateTimeOffset.UtcNow;
+            }
+
+            _terminationCts.Cancel();
         }
 
         public OrchestrationMetadata CreateMetadata(JsonDataConverter dataConverter, bool getInputsAndOutputs)

@@ -1,4 +1,3 @@
-using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Queue;
 using AzureFunctions.TestFramework.Tables;
 using Xunit;
@@ -43,10 +42,7 @@ public abstract class TablesTestsBase : TestHostTestBase
     [Fact]
     public async Task InvokeQueueAsync_WithTableInput_ReadsRegisteredEntity()
     {
-        var message = QueuesModelFactory.QueueMessage(
-            Guid.NewGuid().ToString(), "pop-receipt", "unused", 1);
-
-        var result = await TestHost.InvokeQueueAsync("ReadTableEntity", message, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("ReadTableEntity", "unused", TestCancellation);
 
         Assert.True(result.Success, $"Table input invocation failed: {result.Error}");
         var processed = _processedItems!.TakeAll();

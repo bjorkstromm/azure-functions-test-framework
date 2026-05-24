@@ -1,4 +1,3 @@
-using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Queue;
 using AzureFunctions.TestFramework.SignalR;
 using Microsoft.Azure.Functions.Worker;
@@ -138,10 +137,7 @@ public abstract class SignalRTestsBase : TestHostTestBase
     [Fact]
     public async Task InvokeQueueAsync_WithSignalRConnectionInfoInput_ReadsRegisteredUrl()
     {
-        var queueMessage = QueuesModelFactory.QueueMessage(
-            Guid.NewGuid().ToString(), "pop-receipt", "unused", 1);
-
-        var result = await TestHost.InvokeQueueAsync("ReadSignalRConnectionInfo", queueMessage, TestCancellation);
+        var result = await TestHost.InvokeQueueAsync("ReadSignalRConnectionInfo", "unused", TestCancellation);
 
         Assert.True(result.Success, $"SignalR connection info input invocation failed: {result.Error}");
         var processed = _processedItems!.TakeAll();

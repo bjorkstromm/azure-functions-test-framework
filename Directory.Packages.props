@@ -2,39 +2,43 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageVersion Include="Azure.Messaging.EventGrid" Version="5.0.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Dapr" Version="1.0.1" />
     <PackageVersion Include="Azure.Messaging.EventHubs" Version="5.12.2" />
-    <PackageVersion Include="coverlet.collector" Version="8.0.1" />
-    <PackageVersion Include="Grpc.AspNetCore" Version="2.76.0" />
-    <PackageVersion Include="Grpc.Tools" Version="2.78.0" />
-    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.25" />
-    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.201" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.51.0" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.CosmosDB" Version="4.14.0" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.16.2" />
+    
+    <PackageVersion Include="Grpc.AspNetCore" Version="2.80.0" />
+    <PackageVersion Include="Grpc.Tools" Version="2.80.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="8.0.27" />
+    <PackageVersion Include="Microsoft.SourceLink.GitHub" Version="10.0.300" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker" Version="2.52.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.CosmosDB" Version="4.15.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.16.5" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.EventGrid" Version="3.6.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.EventHubs" Version="6.5.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Kafka" Version="4.2.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.3.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Mcp" Version="1.5.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Kusto" Version="1.0.13-preview" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" Version="2.1.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.24.0" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.SignalRService" Version="1.15.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.SignalRService" Version="2.0.1" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ" Version="2.1.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Redis" Version="1.0.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Sql" Version="3.1.536" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Blobs" Version="6.8.1" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Storage.Queues" Version="5.5.4" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Tables" Version="1.5.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.3.1" />
-    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Grpc" Version="2.51.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Grpc" Version="2.52.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.0.7" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.3.0" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.5.1" />
     <PackageVersion Include="MinVer" Version="7.0.0" />
-    <PackageVersion Include="NUnit" Version="4.5.1" />
+    <PackageVersion Include="NUnit" Version="4.6.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.2.0" />
-    <PackageVersion Include="TUnit" Version="1.24.18" />
+    <PackageVersion Include="TUnit" Version="1.44.39" />
     <PackageVersion Include="Verify.TUnit" Version="31.14.0" />
-    <PackageVersion Include="Verify.XunitV3" Version="31.14.0" />
+    <PackageVersion Include="Verify.XunitV3" Version="31.16.3" />
     <PackageVersion Include="xunit.v3.mtp-v2" Version="3.2.2" />
   </ItemGroup>
-
-
 </Project>

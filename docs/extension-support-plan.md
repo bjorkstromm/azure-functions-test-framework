@@ -117,13 +117,118 @@ Timer has only a trigger. No input/output bindings exist in the worker extension
 
 Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Extensions.DurableTask`), but fully supported with fake client, orchestration context, entity support, and `ISyntheticBindingProvider`.
 
+#### `AzureFunctions.TestFramework.Mcp` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[McpToolTrigger]` (trigger) | ✅ | ✅ `InvokeMcpToolAsync(functionName, toolArguments?, toolName?, sessionId?)` | ✅ |
+| `[McpResourceTrigger]` (trigger) | ✅ | ✅ `InvokeMcpResourceAsync(functionName, resourceUri, sessionId?)` | ✅ |
+| `[McpPromptTrigger]` (trigger) | ✅ | ✅ `InvokeMcpPromptAsync(functionName, arguments?, promptName?, sessionId?)` | ✅ |
+
+> **Note:** MCP triggers require `FunctionsMcpContextMiddleware` to populate `FunctionContext.Items` before the function body executes. The framework automatically invokes the extension startup code from the functions assembly (working around the SDK's `Assembly.GetEntryAssembly()` limitation in test runners). See `docs/Reflection.md` §§ 10–11 for details.
+
+#### `AzureFunctions.TestFramework.Sql` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[SqlTrigger]` — change-tracking batch (`IReadOnlyList<SqlChange<T>>`) | ✅ | ✅ `InvokeSqlAsync<T>(IReadOnlyList<SqlChange<T>>)` | ✅ |
+| `[SqlTrigger]` — raw JSON string | ✅ | ✅ `InvokeSqlAsync(string changesJson)` | ✅ |
+| `[SqlInput]` (input) | ✅ | ✅ `WithSqlInputRows(...)` via `SqlInputSyntheticBindingProvider` | ✅ |
+| `[SqlOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+> **`[SqlInput]` scope:** `WithSqlInputRows(commandText, rows)` injects a list of rows for parameters typed as `IEnumerable<T>`. The key is the `commandText` value declared in the `[SqlInput]` attribute (case-insensitive). For raw JSON injection use `WithSqlInputJson(commandText, json)`. When using `InvokeSqlAsync(string changesJson)`, `SqlChangeOperation` values must be integers (0=Insert, 1=Update, 2=Delete).
+
+#### `AzureFunctions.TestFramework.DataExplorer` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[KustoInput]` (input) | ✅ | ✅ `WithKustoInputRows(...)` / `WithKustoInputJson(...)` via `KustoInputSyntheticBindingProvider` | ✅ |
+| `[KustoOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+> **`[KustoInput]` scope:** `WithKustoInputRows(database, table, rows)` injects rows for parameters typed as POCO types, `string`, and collections handled by the extension converter. Lookup key is `"{database}/{table}"` (case-insensitive), where `table` is derived from the first table identifier in `KqlCommand`.
+
+#### `AzureFunctions.TestFramework.Redis` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[RedisPubSubTrigger]` (trigger) | ✅ | ✅ `InvokeRedisPubSubAsync(functionName, channel, message)` | ✅ |
+| `[RedisListTrigger]` (trigger) | ✅ | ✅ `InvokeRedisListAsync(functionName, key, value)` | ✅ |
+| `[RedisStreamTrigger]` (trigger) | ✅ | ✅ `InvokeRedisStreamAsync(functionName, key, entries)` | ✅ |
+| `[RedisInput]` (input) | ✅ | ✅ `WithRedisInput(command, value)` via `RedisInputSyntheticBindingProvider` | ✅ |
+| `[RedisOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+> **`[RedisInput]` scope:** `WithRedisInput(command, value)` injects a string result for parameters typed as `string` or any type whose converter accepts a string value. The key is the full `command` string declared in the `[RedisInput]` attribute (case-insensitive), e.g. `"GET mykey"`. Use `WithRedisInputJson(command, json)` for pre-serialized JSON injection. The message/value/entries passed to the trigger invocation methods are delivered as `string` binding data; functions whose parameters are typed as `string` receive the raw value directly.
+>
+> **`[RedisStreamTrigger]` note:** `InvokeRedisStreamAsync` accepts `IReadOnlyList<KeyValuePair<string, string>>` entries and serializes them to a JSON array of `{"name":"…","value":"…"}` objects. Functions that receive `string` get the raw JSON; for other types the worker's Redis converter handles deserialization.
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Redis`
+
+#### `AzureFunctions.TestFramework.RabbitMQ` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[RabbitMQTrigger]` — `string` / `byte[]` / `BinaryData` | ✅ | ✅ `InvokeRabbitMQAsync(string)` / `InvokeRabbitMQAsync(byte[])` (UTF-8 body) | ✅ |
+| `[RabbitMQTrigger]` — JSON POCO | ✅ | ✅ `InvokeRabbitMQAsync<T>(T payload)` | ✅ |
+| `[RabbitMQTrigger]` — optional message properties | ✅ | ✅ overload with `RabbitMqTriggerMessageProperties` (exchange, routing key, headers, etc.) merged into trigger metadata for `BindingContext.BindingData` | ✅ |
+| `[RabbitMQOutput]` (output) | ✅ | ✅ `FunctionInvocationResult.OutputData` / `ReadOutputAs<T>(bindingName)` (property name for POCO return bindings) | ✅ |
+
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ`
+
+#### `AzureFunctions.TestFramework.Kafka` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[KafkaTrigger]` — `string` parameter | ✅ | ✅ `InvokeKafkaAsync(string)` — text passed as JSON binding value | ✅ |
+| `[KafkaTrigger]` — `byte[]` / `BinaryData` parameter | ✅ | ✅ `InvokeKafkaAsync(byte[])` — raw bytes | ✅ |
+| `[KafkaTrigger]` — `KafkaRecord` parameter | ✅ | ✅ `InvokeKafkaAsync(KafkaRecord)` — proto3-encoded `ModelBindingData` (source: `AzureKafkaRecord`) | ✅ |
+| `[KafkaTrigger]` — JSON POCO | ✅ | ✅ `InvokeKafkaAsync<T>(T payload)` | ✅ |
+| `[KafkaTrigger]` — batch mode (`IsBatched = true`) — `string[]` | ✅ | ✅ `InvokeKafkaBatchAsync(IReadOnlyList<string>)` | ✅ |
+| `[KafkaTrigger]` — batch mode — `KafkaRecord[]` | ✅ | ✅ `InvokeKafkaBatchAsync(IReadOnlyList<KafkaRecord>)` — `CollectionModelBindingData` | ✅ |
+| `[KafkaTrigger]` — batch mode — JSON POCO array | ✅ | ✅ `InvokeKafkaBatchAsync<T>(IReadOnlyList<T>)` | ✅ |
+| `[KafkaOutput]` (output) | ✅ | ✅ `FunctionInvocationResult.OutputData` / `ReadOutputAs<T>(bindingName)` | ✅ |
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Kafka`
+
+#### `AzureFunctions.TestFramework.Dapr` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[DaprBindingTrigger]` (trigger) | ✅ | ✅ `InvokeDaprBindingAsync(functionName, data)` | ✅ |
+| `[DaprServiceInvocationTrigger]` (trigger) | ✅ | ✅ `InvokeDaprServiceInvocationAsync(functionName, body)` | ✅ |
+| `[DaprTopicTrigger]` (trigger) | ✅ | ✅ `InvokeDaprTopicAsync(functionName, message)` | ✅ |
+| `[DaprStateInput]` (input) | ✅ | ⚠️ `WithDaprStateInput(key, value)` via `DaprStateInputSyntheticBindingProvider` (see [limitations](#dapr-input-binding-limitations)) | ⚠️ |
+| `[DaprSecretInput]` (input) | ✅ | ⚠️ `WithDaprSecretInput(secretStoreName, key, value)` via `DaprSecretInputSyntheticBindingProvider` (see [limitations](#dapr-input-binding-limitations)) | ⚠️ |
+| `[DaprStateOutput]` (output) | ✅ | ✅ Generic output capture (see [known limitation](#output-bindings)) | ⚠️ |
+| `[DaprInvokeOutput]` (output) | ✅ | ✅ Generic output capture (see [known limitation](#output-bindings)) | ⚠️ |
+| `[DaprPublishOutput]` (output) | ✅ | ✅ Generic output capture (see [known limitation](#output-bindings)) | ⚠️ |
+| `[DaprBindingOutput]` (output) | ✅ | ✅ Generic output capture (see [known limitation](#output-bindings)) | ⚠️ |
+
+> **Note:** The Dapr extension is supported in Kubernetes, Azure Container Apps, Azure IoT Edge, and other self-hosted modes only. It is not available in the Azure Functions Consumption plan.
+
+> **Dapr input binding limitations:** The Azure Functions Worker SDK source generator (as of v2.0.7) does not emit binding metadata for `[DaprStateInput]` or `[DaprSecretInput]` parameters. The `WithDaprStateInput` and `WithDaprSecretInput` builder extensions have no effect in source-generated mode. As a workaround, override the Dapr HTTP client in DI to return fake sidecar responses via `ConfigureServices`.
+
+> **Dapr output binding limitations:** Due to a known bug in the Dapr extension's source generator (v1.0.1), output binding attributes (`[DaprPublishOutput]`, `[DaprStateOutput]`, etc.) on POCO return types are generated with `direction: "In"` instead of `direction: "Out"`. As a result, `InvocationResponse.OutputData` is not populated and `FunctionInvocationResult.OutputData` will be empty. Functions with Dapr output bindings still execute successfully.
+
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Dapr`
+
 ### Not Yet Supported
 
 | Extension | NuGet Package | Trigger | Input | Output |
 |-----------|---------------|---------|-------|--------|
-| **Kafka** | `Microsoft.Azure.Functions.Worker.Extensions.Kafka` | `[KafkaTrigger]` | — | `[KafkaOutput]` |
-| **RabbitMQ** | `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ` | `[RabbitMQTrigger]` | — | `[RabbitMQOutput]` |
 | **Warmup** | `Microsoft.Azure.Functions.Worker.Extensions.Warmup` | `[WarmupTrigger]` | — | — |
+
+### Not Applicable — No Isolated Worker Support
+
+| Extension | Reason |
+|-----------|--------|
+| **Twilio** | `Microsoft.Azure.WebJobs.Extensions.Twilio` — [no isolated worker model support](https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-twilio) |
+| **Mobile Apps** | Functions v1.x only — not supported in v4.x runtime |
+| **Notification Hubs** | Functions v1.x only — not supported in v4.x runtime |
 
 ### Infrastructure-only (no user-facing bindings — no action needed)
 
@@ -132,6 +237,7 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 - `Worker.Extensions.Rpc` — gRPC extension plumbing
 - `Worker.Extensions.Storage` — meta-package referencing Blobs + Queues
 - `Worker.Extensions.Http.AspNetCore` — ASP.NET Core integration infrastructure
+- **IoT Hub** — uses the Azure Event Hubs extension under the hood (`Microsoft.Azure.Functions.Worker.Extensions.EventHubs`); already covered by `AzureFunctions.TestFramework.EventHubs`
 
 ---
 
@@ -200,38 +306,35 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 5: Kafka Trigger & Output binding
+### ~~Issue 5: Kafka Trigger & Output binding~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.Kafka`
+**Package:** `AzureFunctions.TestFramework.Kafka` — shipped.
 
 **Bindings:**
 - **Trigger:** `[KafkaTrigger]` — receives events from Apache Kafka topics
-- **Output:** `[KafkaOutput]` — sends events to Kafka topics
+- **Output:** `[KafkaOutput]` — sends events to Kafka topics (captured generically via Core)
 
-**Scope:**
-- New package: `AzureFunctions.TestFramework.Kafka`
-- Extension method: `InvokeKafkaAsync(this IFunctionsTestHost host, string functionName, ...)` — single event with key, value, headers, offset, partition, topic, timestamp
-- Batch overload for batch trigger mode
-- Output bindings captured via `FunctionInvocationResult.OutputData`
-- Test across 4-flavour matrix
+**Implemented:**
+- Extension methods: `InvokeKafkaAsync(...)` for `string`, `byte[]`, `KafkaRecord`, and JSON POCO payloads; `InvokeKafkaBatchAsync(...)` for all batched variants (`IsBatched = true`)
+- `KafkaRecord` overload uses a custom proto3 binary encoder (`KafkaRecordProtoWriter`) matching the extension's internal `KafkaRecordProto` wire format (source: `AzureKafkaRecord`, content-type: `application/x-protobuf`)
+- `[KafkaOutput]` captured generically via `FunctionInvocationResult.OutputData` — no per-extension code needed
+- `[KafkaOutput]` payloads accessible via `ReadOutputAs<T>(bindingName)`
 
-**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Kafka`
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Kafka` 4.2.0
 
 ---
 
-### Issue 6: RabbitMQ Trigger & Output binding
+### ~~Issue 6: RabbitMQ Trigger & Output binding~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.RabbitMQ`
+**Package:** `AzureFunctions.TestFramework.RabbitMQ` — shipped.
 
 **Bindings:**
 - **Trigger:** `[RabbitMQTrigger]` — receives messages from RabbitMQ queues
 - **Output:** `[RabbitMQOutput]` — sends messages to RabbitMQ exchanges
 
-**Scope:**
-- New package: `AzureFunctions.TestFramework.RabbitMQ`
-- Extension method: `InvokeRabbitMQAsync(this IFunctionsTestHost host, string functionName, byte[] body, ...)` — single message with body and optional basic properties
-- Output bindings captured via `FunctionInvocationResult.OutputData`
-- Test across 4-flavour matrix
+**Implemented:**
+- Extension methods: `InvokeRabbitMQAsync(...)` for `string`, `byte[]`, and JSON POCO payloads; optional `RabbitMqTriggerMessageProperties` for binding metadata; output bindings asserted via `OutputData` / `ReadOutputAs<T>`
+- Tests across the 4-flavour matrix (`RabbitMqTriggerTests`)
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ`
 
@@ -265,6 +368,88 @@ No dedicated package needed. Key facts:
 
 ---
 
+### ~~Issue 9: Azure SQL Trigger, Input & Output bindings~~ ✅ Done
+
+**Package:** `AzureFunctions.TestFramework.Sql` — shipped.
+
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeSqlAsync<T>(functionName, IReadOnlyList<SqlChange<T>> changes)` — strongly-typed SQL change-tracking trigger
+- `InvokeSqlAsync(functionName, string changesJson)` — raw JSON SQL trigger; enum values must be integers (0=Insert, 1=Update, 2=Delete)
+- `WithSqlInputRows(commandText, row)` — injects a single row for `[SqlInput(commandText: "...")]`
+- `WithSqlInputRows(commandText, IReadOnlyList<T> rows)` — injects a list of rows
+- `WithSqlInputJson(commandText, json)` — injects raw JSON for `[SqlInput]`
+- `[SqlOutput]` captured generically by `FunctionInvocationResult.OutputData` or `ReadReturnValueAs<T>()`
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Sql`
+
+---
+
+### ~~Issue 10: Redis Triggers, Input & Output bindings~~ ✅ Done
+
+**Package:** `AzureFunctions.TestFramework.Redis` — shipped.
+
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeRedisPubSubAsync(functionName, channel, message)` — pub/sub trigger
+- `InvokeRedisListAsync(functionName, key, value)` — list trigger
+- `InvokeRedisStreamAsync(functionName, key, entries)` — stream trigger; entries serialized as JSON array of `{"name":"…","value":"…"}` objects
+- `WithRedisInput(command, value)` — injects a string result for `[RedisInput]`; key is the full `command` string (case-insensitive)
+- `WithRedisInputJson(command, json)` — injects pre-serialized JSON for `[RedisInput]`
+- `[RedisOutput]` captured generically by `FunctionInvocationResult.OutputData` or `ReadReturnValueAs<T>()`
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Redis`
+
+---
+
+### ~~Issue 11: Azure Data Explorer Input & Output bindings~~ ✅ Done
+
+**Package:** `AzureFunctions.TestFramework.DataExplorer` — shipped.
+
+See the "Already Supported" section above for the full binding audit. Key facts:
+- No trigger helper is required (Kusto extension has input/output bindings only)
+- `WithKustoInputRows(database, table, row)` — injects a single row for `[KustoInput]`
+- `WithKustoInputRows(database, table, IReadOnlyList<T>)` — injects a list of rows
+- `WithKustoInputJson(database, table, json)` — injects raw JSON for `[KustoInput]`
+- `[KustoOutput]` captured generically by `FunctionInvocationResult.OutputData` or `ReadReturnValueAs<T>()`
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)*
+
+---
+
+### ~~Issue 12: MCP (Model Context Protocol) Trigger~~ ✅ Done
+
+**Package:** `AzureFunctions.TestFramework.Mcp` — shipped.
+
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeMcpToolAsync(functionName, toolArguments?, toolName?, sessionId?)` — invokes an MCP tool trigger with optional named arguments, custom tool name, and session ID
+- `InvokeMcpResourceAsync(functionName, resourceUri, sessionId?)` — invokes an MCP resource trigger with a resource URI
+- `InvokeMcpPromptAsync(functionName, arguments?, promptName?, sessionId?)` — invokes an MCP prompt trigger with optional arguments and custom prompt name
+- MCP triggers require extension middleware (`FunctionsMcpContextMiddleware`) to populate `FunctionContext.Items`; the framework invokes the `WorkerExtensionStartupCodeExecutor` from the functions assembly automatically (see `docs/Reflection.md` §§ 10–11)
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Mcp`
+
+---
+
+### ~~Issue 13: Dapr Triggers, Input & Output bindings~~ ✅ Done
+
+**Package:** `AzureFunctions.TestFramework.Dapr` — shipped.
+
+See the "Already Supported" section above for the full binding audit. Key facts:
+- `InvokeDaprBindingAsync(functionName, data)` — Dapr input binding trigger (`[DaprBindingTrigger]`)
+- `InvokeDaprServiceInvocationAsync(functionName, body)` — Dapr service invocation trigger (`[DaprServiceInvocationTrigger]`)
+- `InvokeDaprTopicAsync(functionName, message)` — Dapr pub/sub topic trigger (`[DaprTopicTrigger]`)
+- `WithDaprStateInput(key, value)` — injects fake state for `[DaprStateInput]` (limited by SDK source generator; see known limitation)
+- `WithDaprSecretInput(secretStoreName, key, value)` — injects fake secret for `[DaprSecretInput]` (limited by SDK source generator; see known limitation)
+- Dapr output bindings (`[DaprStateOutput]`, `[DaprInvokeOutput]`, `[DaprPublishOutput]`, `[DaprBindingOutput]`) execute successfully; `OutputData` is currently empty due to a known bug in the Dapr extension v1.0.1 source generator (`direction: "In"` instead of `direction: "Out"`)
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Dapr`
+
+---
+
 ## Implementation Notes
 
 ### Pattern for New Extension Packages
@@ -275,6 +460,7 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
    - `AzureFunctions.TestFramework.{ExtensionName}/`
      - `AzureFunctions.TestFramework.{ExtensionName}.csproj` — targets `net8.0;net10.0`, references Core + the Worker extension NuGet package
      - `FunctionsTestHost{ExtensionName}Extensions.cs` — static extension class with `Invoke*Async` methods
+     - `README.md` — package-specific documentation covering all supported bindings, extension method signatures, function examples, and known limitations
    
 2. **Extension method pattern:**
    ```
@@ -295,7 +481,12 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 1. ~~**CosmosDB**~~ — ✅ Done
 2. ~~**Event Hubs**~~ — ✅ Done
 3. ~~**SignalR**~~ — ✅ Done
-4. ~~**SendGrid**~~ — ✅ Done (output-only; no package needed — generic output capture via Core)
-5. **Kafka** — Growing adoption
-6. **RabbitMQ** — Niche but important
-7. **Warmup** — Simplest, rarely tested in isolation
+4. ~~**Azure SQL** — High demand for data-driven functions; trigger + input + output~~ ✅ Done
+5. ~~**Redis** — Growing adoption for caching and event-driven patterns; three trigger variants~~ ✅ Done
+6. ~~**Kafka** — Growing adoption~~ ✅ Done
+7. ~~**MCP** — New AI/agent integration pattern; trigger-only, relatively simple~~ ✅ Done
+8. ~~**RabbitMQ** — Niche but important~~ ✅ Done
+9. ~~**SendGrid**~~ — ✅ Done (output-only; no package needed — generic output capture via Core)
+10. ~~**Dapr** — Kubernetes/Container Apps only; rich binding set~~ ✅ Done
+11. ~~**Azure Data Explorer** — Preview, input/output only; niche data-engineering scenarios~~ ✅ Done
+12. **Warmup** — Simplest, rarely tested in isolation

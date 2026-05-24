@@ -53,7 +53,7 @@ public sealed class BlobInputSyntheticBindingProvider : ISyntheticBindingProvide
     public string BindingType => "blob";
 
     /// <inheritdoc/>
-    public FunctionBindingData CreateSyntheticParameter(string parameterName, JsonElement bindingConfig)
+    public FunctionBindingData? CreateSyntheticParameter(string parameterName, JsonElement bindingConfig)
     {
         // Only inject data for input bindings (direction "In").
         // Output bindings (direction "Out") do not need synthetic input data.
@@ -61,9 +61,7 @@ public sealed class BlobInputSyntheticBindingProvider : ISyntheticBindingProvide
         if (direction is not null &&
             !direction.Equals("In", StringComparison.OrdinalIgnoreCase))
         {
-            // Return empty bytes for output/return bindings — the worker ignores extra InputData
-            // entries for non-input parameters, so this is safe.
-            return FunctionBindingData.WithBytes(parameterName, []);
+            return null;
         }
 
         var blobPath = bindingConfig.TryGetProperty("blobPath", out var bp) ? bp.GetString() : null;
@@ -73,8 +71,9 @@ public sealed class BlobInputSyntheticBindingProvider : ISyntheticBindingProvide
             return FunctionBindingData.WithBytes(parameterName, content.ToArray());
         }
 
-        // No registered content for this binding path — inject empty bytes.
-        // The worker will surface this as an empty string / empty byte array / empty Stream.
-        return FunctionBindingData.WithBytes(parameterName, []);
+        // No registered content for this binding path — skip.
+        // If another ISyntheticBindingProvider handles this path (e.g. for client-typed
+        // bindings), it will provide the binding data instead.
+        return null;
     }
 }

@@ -1,0 +1,7 @@
+<Project>
+  <!-- Enable dotnet test with solution file for MTP runner on .NET 10 SDK.
+       Must be in .targets (not .props) so IsTestProject is already set when evaluated. -->
+  <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+    <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+  </PropertyGroup>
+</Project>

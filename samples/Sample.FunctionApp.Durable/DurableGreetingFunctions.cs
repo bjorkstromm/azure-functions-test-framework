@@ -143,6 +143,23 @@ public class DurableGreetingFunctions
         return finalMessage;
     }
 
+    [Function(nameof(RunReceiveForwardedEventOrchestration))]
+    public static async Task<string> RunReceiveForwardedEventOrchestration(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
+    {
+        var forwarded = await context.WaitForExternalEvent<string>("forwarded-event");
+        return forwarded;
+    }
+
+    [Function(nameof(RunSendForwardedEventOrchestration))]
+    public static string RunSendForwardedEventOrchestration(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
+    {
+        var input = context.GetInput<ForwardedEventInput>() ?? new ForwardedEventInput(string.Empty, string.Empty);
+        context.SendEvent(input.TargetInstanceId, "forwarded-event", input.Payload);
+        return "event-forwarded";
+    }
+
     [Function(nameof(CreateGreeting))]
     public static string CreateGreeting([ActivityTrigger] string name)
     {
@@ -222,6 +239,25 @@ public class DurableGreetingFunctions
         await context.Entities.CallEntityAsync(entityId, "add", 5);
         return await context.Entities.CallEntityAsync<int>(entityId, "get");
     }
+
+    [Function(nameof(RunEntityLockOrchestration))]
+    public static async Task<int> RunEntityLockOrchestration(
+        [OrchestrationTrigger] TaskOrchestrationContext context)
+    {
+        var input = context.GetInput<string>() ?? context.InstanceId;
+        var first = new Microsoft.DurableTask.Entities.EntityInstanceId(nameof(Counter), $"{input}-first");
+        var second = new Microsoft.DurableTask.Entities.EntityInstanceId(nameof(Counter), $"{input}-second");
+
+        await using (await context.Entities.LockEntitiesAsync([first, second]))
+        {
+            await context.Entities.CallEntityAsync(first, "add", 2);
+            await context.Entities.CallEntityAsync(second, "add", 3);
+        }
+
+        var firstValue = await context.Entities.CallEntityAsync<int>(first, "get");
+        var secondValue = await context.Entities.CallEntityAsync<int>(second, "get");
+        return firstValue + secondValue;
+    }
 }
 
 public sealed record GreetingProgressStatus(
@@ -231,3 +267,7 @@ public sealed record GreetingProgressStatus(
 
 public sealed record GreetingSuffixEvent(
     [property: JsonPropertyName("suffix")] string Suffix);
+
+public sealed record ForwardedEventInput(
+    [property: JsonPropertyName("targetInstanceId")] string TargetInstanceId,
+    [property: JsonPropertyName("payload")] string Payload);

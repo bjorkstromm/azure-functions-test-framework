@@ -1,5 +1,6 @@
 using Azure;
 using Azure.Data.Tables;
+using Azure.Storage.Queues.Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 
@@ -21,6 +22,13 @@ public class QueueTriggerFunction
     {
         _logger.LogInformation("Processing queue message: {Message}", message);
         _processedItems.Add(message);
+    }
+
+    [Function("ProcessQueueMessageTyped")]
+    public void RunTyped([QueueTrigger("test-typed-queue")] QueueMessage message)
+    {
+        _logger.LogInformation("Processing typed queue message: {MessageId}", message.MessageId);
+        _processedItems.Add(message.Body.ToString());
     }
 
     [Function("ReturnQueueMessageValue")]

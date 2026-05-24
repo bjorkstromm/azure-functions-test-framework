@@ -79,63 +79,20 @@ public class InMemoryGrpcClientFactory : DispatchProxy
     {
         try
         {
-            var workerGrpcAsm = AppDomain.CurrentDomain.GetAssemblies()
-                .FirstOrDefault(a => a.GetName().Name == "Microsoft.Azure.Functions.Worker.Grpc");
-
-            if (workerGrpcAsm == null)
-            {
-                logger.LogWarning(
-                    "Microsoft.Azure.Functions.Worker.Grpc assembly not yet loaded; in-memory gRPC not registered");
+            if (!TryGetWorkerGrpcAssembly(logger, out var workerGrpcAsm))
                 return false;
-            }
 
-            var factoryInterface = workerGrpcAsm.GetType(
-                "Microsoft.Azure.Functions.Worker.Grpc.IWorkerClientFactory");
-            var clientInterface = workerGrpcAsm.GetType(
-                "Microsoft.Azure.Functions.Worker.Grpc.IWorkerClient");
-            var processorInterface = workerGrpcAsm.GetType(
-                "Microsoft.Azure.Functions.Worker.Grpc.IMessageProcessor");
-            var functionRpcType = workerGrpcAsm.GetType(
-                "Microsoft.Azure.Functions.Worker.Grpc.Messages.FunctionRpc");
-            var functionRpcClientType = functionRpcType?.GetNestedType("FunctionRpcClient");
-
-            if (factoryInterface == null || clientInterface == null
-                || processorInterface == null || functionRpcClientType == null)
-            {
-                logger.LogWarning(
-                    "Required internal types not found in Worker.Grpc assembly; in-memory gRPC not registered");
+            if (!TryGetRequiredTypes(workerGrpcAsm!, logger,
+                    out var factoryInterface, out var clientInterface,
+                    out var processorInterface, out var functionRpcClientType))
                 return false;
-            }
 
-            // EventStream(Metadata headers, DateTime? deadline, CancellationToken cancellationToken)
-            var eventStreamMethod = functionRpcClientType.GetMethods()
-                .FirstOrDefault(m => m.Name == "EventStream" && m.GetParameters().Length == 3);
-
-            var processMessageAsync = processorInterface.GetMethod("ProcessMessageAsync");
-
-            if (eventStreamMethod == null || processMessageAsync == null)
-            {
-                logger.LogWarning("Required gRPC methods not found; in-memory gRPC not registered");
+            if (!TryGetRequiredMethods(functionRpcClientType!, processorInterface!, logger,
+                    out var eventStreamMethod, out var processMessageAsync))
                 return false;
-            }
 
-            var createFactoryProxy = typeof(DispatchProxy)
-                .GetMethods(BindingFlags.Public | BindingFlags.Static)
-                .First(m => m.Name == "Create" && m.GetGenericArguments().Length == 2)
-                .MakeGenericMethod(factoryInterface, typeof(InMemoryGrpcClientFactory));
-
-            var factoryProxy = (InMemoryGrpcClientFactory)createFactoryProxy.Invoke(null, null)!;
-            factoryProxy.Initialize(
-                handler,
-                clientInterface,
-                functionRpcClientType,
-                eventStreamMethod,
-                processMessageAsync);
-
-            // AddSingleton (not TryAdd) so we override the SDK's TryAddSingleton registration.
-            services.AddSingleton(factoryInterface, factoryProxy);
-
-            logger.LogDebug("In-memory IWorkerClientFactory registered — gRPC TCP bypassed");
+            RegisterInMemoryFactory(services, handler, factoryInterface!, clientInterface!,
+                functionRpcClientType!, eventStreamMethod!, processMessageAsync!, logger);
             return true;
         }
         catch (Exception ex)
@@ -144,6 +101,93 @@ public class InMemoryGrpcClientFactory : DispatchProxy
                 "Failed to register in-memory IWorkerClientFactory; falling back to TCP gRPC");
             return false;
         }
+    }
+
+    internal static bool TryGetWorkerGrpcAssembly(ILogger logger, out Assembly? workerGrpcAsm)
+    {
+        workerGrpcAsm = AppDomain.CurrentDomain.GetAssemblies()
+            .FirstOrDefault(a => a.GetName().Name == "Microsoft.Azure.Functions.Worker.Grpc");
+
+        if (workerGrpcAsm is not null)
+            return true;
+
+        logger.LogWarning(
+            "Microsoft.Azure.Functions.Worker.Grpc assembly not yet loaded; in-memory gRPC not registered");
+        return false;
+    }
+
+    internal static bool TryGetRequiredTypes(
+        Assembly workerGrpcAsm,
+        ILogger logger,
+        out Type? factoryInterface,
+        out Type? clientInterface,
+        out Type? processorInterface,
+        out Type? functionRpcClientType)
+    {
+        factoryInterface = workerGrpcAsm.GetType(
+            "Microsoft.Azure.Functions.Worker.Grpc.IWorkerClientFactory");
+        clientInterface = workerGrpcAsm.GetType(
+            "Microsoft.Azure.Functions.Worker.Grpc.IWorkerClient");
+        processorInterface = workerGrpcAsm.GetType(
+            "Microsoft.Azure.Functions.Worker.Grpc.IMessageProcessor");
+        var functionRpcType = workerGrpcAsm.GetType(
+            "Microsoft.Azure.Functions.Worker.Grpc.Messages.FunctionRpc");
+        functionRpcClientType = functionRpcType?.GetNestedType("FunctionRpcClient");
+
+        if (factoryInterface is not null && clientInterface is not null
+            && processorInterface is not null && functionRpcClientType is not null)
+            return true;
+
+        logger.LogWarning(
+            "Required internal types not found in Worker.Grpc assembly; in-memory gRPC not registered");
+        return false;
+    }
+
+    internal static bool TryGetRequiredMethods(
+        Type functionRpcClientType,
+        Type processorInterface,
+        ILogger logger,
+        out MethodInfo? eventStreamMethod,
+        out MethodInfo? processMessageAsync)
+    {
+        eventStreamMethod = functionRpcClientType.GetMethods()
+            .FirstOrDefault(m => m.Name == "EventStream" && m.GetParameters().Length == 3);
+        processMessageAsync = processorInterface.GetMethod("ProcessMessageAsync");
+
+        if (eventStreamMethod is not null && processMessageAsync is not null)
+            return true;
+
+        logger.LogWarning("Required gRPC methods not found; in-memory gRPC not registered");
+        return false;
+    }
+
+    private static void RegisterInMemoryFactory(
+        IServiceCollection services,
+        HttpMessageHandler handler,
+        Type factoryInterface,
+        Type clientInterface,
+        Type functionRpcClientType,
+        MethodInfo eventStreamMethod,
+        MethodInfo processMessageAsync,
+        ILogger logger)
+    {
+        var createFactoryProxy = typeof(DispatchProxy)
+            .GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .First(m => m.Name == "Create" && m.GetGenericArguments().Length == 2)
+            .MakeGenericMethod(factoryInterface, typeof(InMemoryGrpcClientFactory));
+
+        var factoryProxy = (InMemoryGrpcClientFactory)createFactoryProxy.Invoke(null, null)!;
+        factoryProxy.Initialize(
+            handler,
+            clientInterface,
+            functionRpcClientType,
+            eventStreamMethod,
+            processMessageAsync);
+
+        // AddSingleton (not TryAdd) so we override the SDK's TryAddSingleton registration.
+        services.AddSingleton(factoryInterface, factoryProxy);
+
+        logger.LogDebug("In-memory IWorkerClientFactory registered — gRPC TCP bypassed");
     }
 }
 
