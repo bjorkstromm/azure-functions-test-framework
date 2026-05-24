@@ -6,7 +6,6 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 
 - No active blockers for the current Worker SDK 2.x sample/test suites (including the latest Durable fake API support and CI-aligned test expectations).
 - No active coverage blockers for framework libraries: CI coverage now reports 80%+ line coverage across all `AzureFunctions.TestFramework.*` libraries.
-- No active NuGet README link blockers: package README cross-links were normalized to absolute GitHub URLs so they resolve on nuget.org.
 
 ## Known issues
 

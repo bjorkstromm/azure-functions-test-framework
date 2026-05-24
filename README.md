@@ -11,7 +11,6 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ### Latest update (2026-05-24)
 
-- NuGet package README cross-links are now absolute GitHub URLs (repo root and `tests/`) so links resolve correctly on nuget.org.
 - Library coverage work completed for the framework solution: all `AzureFunctions.TestFramework.*` libraries are now at **80%+ line coverage** in the CI coverage report.
 - Coverage reporting now excludes generated `obj` files (`-filefilters:-*/obj/*`) so metrics reflect maintainable source code rather than generated protobuf artifacts.
 - New unit tests were added for Dapr builder extensions, CosmosDB/SQL builder and synthetic binding providers, Service Bus fake action/converter helpers, and additional Durable utility/configuration paths.
