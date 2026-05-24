@@ -127,10 +127,10 @@ dotnet pack --configuration Release --output ./artifacts
 
 ## Next likely areas
 
-- Richer durable lifecycle helpers and pagination/continuation behavior parity
-- Additional typed helpers for more complex output payloads
-- More middleware scenarios such as authorization and exception handling
-- More binding types such as Kafka and SendGrid
+- Direct gRPC parity for `[FromBody]`-style binding behavior
+- Richer durable lifecycle fidelity, especially pagination/continuation token behavior
+- Broader synthetic input support for SDK client-typed bindings (for example `TableClient` / `CosmosClient` scenarios)
+- Additional trigger/binding packages (for example SendGrid) and deeper edge-case coverage across existing packages
 
 ## Project Structure
 

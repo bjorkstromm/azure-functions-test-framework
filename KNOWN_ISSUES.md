@@ -2,6 +2,8 @@
 
 For current capabilities, package layout, and common commands, see `README.md`. For architectural rationale (ALC isolation, FrameworkReference, GrpcWorker no-op, durable converter interception), see the "Architecture & Design Decisions" section in `README.md`. This file is limited to active blockers and known caveats.
 
+Reviewed: 2026-05-24 (README roadmap/"Next likely areas" refreshed; caveats below remain current).
+
 ## Active blockers
 
 - No active blockers for the current Worker SDK 2.x sample/test suites (including the latest Durable fake API support and CI-aligned test expectations).
