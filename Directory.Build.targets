@@ -4,4 +4,9 @@
   <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
     <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
   </PropertyGroup>
+
+  <!-- Propagate NU1603 suppression into Worker SDK generated WorkerExtensions.csproj builds. -->
+  <PropertyGroup>
+    <_FunctionsExtensionCommonProps Condition="'$(_FunctionsExtensionCommonProps)' != ''">$(_FunctionsExtensionCommonProps);NoWarn=NU1603</_FunctionsExtensionCommonProps>
+  </PropertyGroup>
 </Project>

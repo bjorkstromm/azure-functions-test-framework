@@ -49,7 +49,7 @@ public class ProductFunctionsTests : IAsyncLifetime
         Assert.False(string.IsNullOrWhiteSpace(productId));
 
         // Verify HttpRequest + Guid route param binding works
-        var response = await _client.GetAsync($"/v1/products/by-id/{productId!}", TestCancellation);
+        var response = await _client!.GetAsync($"/v1/products/by-id/{productId!}", TestCancellation);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

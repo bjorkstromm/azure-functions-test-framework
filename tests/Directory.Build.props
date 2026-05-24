@@ -5,5 +5,6 @@
     <IsPackable>false</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);AD0001;NU1603</NoWarn>
+    <RestoreNoWarn>$(RestoreNoWarn);NU1603</RestoreNoWarn>
   </PropertyGroup>
 </Project>
