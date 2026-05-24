@@ -1,5 +1,8 @@
 <Project>
+  <Import Project="..\Directory.Build.props" />
+
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);AD0001;NU1603</NoWarn>
   </PropertyGroup>
 </Project>

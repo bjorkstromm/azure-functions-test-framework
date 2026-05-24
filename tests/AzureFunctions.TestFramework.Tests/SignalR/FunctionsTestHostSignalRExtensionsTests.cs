@@ -157,7 +157,7 @@ public class FunctionsTestHostSignalRExtensionsTests
         var context = new FunctionInvocationContext
         {
             TriggerType = "signalRTrigger",
-            InputData = { ["$invocationContextJson"] = null }
+            InputData = { ["$invocationContextJson"] = null! }
         };
 
         var binding = InvokeCreateBindingData(context, FakeRegistration);

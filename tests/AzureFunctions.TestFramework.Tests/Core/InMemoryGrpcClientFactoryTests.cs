@@ -85,9 +85,11 @@ public class InMemoryGrpcClientFactoryTests
         InMemoryGrpcClientFactory.TryGetRequiredTypes(
             workerGrpcAsm, NullLogger.Instance,
             out _, out _, out var processorInterface, out var functionRpcClientType);
+        Assert.NotNull(processorInterface);
+        Assert.NotNull(functionRpcClientType);
 
         var result = InMemoryGrpcClientFactory.TryGetRequiredMethods(
-            functionRpcClientType, processorInterface, NullLogger.Instance,
+            functionRpcClientType!, processorInterface!, NullLogger.Instance,
             out var eventStreamMethod, out var processMessageAsync);
 
         Assert.True(result);
@@ -104,11 +106,12 @@ public class InMemoryGrpcClientFactoryTests
         InMemoryGrpcClientFactory.TryGetRequiredTypes(
             workerGrpcAsm, NullLogger.Instance,
             out _, out _, out var processorInterface, out _);
+        Assert.NotNull(processorInterface);
 
         // Use a type that has no EventStream method
         var noEventStreamType = typeof(object);
         var result = InMemoryGrpcClientFactory.TryGetRequiredMethods(
-            noEventStreamType, processorInterface, NullLogger.Instance,
+            noEventStreamType, processorInterface!, NullLogger.Instance,
             out _, out _);
 
         Assert.False(result);
