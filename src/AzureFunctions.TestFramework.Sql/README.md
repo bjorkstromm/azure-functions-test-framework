@@ -1,6 +1,6 @@
 # AzureFunctions.TestFramework.Sql
 
-Azure SQL Trigger, Input, and Output binding support for the [Azure Functions Test Framework](../../README.md).
+Azure SQL Trigger, Input, and Output binding support for the [Azure Functions Test Framework](https://github.com/bjorkstromm/azure-functions-test-framework).
 
 ## Installation
 
@@ -119,4 +119,4 @@ Add the SQL package reference to your test project and all four function-app tes
 <PackageReference Include="AzureFunctions.TestFramework.Sql" />
 ```
 
-See the [4-flavour matrix test pattern](../../tests/) for the concrete test class structure.
+See the [4-flavour matrix test pattern](https://github.com/bjorkstromm/azure-functions-test-framework/tree/main/tests/) for the concrete test class structure.
