@@ -2,7 +2,7 @@
 
 ## Session Rules
 
-> **Always update `README.md` and `KNOWN_ISSUES.md` at the end of every session** to reflect the current state of the project: what now works, what is still blocked, and what changed. These are the primary documentation files used to track progress between sessions.
+> Update `KNOWN_ISSUES.md` only when there are actual new or resolved known issues — do not add routine PR changes. Do not update `README.md` unless the PR specifically changes user-facing documentation, APIs, or installation steps.
 
 ## Project Overview
 This is an integration testing framework for Azure Functions (dotnet-isolated) that provides a TestServer/WebApplicationFactory-like experience. It runs Azure Functions in-process without func.exe, using ASP.NET Core's `TestServer` for both the gRPC communication channel and the worker's HTTP server — no TCP ports are opened.
@@ -318,3 +318,4 @@ tests/
 ✅ Durable Functions (starter, orchestrator, activity, sub-orchestrator, external events)
 ✅ NuGet packaging with MinVer, Source Link, symbol packages
 ✅ Worker-side logging configurable via `ConfigureWorkerLogging` (routes function `ILogger` output to test output)
+🎯 Code coverage target: ≥ 80% line coverage on framework source (Core, Http, Timer, Queue, ServiceBus, Blob, EventGrid, Durable)

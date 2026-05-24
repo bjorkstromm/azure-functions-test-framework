@@ -9,21 +9,13 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 `FunctionsTestHost` — the single unified test host — is **fully functional** for the Worker SDK 2.x (.NET 10) samples and test suites. It supports both **direct gRPC mode** (`ConfigureFunctionsWorkerDefaults()`) and **ASP.NET Core integration mode** (`ConfigureFunctionsWebApplication()`), and works with both the classic `IHostBuilder` API and the newer `IHostApplicationBuilder` / `FunctionsApplicationBuilder` API introduced in Worker SDK 2.x. No active blockers.
 
-### Latest update (2026-05-24)
-
-- Added `AzureFunctions.TestFramework.Kafka` with `InvokeKafkaAsync(...)` and `InvokeKafkaBatchAsync(...)` — full trigger invocation support for `string`, `byte[]`, `KafkaRecord`, and JSON POCO parameter types; batch overloads for `IsBatched = true`; `[KafkaOutput]` captured via Core generically.
-- Library coverage work completed for the framework solution: all `AzureFunctions.TestFramework.*` libraries are now at **80%+ line coverage** in the CI coverage report.
-- Coverage reporting now excludes generated `obj` files (`-filefilters:-*/obj/*`) so metrics reflect maintainable source code rather than generated protobuf artifacts.
-- New unit tests were added for Dapr builder extensions, CosmosDB/SQL builder and synthetic binding providers, Service Bus fake action/converter helpers, and additional Durable utility/configuration paths.
-- Added `AzureFunctions.TestFramework.DataExplorer` with `[KustoInput]` synthetic input support (`WithKustoInputRows` / `WithKustoInputJson`) and verified `[KustoOutput]` capture across the 4-flavour matrix.
-
 ### Capabilities
 
 | Area | Status |
 |------|--------|
 | **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core integration modes |
 | **`BindingContext.BindingData` from HTTP request** | ✅ JSON body top-level properties, `Query`, and `Headers` populated — matches real Azure Functions host behavior |
-| **Trigger packages + binding helper packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis, RabbitMQ, Kafka, DataExplorer) | ✅ Extension methods + result capture |
+| **Trigger packages + binding helper packages** (Timer, Warmup, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis, RabbitMQ, Kafka, DataExplorer) | ✅ Extension methods + result capture |
 | **Table input bindings** (`[TableInput]`) | ✅ `WithTableEntity` / `WithTableEntities` via `ISyntheticBindingProvider` |
 | **CosmosDB input bindings** (`[CosmosDBInput]`) | ✅ `WithCosmosDBInputDocuments` via `ISyntheticBindingProvider` |
 | **SQL input bindings** (`[SqlInput]`) | ✅ `WithSqlInputRows` via `ISyntheticBindingProvider` |
@@ -61,6 +53,7 @@ This framework aims to provide:
 | [`AzureFunctions.TestFramework.Core`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Core) | gRPC-based in-process test host, worker hosting, metadata inspection, shared invocation result types, `ISyntheticBindingProvider` extensibility | [README](src/AzureFunctions.TestFramework.Core/README.md) |
 | [`AzureFunctions.TestFramework.Http`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Http) | HTTP client support (`CreateHttpClient()`), request/response mapping, forwarding handlers for both modes | [README](src/AzureFunctions.TestFramework.Http/README.md) |
 | [`AzureFunctions.TestFramework.Timer`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Timer) | `InvokeTimerAsync(...)` | [README](src/AzureFunctions.TestFramework.Timer/README.md) |
+| [`AzureFunctions.TestFramework.Warmup`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Warmup) | `InvokeWarmupAsync(...)` | [README](src/AzureFunctions.TestFramework.Warmup/README.md) |
 | [`AzureFunctions.TestFramework.Queue`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Queue) | `InvokeQueueAsync(...)` for `string` and `QueueMessage` parameter types | [README](src/AzureFunctions.TestFramework.Queue/README.md) |
 | [`AzureFunctions.TestFramework.ServiceBus`](https://www.nuget.org/packages/AzureFunctions.TestFramework.ServiceBus) | `InvokeServiceBusAsync(...)`, `InvokeServiceBusBatchAsync(...)`, `ConfigureFakeServiceBusMessageActions()` | [README](src/AzureFunctions.TestFramework.ServiceBus/README.md) |
 | [`AzureFunctions.TestFramework.Blob`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Blob) | `InvokeBlobAsync(...)`, `WithBlobInputContent(...)`, `WithBlobServiceClient(...)` + `WithBlobInputClient(...)` for `BlobClient` types | [README](src/AzureFunctions.TestFramework.Blob/README.md) |
@@ -139,6 +132,7 @@ src/
   AzureFunctions.TestFramework.Core/         # gRPC host (TestServer-backed), worker hosting, in-memory invocation — both modes (net8.0;net10.0)
   AzureFunctions.TestFramework.Http/         # HTTP client support, request/response mapping, forwarding handlers (net8.0;net10.0)
   AzureFunctions.TestFramework.Timer/        # TimerTrigger invocation (net8.0;net10.0)
+  AzureFunctions.TestFramework.Warmup/       # WarmupTrigger invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.Queue/        # QueueTrigger invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.ServiceBus/   # ServiceBusTrigger invocation (net8.0;net10.0)
   AzureFunctions.TestFramework.Blob/         # BlobTrigger invocation + BlobInput injection (net8.0;net10.0)
