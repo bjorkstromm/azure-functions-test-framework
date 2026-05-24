@@ -37,6 +37,7 @@
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.SignalR\AzureFunctions.TestFramework.SignalR.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Tables\AzureFunctions.TestFramework.Tables.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Timer\AzureFunctions.TestFramework.Timer.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Warmup\AzureFunctions.TestFramework.Warmup.csproj" />
   </ItemGroup>
 
   <!-- Worker SDK packages -->
