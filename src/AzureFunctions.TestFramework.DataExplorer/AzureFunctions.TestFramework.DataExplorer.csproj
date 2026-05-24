@@ -16,4 +16,10 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Kusto" />
   </ItemGroup>
 
+  <Target Name="AppendPreviewSuffixToPackageVersion" BeforeTargets="GenerateNuspec">
+    <PropertyGroup>
+      <PackageVersion>$(Version)-preview</PackageVersion>
+    </PropertyGroup>
+  </Target>
+
 </Project>
