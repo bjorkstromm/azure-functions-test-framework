@@ -74,6 +74,14 @@ jobs:
       - name: Pack
         run: dotnet pack AzureFunctions.TestFramework.slnx --no-build --configuration Release --output ./artifacts
 
+      - name: Pack (stable-release validation)
+        if: github.event_name == 'pull_request'
+        run: >
+          dotnet pack AzureFunctions.TestFramework.slnx
+          --no-build --configuration Release
+          --output ./artifacts-stable-validation
+          -p:MinVerVersionOverride=1.0.0
+
   coverage-comment:
     if: github.event_name == 'pull_request'
     needs: build-and-test
