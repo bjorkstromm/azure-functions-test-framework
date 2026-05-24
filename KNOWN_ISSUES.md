@@ -5,8 +5,6 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 ## Active blockers
 
 - No active blockers for the current Worker SDK 2.x sample/test suites (including the latest Durable fake API support and CI-aligned test expectations).
-- No active coverage blockers for framework libraries: CI coverage now reports 80%+ line coverage across all `AzureFunctions.TestFramework.*` libraries.
-- Warmup trigger support is now available via `AzureFunctions.TestFramework.Warmup` (`InvokeWarmupAsync(...)`) and is covered in the 4-flavour test matrix.
 
 ## Known issues
 
@@ -30,11 +28,3 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 ### One function-app project per test project
 
 The framework enforces a **one function-app project per test project** constraint. When multiple function-app projects compile to the same output directory, the last-built `host.json` overwrites the others. The Azure Functions SDK reads `host.json` from `FUNCTIONS_APPLICATION_DIRECTORY` at runtime, so the "winning" file determines settings like `extensions.http.routePrefix` for **all** test hosts sharing that output directory. Keep a 1:1 mapping between test projects and function-app projects to avoid this.
-
-### Adding a new trigger type
-
-To add support for an additional trigger type without modifying Core:
-
-1. In your `InvokeXxxAsync` static extension method, add a `private static TriggerBindingData CreateBindingData(FunctionInvocationContext context, FunctionRegistration function)` method that builds the gRPC binding data from the context's `InputData`.
-2. Pass the factory as the `triggerBindingFactory` argument to `host.Invoker.InvokeAsync(functionName, context, CreateBindingData, cancellationToken)`.
-3. If the trigger requires non-trigger input bindings injected synthetically (like `durableClient`), implement `ISyntheticBindingProvider` and register it via `builder.WithSyntheticBindingProvider(...)` in the builder-level extension method.
