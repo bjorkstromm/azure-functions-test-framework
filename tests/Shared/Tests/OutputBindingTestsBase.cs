@@ -46,4 +46,16 @@ public abstract class OutputBindingTestsBase : TestHostTestBase
         var outputEvent = result.ReadOutputAs<string>("OutputEvent");
         Assert.Equal($"eg:{messageText}", outputEvent);
     }
+
+    [Fact]
+    public async Task InvokeQueueAsync_CapturesSendGridOutputBindingData()
+    {
+        var messageText = "Hello SendGrid output!";
+
+        var result = await TestHost.InvokeQueueAsync("CreateSendGridOutputEmail", messageText, TestCancellation);
+
+        Assert.True(result.Success, $"Queue invocation failed: {result.Error}");
+        var outputEmail = result.ReadOutputAs<string>("OutputEmail");
+        Assert.Equal($"sg:{messageText}", outputEmail);
+    }
 }
