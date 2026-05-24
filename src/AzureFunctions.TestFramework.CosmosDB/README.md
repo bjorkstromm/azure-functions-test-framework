@@ -1,6 +1,6 @@
 # AzureFunctions.TestFramework.CosmosDB
 
-CosmosDB Trigger, Input, and Output binding support for the [Azure Functions Test Framework](../../README.md).
+CosmosDB Trigger, Input, and Output binding support for the [Azure Functions Test Framework](https://github.com/bjorkstromm/azure-functions-test-framework).
 
 ## Installation
 
@@ -105,4 +105,4 @@ Add the CosmosDB package reference to your test project and all four function-ap
 <PackageReference Include="AzureFunctions.TestFramework.CosmosDB" />
 ```
 
-See the [4-flavour matrix test pattern](../../tests/) for the concrete test class structure.
+See the [4-flavour matrix test pattern](https://github.com/bjorkstromm/azure-functions-test-framework/tree/main/tests/) for the concrete test class structure.
