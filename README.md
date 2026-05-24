@@ -11,6 +11,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 ### Latest update (2026-05-24)
 
+- Added `AzureFunctions.TestFramework.Kafka` with `InvokeKafkaAsync(...)` and `InvokeKafkaBatchAsync(...)` — full trigger invocation support for `string`, `byte[]`, `KafkaRecord`, and JSON POCO parameter types; batch overloads for `IsBatched = true`; `[KafkaOutput]` captured via Core generically.
 - Library coverage work completed for the framework solution: all `AzureFunctions.TestFramework.*` libraries are now at **80%+ line coverage** in the CI coverage report.
 - Coverage reporting now excludes generated `obj` files (`-filefilters:-*/obj/*`) so metrics reflect maintainable source code rather than generated protobuf artifacts.
 - New unit tests were added for Dapr builder extensions, CosmosDB/SQL builder and synthetic binding providers, Service Bus fake action/converter helpers, and additional Durable utility/configuration paths.
@@ -22,7 +23,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 |------|--------|
 | **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core integration modes |
 | **`BindingContext.BindingData` from HTTP request** | ✅ JSON body top-level properties, `Query`, and `Headers` populated — matches real Azure Functions host behavior |
-| **Trigger packages + binding helper packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis, RabbitMQ, DataExplorer) | ✅ Extension methods + result capture |
+| **Trigger packages + binding helper packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis, RabbitMQ, Kafka, DataExplorer) | ✅ Extension methods + result capture |
 | **Table input bindings** (`[TableInput]`) | ✅ `WithTableEntity` / `WithTableEntities` via `ISyntheticBindingProvider` |
 | **CosmosDB input bindings** (`[CosmosDBInput]`) | ✅ `WithCosmosDBInputDocuments` via `ISyntheticBindingProvider` |
 | **SQL input bindings** (`[SqlInput]`) | ✅ `WithSqlInputRows` via `ISyntheticBindingProvider` |
@@ -74,6 +75,7 @@ This framework aims to provide:
 | [`AzureFunctions.TestFramework.Mcp`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Mcp) | `InvokeMcpToolAsync(...)`, `InvokeMcpResourceAsync(...)`, `InvokeMcpPromptAsync(...)` for MCP (Model Context Protocol) triggers | [README](src/AzureFunctions.TestFramework.Mcp/README.md) |
 | [`AzureFunctions.TestFramework.Redis`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Redis) | `InvokeRedisPubSubAsync(...)`, `InvokeRedisListAsync(...)`, `InvokeRedisStreamAsync(...)` for Redis triggers; `WithRedisInput(...)` for `[RedisInput]` binding injection; `[RedisOutput]` captured via Core | [README](src/AzureFunctions.TestFramework.Redis/README.md) |
 | [`AzureFunctions.TestFramework.RabbitMQ`](https://www.nuget.org/packages/AzureFunctions.TestFramework.RabbitMQ) | `InvokeRabbitMQAsync(...)` for `string`, `byte[]` (UTF-8 body), and JSON POCO trigger parameters; optional `RabbitMqTriggerMessageProperties` for trigger metadata; named `[RabbitMQOutput]` payloads via `OutputData` / `ReadOutputAs<T>(...)` | [README](src/AzureFunctions.TestFramework.RabbitMQ/README.md) |
+| [`AzureFunctions.TestFramework.Kafka`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Kafka) | `InvokeKafkaAsync(...)` for `string`, `byte[]`, `KafkaRecord`, and JSON POCO trigger parameters; `InvokeKafkaBatchAsync(...)` for all batched variants (`IsBatched = true`); `[KafkaOutput]` captured via Core | [README](src/AzureFunctions.TestFramework.Kafka/README.md) |
 
 ## Project setup requirements
 

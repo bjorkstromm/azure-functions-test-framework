@@ -30,6 +30,7 @@
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.EventGrid\AzureFunctions.TestFramework.EventGrid.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Http\AzureFunctions.TestFramework.Http.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Queue\AzureFunctions.TestFramework.Queue.csproj" />
+    <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Kafka\AzureFunctions.TestFramework.Kafka.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.RabbitMQ\AzureFunctions.TestFramework.RabbitMQ.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.Sql\AzureFunctions.TestFramework.Sql.csproj" />
     <ProjectReference Include="..\..\src\AzureFunctions.TestFramework.ServiceBus\AzureFunctions.TestFramework.ServiceBus.csproj" />

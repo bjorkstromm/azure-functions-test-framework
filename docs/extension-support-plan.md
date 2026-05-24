@@ -169,6 +169,21 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.RabbitMQ`
 
+#### `AzureFunctions.TestFramework.Kafka` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[KafkaTrigger]` — `string` parameter | ✅ | ✅ `InvokeKafkaAsync(string)` — text passed as JSON binding value | ✅ |
+| `[KafkaTrigger]` — `byte[]` / `BinaryData` parameter | ✅ | ✅ `InvokeKafkaAsync(byte[])` — raw bytes | ✅ |
+| `[KafkaTrigger]` — `KafkaRecord` parameter | ✅ | ✅ `InvokeKafkaAsync(KafkaRecord)` — proto3-encoded `ModelBindingData` (source: `AzureKafkaRecord`) | ✅ |
+| `[KafkaTrigger]` — JSON POCO | ✅ | ✅ `InvokeKafkaAsync<T>(T payload)` | ✅ |
+| `[KafkaTrigger]` — batch mode (`IsBatched = true`) — `string[]` | ✅ | ✅ `InvokeKafkaBatchAsync(IReadOnlyList<string>)` | ✅ |
+| `[KafkaTrigger]` — batch mode — `KafkaRecord[]` | ✅ | ✅ `InvokeKafkaBatchAsync(IReadOnlyList<KafkaRecord>)` — `CollectionModelBindingData` | ✅ |
+| `[KafkaTrigger]` — batch mode — JSON POCO array | ✅ | ✅ `InvokeKafkaBatchAsync<T>(IReadOnlyList<T>)` | ✅ |
+| `[KafkaOutput]` (output) | ✅ | ✅ `FunctionInvocationResult.OutputData` / `ReadOutputAs<T>(bindingName)` | ✅ |
+
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Kafka`
+
 #### `AzureFunctions.TestFramework.Dapr` ✅ Fully Covered
 
 | Binding | Worker Extension | Test Framework | Status |
@@ -197,7 +212,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 | Extension | NuGet Package | Trigger | Input | Output |
 |-----------|---------------|---------|-------|--------|
-| **Kafka** | `Microsoft.Azure.Functions.Worker.Extensions.Kafka` | `[KafkaTrigger]` | — | `[KafkaOutput]` |
 | **SendGrid** | `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` | — | — | `[SendGrid]` |
 | **Warmup** | `Microsoft.Azure.Functions.Worker.Extensions.Warmup` | `[WarmupTrigger]` | — | — |
 
@@ -285,22 +299,21 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 5: Kafka Trigger & Output binding
+### ~~Issue 5: Kafka Trigger & Output binding~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.Kafka`
+**Package:** `AzureFunctions.TestFramework.Kafka` — shipped.
 
 **Bindings:**
 - **Trigger:** `[KafkaTrigger]` — receives events from Apache Kafka topics
-- **Output:** `[KafkaOutput]` — sends events to Kafka topics
+- **Output:** `[KafkaOutput]` — sends events to Kafka topics (captured generically via Core)
 
-**Scope:**
-- New package: `AzureFunctions.TestFramework.Kafka`
-- Extension method: `InvokeKafkaAsync(this IFunctionsTestHost host, string functionName, ...)` — single event with key, value, headers, offset, partition, topic, timestamp
-- Batch overload for batch trigger mode
-- Output bindings captured via `FunctionInvocationResult.OutputData`
-- Test across 4-flavour matrix
+**Implemented:**
+- Extension methods: `InvokeKafkaAsync(...)` for `string`, `byte[]`, `KafkaRecord`, and JSON POCO payloads; `InvokeKafkaBatchAsync(...)` for all batched variants (`IsBatched = true`)
+- `KafkaRecord` overload uses a custom proto3 binary encoder (`KafkaRecordProtoWriter`) matching the extension's internal `KafkaRecordProto` wire format (source: `AzureKafkaRecord`, content-type: `application/x-protobuf`)
+- `[KafkaOutput]` captured generically via `FunctionInvocationResult.OutputData` — no per-extension code needed
+- `[KafkaOutput]` payloads accessible via `ReadOutputAs<T>(bindingName)`
 
-**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Kafka`
+**NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Kafka` 4.2.0
 
 ---
 
