@@ -17,14 +17,23 @@ public abstract class SqlTestsBase : TestHostTestBase
 {
     private InMemoryProcessedItemsService? _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected SqlTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
         return await CreateTestHostWithProcessedItemsAsync(_processedItems);
     }
 
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(
         InMemoryProcessedItemsService processedItems);
 

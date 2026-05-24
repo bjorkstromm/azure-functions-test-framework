@@ -4,12 +4,21 @@ using System.Net;
 
 namespace Sample.FunctionApp;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class TodoFunctions
 {
     private readonly ITodoService _todoService;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public TodoFunctions(ITodoService todoService) => _todoService = todoService;
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetTodos")]
     public async Task<HttpResponseData> GetTodos(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos")] HttpRequestData req)
@@ -19,6 +28,9 @@ public class TodoFunctions
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetTodo")]
     public async Task<HttpResponseData> GetTodo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos/{id}")] HttpRequestData req,
@@ -31,6 +43,9 @@ public class TodoFunctions
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("CreateTodo")]
     public async Task<HttpResponseData> CreateTodo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "todos")] HttpRequestData req)
@@ -50,6 +65,9 @@ public class TodoFunctions
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("DeleteTodo")]
     public HttpResponseData DeleteTodo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "todos/{id}")] HttpRequestData req,
@@ -59,6 +77,9 @@ public class TodoFunctions
         return req.CreateResponse(deleted ? HttpStatusCode.NoContent : HttpStatusCode.NotFound);
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("Health")]
     public async Task<HttpResponseData> Health(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
@@ -69,4 +90,7 @@ public class TodoFunctions
     }
 }
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed record CreateTodoRequest(string Title);

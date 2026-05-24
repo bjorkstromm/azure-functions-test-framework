@@ -18,6 +18,9 @@ public class DurableHttpClientExtensionsTests
     // ReadDurableOrchestrationStatusAsync
     // -------------------------------------------------------------------------
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ReadDurableOrchestrationStatusAsync_EmptyBody_ReturnsNull()
     {
@@ -29,6 +32,9 @@ public class DurableHttpClientExtensionsTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ReadDurableOrchestrationStatusAsync_ValidJson_DeserializesStatus()
     {
@@ -51,55 +57,73 @@ public class DurableHttpClientExtensionsTests
         Assert.Equal("Completed", result.RuntimeStatus);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ReadDurableOrchestrationStatusAsync_NullResponse_Throws()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            ((HttpResponseMessage)null!).ReadDurableOrchestrationStatusAsync());
+            ((HttpResponseMessage)null!).ReadDurableOrchestrationStatusAsync(TestContext.Current.CancellationToken));
     }
 
     // -------------------------------------------------------------------------
     // WaitForCompletionAsync — validation
     // -------------------------------------------------------------------------
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForCompletionAsync_NullClient_Throws()
     {
         var payload = new DurableHttpManagementPayload { StatusQueryGetUri = "http://example.com/status" };
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            ((HttpClient)null!).WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5)));
+            ((HttpClient)null!).WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForCompletionAsync_NullPayload_Throws()
     {
         using var client = new HttpClient();
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            client.WaitForCompletionAsync(null!, TimeSpan.FromSeconds(5)));
+            client.WaitForCompletionAsync(null!, TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForCompletionAsync_EmptyStatusUri_Throws()
     {
         using var client = new HttpClient();
         var payload = new DurableHttpManagementPayload { StatusQueryGetUri = "" };
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            client.WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5)));
+            client.WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForCompletionAsync_WhitespaceStatusUri_Throws()
     {
         using var client = new HttpClient();
         var payload = new DurableHttpManagementPayload { StatusQueryGetUri = "   " };
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            client.WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5)));
+            client.WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken));
     }
 
     // -------------------------------------------------------------------------
     // WaitForCompletionAsync — polling behaviour
     // -------------------------------------------------------------------------
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForCompletionAsync_ImmediateTerminalStatus_ReturnsStatus()
     {
@@ -118,6 +142,9 @@ public class DurableHttpClientExtensionsTests
         Assert.Equal("inst1", result.InstanceId);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForCompletionAsync_RunningThenCompleted_ReturnsFinalStatus()
     {
@@ -140,6 +167,9 @@ public class DurableHttpClientExtensionsTests
         Assert.Equal("done", result.InstanceId);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForCompletionAsync_FailedStatus_ReturnsFailedStatus()
     {
@@ -157,6 +187,9 @@ public class DurableHttpClientExtensionsTests
         Assert.Equal("Failed", result.RuntimeStatus);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForCompletionAsync_Timeout_ThrowsOperationCanceled()
     {
@@ -171,7 +204,8 @@ public class DurableHttpClientExtensionsTests
             client.WaitForCompletionAsync(
                 payload,
                 timeout: TimeSpan.FromMilliseconds(100),
-                pollInterval: TimeSpan.FromMilliseconds(50)));
+                pollInterval: TimeSpan.FromMilliseconds(50),
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     // -------------------------------------------------------------------------

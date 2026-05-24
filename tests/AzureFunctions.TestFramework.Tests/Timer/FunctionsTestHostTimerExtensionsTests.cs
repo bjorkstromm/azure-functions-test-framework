@@ -19,6 +19,9 @@ public class FunctionsTestHostTimerExtensionsTests
 
     // ── CreateBindingData ─────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateBindingData_DefaultTimerJson_ProducesJsonParam()
     {
@@ -42,6 +45,9 @@ public class FunctionsTestHostTimerExtensionsTests
         Assert.False(string.IsNullOrWhiteSpace(param.Json));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateBindingData_MissingTimerJson_UsesEmptyJson()
     {
@@ -53,6 +59,9 @@ public class FunctionsTestHostTimerExtensionsTests
         Assert.Equal("{}", binding.InputData[0].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateBindingData_NullTimerJson_UsesEmptyJson()
     {
@@ -69,12 +78,15 @@ public class FunctionsTestHostTimerExtensionsTests
 
     // ── InvokeTimerAsync passes default TimerInfo when null ───────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void InvokeTimerAsync_NullTimerInfo_CreatesDefaultTimerInfo()
     {
         // Verify the JSON produced by null timerInfo is valid and contains isPastDue
         var host = new FakeHost();
-        _ = FunctionsTestHostTimerExtensions.InvokeTimerAsync(host, "TimerFunc", null);
+        _ = FunctionsTestHostTimerExtensions.InvokeTimerAsync(host, "TimerFunc", null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         var json = host.LastContext.InputData["$timerJson"]?.ToString();
@@ -83,12 +95,15 @@ public class FunctionsTestHostTimerExtensionsTests
         Assert.True(doc.RootElement.TryGetProperty("isPastDue", out _));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void InvokeTimerAsync_WithTimerInfo_SerializesTimerInfo()
     {
         var timerInfo = new TimerInfo { IsPastDue = true };
         var host = new FakeHost();
-        _ = FunctionsTestHostTimerExtensions.InvokeTimerAsync(host, "TimerFunc", timerInfo);
+        _ = FunctionsTestHostTimerExtensions.InvokeTimerAsync(host, "TimerFunc", timerInfo, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         var json = host.LastContext.InputData["$timerJson"]?.ToString();

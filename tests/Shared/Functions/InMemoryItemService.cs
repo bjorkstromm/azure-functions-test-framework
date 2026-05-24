@@ -1,20 +1,32 @@
 namespace TestProject;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed class InMemoryItemService : IItemService
 {
     private readonly List<Item> _items = [];
     private readonly object _lock = new();
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public IReadOnlyList<Item> GetAll()
     {
         lock (_lock) return _items.ToList();
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public Item? GetById(string id)
     {
         lock (_lock) return _items.FirstOrDefault(i => i.Id == id);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public Item Create(string name)
     {
         var item = new Item { Id = Guid.NewGuid().ToString(), Name = name };
@@ -22,6 +34,9 @@ public sealed class InMemoryItemService : IItemService
         return item;
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public Item? Update(string id, string name, bool isCompleted)
     {
         lock (_lock)
@@ -34,6 +49,9 @@ public sealed class InMemoryItemService : IItemService
         }
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public bool Delete(string id)
     {
         lock (_lock)
@@ -45,6 +63,9 @@ public sealed class InMemoryItemService : IItemService
         }
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public void Reset()
     {
         lock (_lock) _items.Clear();

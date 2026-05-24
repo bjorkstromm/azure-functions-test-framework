@@ -17,116 +17,135 @@ public class FunctionsTestHostDurableExtensionsTests
 
     // ── FunctionsTestHostDurableActivityExtensions ────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeActivityAsync_NullHost_ThrowsArgumentNullException()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            ((IFunctionsTestHost)null!).InvokeActivityAsync<string>("SomeActivity"));
+            ((IFunctionsTestHost)null!).InvokeActivityAsync<string>("SomeActivity", cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeActivityAsync_EmptyFunctionName_ThrowsArgumentException()
     {
         var host = CreateStubHost(withDurableSupport: false);
 
-#pragma warning disable xUnit1051
         await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-            host.InvokeActivityAsync<string>(string.Empty));
-#pragma warning restore xUnit1051
+            host.InvokeActivityAsync<string>(string.Empty, cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeActivityAsync_WhitespaceFunctionName_ThrowsArgumentException()
     {
         var host = CreateStubHost(withDurableSupport: false);
 
-#pragma warning disable xUnit1051
         await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-            host.InvokeActivityAsync<string>("   "));
-#pragma warning restore xUnit1051
+            host.InvokeActivityAsync<string>("   ", cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeActivityAsync_WithoutDurableSupport_ThrowsInvalidOperationException()
     {
         var host = CreateStubHost(withDurableSupport: false);
 
-#pragma warning disable xUnit1051
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            host.InvokeActivityAsync<string>("SomeActivity"));
-#pragma warning restore xUnit1051
+            host.InvokeActivityAsync<string>("SomeActivity", cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Contains("ConfigureFakeDurableSupport", ex.Message);
     }
 
     // ── FunctionsTestHostDurableEntityExtensions — SignalEntityAsync ──────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_NullHost_ThrowsArgumentNullException()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            ((IFunctionsTestHost)null!).SignalEntityAsync(TestEntityId, "op"));
+            ((IFunctionsTestHost)null!).SignalEntityAsync(TestEntityId, "op", cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_EmptyOperationName_ThrowsArgumentException()
     {
         var host = CreateStubHost(withDurableSupport: false);
 
-#pragma warning disable xUnit1051
         await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-            host.SignalEntityAsync(TestEntityId, string.Empty));
-#pragma warning restore xUnit1051
+            host.SignalEntityAsync(TestEntityId, string.Empty, cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_WithoutDurableSupport_ThrowsInvalidOperationException()
     {
         var host = CreateStubHost(withDurableSupport: false);
 
-#pragma warning disable xUnit1051
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            host.SignalEntityAsync(TestEntityId, "add", 5));
-#pragma warning restore xUnit1051
+            host.SignalEntityAsync(TestEntityId, "add", 5, TestContext.Current.CancellationToken));
 
         Assert.Contains("ConfigureFakeDurableSupport", ex.Message);
     }
 
     // ── FunctionsTestHostDurableEntityExtensions — CallEntityAsync ────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task CallEntityAsync_NullHost_ThrowsArgumentNullException()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            ((IFunctionsTestHost)null!).CallEntityAsync<int>(TestEntityId, "get"));
+            ((IFunctionsTestHost)null!).CallEntityAsync<int>(TestEntityId, "get", cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task CallEntityAsync_EmptyOperationName_ThrowsArgumentException()
     {
         var host = CreateStubHost(withDurableSupport: false);
 
-#pragma warning disable xUnit1051
         await Assert.ThrowsAnyAsync<ArgumentException>(() =>
-            host.CallEntityAsync<int>(TestEntityId, string.Empty));
-#pragma warning restore xUnit1051
+            host.CallEntityAsync<int>(TestEntityId, string.Empty, cancellationToken: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task CallEntityAsync_WithoutDurableSupport_ThrowsInvalidOperationException()
     {
         var host = CreateStubHost(withDurableSupport: false);
 
-#pragma warning disable xUnit1051
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            host.CallEntityAsync<int>(TestEntityId, "get"));
-#pragma warning restore xUnit1051
+            host.CallEntityAsync<int>(TestEntityId, "get", cancellationToken: TestContext.Current.CancellationToken));
 
         Assert.Contains("ConfigureFakeDurableSupport", ex.Message);
     }
 
     // ── FunctionsTestHostDurableEntityExtensions — GetEntity ─────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetEntity_NullHost_ThrowsArgumentNullException()
     {
@@ -134,6 +153,9 @@ public class FunctionsTestHostDurableExtensionsTests
             ((IFunctionsTestHost)null!).GetEntity<int>(TestEntityId));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetEntity_WithoutDurableSupport_ThrowsInvalidOperationException()
     {

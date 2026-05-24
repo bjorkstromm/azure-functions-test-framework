@@ -13,16 +13,28 @@ public abstract class OutputBindingTestsBase : TestHostTestBase
 {
     private InMemoryProcessedItemsService? _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected OutputBindingTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
         return await CreateTestHostWithProcessedItemsAsync(_processedItems);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems);
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeQueueAsync_CapturesServiceBusOutputBindingData()
     {
@@ -35,6 +47,9 @@ public abstract class OutputBindingTestsBase : TestHostTestBase
         Assert.Equal($"sb:{messageText}", outputMessage);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeQueueAsync_CapturesEventGridOutputBindingData()
     {
@@ -47,6 +62,9 @@ public abstract class OutputBindingTestsBase : TestHostTestBase
         Assert.Equal($"eg:{messageText}", outputEvent);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeQueueAsync_CapturesSendGridOutputBindingData()
     {

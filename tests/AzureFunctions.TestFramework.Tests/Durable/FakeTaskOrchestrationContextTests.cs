@@ -6,8 +6,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Durable;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FakeTaskOrchestrationContextTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task Context_ActivitySubOrchestrationAndState_APIs_Work()
     {
@@ -33,8 +39,8 @@ public class FakeTaskOrchestrationContextTests
 
         var activity = await sut.CallActivityAsync<int>(new TaskName("A"), 5);
         var sub = await sut.CallSubOrchestratorAsync<string>(new TaskName("B"), input: null);
-        var external = await sut.WaitForExternalEvent<string>("evt");
-        var timer = sut.CreateTimer(DateTime.UtcNow.AddMilliseconds(1), CancellationToken.None);
+        var external = await sut.WaitForExternalEvent<string>("evt", TestContext.Current.CancellationToken);
+        var timer = sut.CreateTimer(DateTime.UtcNow.AddMilliseconds(1), TestContext.Current.CancellationToken);
         sut.ContinueAsNew(new { value = 123 });
         sut.SetCustomStatus("done");
         sut.SendEvent("target-instance", "my-event", new { x = 1 });
@@ -55,6 +61,9 @@ public class FakeTaskOrchestrationContextTests
         Assert.Equal(("target-instance", "my-event"), (raisedEvents[0].InstanceId, raisedEvents[0].EventName));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForExternalEvent_WithCanceledToken_Throws()
     {

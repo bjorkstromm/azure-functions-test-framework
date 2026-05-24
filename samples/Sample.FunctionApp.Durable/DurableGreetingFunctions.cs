@@ -9,8 +9,14 @@ using System.Text.Json.Serialization;
 
 namespace Sample.FunctionApp.Durable;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class DurableGreetingFunctions
 {
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(StartGreetingOrchestration))]
     public async Task<string> StartGreetingOrchestration(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "durable/hello/{name}")]
@@ -34,6 +40,9 @@ public class DurableGreetingFunctions
             : metadata.FailureDetails?.ErrorMessage ?? "The fake durable orchestration did not complete successfully.";
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(StartGreetingViaSubOrchestrator))]
     public async Task<string> StartGreetingViaSubOrchestrator(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "durable/hello/sub/{name}")]
@@ -57,6 +66,9 @@ public class DurableGreetingFunctions
             : metadata.FailureDetails?.ErrorMessage ?? "The fake durable sub-orchestrator did not complete successfully.";
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(StartGreetingWithManagementPayload))]
     public async Task<string> StartGreetingWithManagementPayload(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "durable/manage/{name}")]
@@ -73,6 +85,9 @@ public class DurableGreetingFunctions
         return JsonSerializer.Serialize(CreateManagementPayload(instanceId));
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(GetGreetingStatusDocument))]
     public async Task<string> GetGreetingStatusDocument(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "durable/manage/status/{instanceId}")]
@@ -90,6 +105,9 @@ public class DurableGreetingFunctions
         return JsonSerializer.Serialize(CreateStatusDocument(metadata));
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunGreetingOrchestration))]
     public static async Task<string> RunGreetingOrchestration(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -98,6 +116,9 @@ public class DurableGreetingFunctions
         return await context.CallActivityAsync<string>(nameof(CreateGreeting), name);
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunGreetingParentOrchestration))]
     public static async Task<string> RunGreetingParentOrchestration(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -107,6 +128,9 @@ public class DurableGreetingFunctions
         return $"{greeting} (from parent)";
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunGreetingChildOrchestration))]
     public static async Task<string> RunGreetingChildOrchestration(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -115,6 +139,9 @@ public class DurableGreetingFunctions
         return await context.CallActivityAsync<string>(nameof(CreateGreeting), name);
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunGreetingStatusOrchestration))]
     public static async Task<string> RunGreetingStatusOrchestration(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -128,6 +155,9 @@ public class DurableGreetingFunctions
         return greeting;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunGreetingAwaitEventOrchestration))]
     public static async Task<string> RunGreetingAwaitEventOrchestration(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -143,6 +173,9 @@ public class DurableGreetingFunctions
         return finalMessage;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunReceiveForwardedEventOrchestration))]
     public static async Task<string> RunReceiveForwardedEventOrchestration(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -151,6 +184,9 @@ public class DurableGreetingFunctions
         return forwarded;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunSendForwardedEventOrchestration))]
     public static string RunSendForwardedEventOrchestration(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -160,6 +196,9 @@ public class DurableGreetingFunctions
         return "event-forwarded";
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Function(nameof(CreateGreeting))]
     public static string CreateGreeting([ActivityTrigger] string name)
     {
@@ -187,6 +226,9 @@ public class DurableGreetingFunctions
         return $"{greeting} (follow-up: {instanceId})";
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunGreetingWithClientActivity))]
     public static async Task<string> RunGreetingWithClientActivity(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -230,6 +272,9 @@ public class DurableGreetingFunctions
         return document.RootElement.Clone();
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunCounterOrchestration))]
     public async Task<int> RunCounterOrchestration(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -240,6 +285,9 @@ public class DurableGreetingFunctions
         return await context.Entities.CallEntityAsync<int>(entityId, "get");
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(RunEntityLockOrchestration))]
     public static async Task<int> RunEntityLockOrchestration(
         [OrchestrationTrigger] TaskOrchestrationContext context)
@@ -260,14 +308,32 @@ public class DurableGreetingFunctions
     }
 }
 
+/// <summary>
+/// Represents this member.
+/// </summary>
+/// <summary>
+/// Executes this operation.
+/// </summary>
 public sealed record GreetingProgressStatus(
     [property: JsonPropertyName("phase")] string Phase,
     [property: JsonPropertyName("name")] string Name,
     [property: JsonPropertyName("message")] string? Message);
 
+/// <summary>
+/// Represents this member.
+/// </summary>
+/// <summary>
+/// Executes this operation.
+/// </summary>
 public sealed record GreetingSuffixEvent(
     [property: JsonPropertyName("suffix")] string Suffix);
 
+/// <summary>
+/// Represents this member.
+/// </summary>
+/// <summary>
+/// Executes this operation.
+/// </summary>
 public sealed record ForwardedEventInput(
     [property: JsonPropertyName("targetInstanceId")] string TargetInstanceId,
     [property: JsonPropertyName("payload")] string Payload);

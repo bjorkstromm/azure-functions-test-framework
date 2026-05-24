@@ -15,6 +15,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         return doc.RootElement.Clone();
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MatchingKey_ReturnsStringBinding()
     {
@@ -32,6 +35,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.Equal("super-secret", result.StringValue);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MatchingKey_JsonMode_ReturnsJsonBinding()
     {
@@ -48,6 +54,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.Equal("""{"value":"secret"}""", result!.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_NoMatchingKey_ReturnsNull()
     {
@@ -63,6 +72,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_OutputDirection_ReturnsNull()
     {
@@ -78,6 +90,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_ReturnDirection_ReturnsNull()
     {
@@ -93,6 +108,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_NoDirectionProperty_TreatedAsInput()
     {
@@ -108,6 +126,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.NotNull(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MissingSecretStoreName_ReturnsNull()
     {
@@ -123,6 +144,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MissingKey_ReturnsNull()
     {
@@ -138,6 +162,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_KeyLookupIsCaseInsensitive()
     {
@@ -153,6 +180,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.NotNull(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void BindingType_IsExpected()
     {
@@ -160,6 +190,9 @@ public class DaprSecretInputSyntheticBindingProviderTests
         Assert.Equal("daprSecret", provider.BindingType);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_NullValues_Throws()
     {

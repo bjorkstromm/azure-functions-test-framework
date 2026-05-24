@@ -5,8 +5,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Durable;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FakeFunctionContextTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_InitializesExpectedState()
     {
@@ -23,6 +29,9 @@ public class FakeFunctionContextTests
         Assert.Empty(sut.BindingContext.BindingData);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Features_GetAndSet_Work()
     {

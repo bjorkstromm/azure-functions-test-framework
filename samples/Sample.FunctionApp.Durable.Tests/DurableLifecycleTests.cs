@@ -18,6 +18,9 @@ public sealed class DurableLifecycleTests
 
     private readonly ITestOutputHelper _output;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public DurableLifecycleTests(ITestOutputHelper output)
     {
         _output = output;
@@ -25,6 +28,9 @@ public sealed class DurableLifecycleTests
 
     // ── Re-scheduling ─────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ScheduleAsync_AllowsReschedulingOverCompletedInstance()
     {
@@ -61,6 +67,9 @@ public sealed class DurableLifecycleTests
         Assert.Equal("Hello, world!", meta.ReadOutputAs<string>());
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ScheduleAsync_AllowsReschedulingOverTerminatedInstance()
     {
@@ -108,6 +117,9 @@ public sealed class DurableLifecycleTests
         Assert.Equal("Hello, world!", meta.ReadOutputAs<string>());
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ScheduleAsync_ThrowsWhenInstanceIsAlreadyRunning()
     {
@@ -145,6 +157,9 @@ public sealed class DurableLifecycleTests
 
     // ── Suspend / Resume ──────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task SuspendInstance_ChangesStatusToSuspended()
     {
@@ -176,6 +191,9 @@ public sealed class DurableLifecycleTests
 #pragma warning restore xUnit1051
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ResumeInstance_ChangesStatusBackToRunning()
     {
@@ -213,6 +231,9 @@ public sealed class DurableLifecycleTests
 
     // ── Terminate ─────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task TerminateInstance_ChangesStatusToTerminated()
     {
@@ -245,6 +266,9 @@ public sealed class DurableLifecycleTests
 
     // ── Purge ─────────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task PurgeInstance_RemovesExistingInstance()
     {
@@ -275,6 +299,9 @@ public sealed class DurableLifecycleTests
         Assert.Null(after);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task PurgeInstance_ReturnsZeroForNonExistentInstance()
     {
@@ -286,6 +313,9 @@ public sealed class DurableLifecycleTests
         Assert.Equal(0, result.PurgedInstanceCount);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetAllInstances_ReturnsScheduledInstances_WithStatusAndPrefixFilter()
     {
@@ -335,6 +365,9 @@ public sealed class DurableLifecycleTests
 #pragma warning restore xUnit1051
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task SendEvent_RaisesEventToAnotherOrchestration()
     {
@@ -360,6 +393,9 @@ public sealed class DurableLifecycleTests
         Assert.Equal("payload-from-sender", receiver.ReadOutputAs<string>());
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task LockEntitiesAsync_ReturnsNoOpDisposable()
     {

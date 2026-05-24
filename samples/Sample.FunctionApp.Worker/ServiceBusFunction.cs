@@ -12,12 +12,18 @@ public class ServiceBusFunction
     private readonly ILogger<ServiceBusFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public ServiceBusFunction(ILogger<ServiceBusFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
         _processedItems = processedItems;
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Function("ProcessServiceBusMessage")]
     public void Run([ServiceBusTrigger("test-topic", "test-subscription")] string message)
     {

@@ -8,8 +8,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Durable;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FakeTaskEntityContextTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ScheduleNewOrchestration_WithoutDelegate_Throws()
     {
@@ -19,6 +25,9 @@ public class FakeTaskEntityContextTests
         Assert.Throws<NotSupportedException>(() => sut.ScheduleNewOrchestration(new TaskName("orch"), null, null));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ScheduleNewOrchestration_WithDelegate_ReturnsInstanceId()
     {
@@ -34,6 +43,9 @@ public class FakeTaskEntityContextTests
         Assert.Equal("orch-instance", result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task SignalEntity_FireAndForget_ExecutesOperation()
     {
@@ -47,13 +59,13 @@ public class FakeTaskEntityContextTests
         object? value = null;
         while (attempts++ < 20)
         {
-            value = await resources.EntityRunner.CallEntityAsync(entityId, "get", null, CancellationToken.None);
+            value = await resources.EntityRunner.CallEntityAsync(entityId, "get", null, TestContext.Current.CancellationToken);
             if (value is int i && i == 4)
             {
                 break;
             }
 
-            await Task.Delay(50);
+            await Task.Delay(50, TestContext.Current.CancellationToken);
         }
 
         Assert.Equal(4, value);

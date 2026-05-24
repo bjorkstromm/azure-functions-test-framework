@@ -17,12 +17,18 @@ public class BlobFunction
     private readonly ILogger<BlobFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public BlobFunction(ILogger<BlobFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
         _processedItems = processedItems;
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Function("ProcessBlob")]
     public void Run([BlobTrigger("test-container/{name}")] string content, string name)
     {

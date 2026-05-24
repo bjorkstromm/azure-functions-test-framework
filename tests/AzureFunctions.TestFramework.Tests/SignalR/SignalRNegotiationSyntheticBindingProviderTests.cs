@@ -15,6 +15,9 @@ public class SignalRNegotiationSyntheticBindingProviderTests
 
     // ── BindingType ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void BindingType_ReturnsSignalRNegotiation()
     {
@@ -26,6 +29,9 @@ public class SignalRNegotiationSyntheticBindingProviderTests
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_NullContext_Throws()
     {
@@ -33,6 +39,9 @@ public class SignalRNegotiationSyntheticBindingProviderTests
             new SignalRNegotiationSyntheticBindingProvider(null!));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_WithContext_SerializesToJson()
     {
@@ -67,6 +76,9 @@ public class SignalRNegotiationSyntheticBindingProviderTests
             endpoints[0].GetProperty("name").GetString());
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_EmptyContext_SerializesToJson()
     {
@@ -83,6 +95,9 @@ public class SignalRNegotiationSyntheticBindingProviderTests
 
     // ── CreateSyntheticParameter ──────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_ParameterNameIsPreserved()
     {
@@ -94,6 +109,9 @@ public class SignalRNegotiationSyntheticBindingProviderTests
         Assert.Equal("myNegotiation", result!.Name);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MultipleEndpoints_SerializesAll()
     {

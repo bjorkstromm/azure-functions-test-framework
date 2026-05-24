@@ -5,8 +5,14 @@ namespace TestProject;
 /// <summary>Tests for custom route prefix + HttpRequest (ASP.NET Core flavors only).</summary>
 public abstract class AspNetCoreCustomRoutePrefixTestsBase : TestHostTestBase
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected AspNetCoreCustomRoutePrefixTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetItemsAspNetCore_WithCustomRoutePrefix_ReturnsOk()
     {
@@ -14,6 +20,9 @@ public abstract class AspNetCoreCustomRoutePrefixTestsBase : TestHostTestBase
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task CreateItemAspNetCore_WithCustomRoutePrefix_ReturnsCreated()
     {

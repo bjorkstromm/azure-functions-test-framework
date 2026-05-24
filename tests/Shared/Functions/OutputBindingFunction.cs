@@ -13,6 +13,9 @@ public class OutputBindingFunction
     private readonly ILogger<OutputBindingFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public OutputBindingFunction(ILogger<OutputBindingFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
@@ -58,20 +61,38 @@ public class OutputBindingFunction
     }
 }
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed class ServiceBusOutputBindingResult
 {
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     [ServiceBusOutput("captured-output-topic")]
     public string OutputMessage { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed class EventGridOutputBindingResult
 {
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     [EventGridOutput(TopicEndpointUri = "https://fake.eventgrid.topic.endpoint", TopicKeySetting = "TopicKey")]
     public string OutputEvent { get; set; } = string.Empty;
 }
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed class SendGridOutputBindingResult
 {
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     [SendGridOutput(ApiKey = "FakeSendGridApiKey")]
     public string OutputEmail { get; set; } = string.Empty;
 }

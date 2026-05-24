@@ -13,12 +13,18 @@ public class EventGridFunction
     private readonly ILogger<EventGridFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public EventGridFunction(ILogger<EventGridFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
         _processedItems = processedItems;
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Function("ProcessEventGridEvent")]
     public void Run([EventGridTrigger] EventGridEvent eventGridEvent)
     {

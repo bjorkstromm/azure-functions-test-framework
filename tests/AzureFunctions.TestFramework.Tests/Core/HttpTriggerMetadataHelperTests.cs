@@ -14,6 +14,9 @@ public class HttpTriggerMetadataHelperTests
 
     // ── Headers ───────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_NullHeaders_EmptyHeadersJson()
     {
@@ -24,6 +27,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.Equal("{}", map["Headers"].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_WithHeaders_SerializesHeaders()
     {
@@ -42,6 +48,9 @@ public class HttpTriggerMetadataHelperTests
 
     // ── Query params ──────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_NullQueryParams_EmptyQueryJson()
     {
@@ -52,6 +61,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.Equal("{}", map["Query"].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_WithQueryParams_SerializesQuery()
     {
@@ -66,6 +78,9 @@ public class HttpTriggerMetadataHelperTests
 
     // ── Body properties ───────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_JsonBodyWithStringProp_AddsStringEntry()
     {
@@ -79,6 +94,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.Equal("Alice", map["name"].String);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_JsonBodyWithNumberProp_AddsStringEntry()
     {
@@ -92,6 +110,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.Equal("30", map["age"].String);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_JsonBodyWithBoolProp_AddsStringEntry()
     {
@@ -105,6 +126,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.Equal("true", map["active"].String);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_JsonBodyWithObjectProp_AddsJsonEntry()
     {
@@ -118,6 +142,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.Equal(TypedData.DataOneofCase.Json, map["address"].DataCase);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_JsonBodyWithArrayProp_NotAdded()
     {
@@ -130,6 +157,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.False(map.ContainsKey("items"));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_NonJsonContentType_BodyIgnored()
     {
@@ -143,6 +173,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.False(map.ContainsKey("name"));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_NullBody_BodyIgnored()
     {
@@ -154,6 +187,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.DoesNotContain(map, kv => kv.Key != "Headers" && kv.Key != "Query");
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_InvalidJsonBody_DoesNotThrow()
     {
@@ -165,6 +201,9 @@ public class HttpTriggerMetadataHelperTests
             contentType: "application/json");
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_JsonBodyNotAnObject_NoExtraKeys()
     {
@@ -178,6 +217,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.DoesNotContain(map, kv => kv.Key != "Headers" && kv.Key != "Query");
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_TextJsonContentType_BodyParsed()
     {
@@ -192,6 +234,9 @@ public class HttpTriggerMetadataHelperTests
 
     // ── Case-insensitive conflict resolution ───────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_BodyPropertyNamedQuery_DoesNotOverwriteQueryKey()
     {
@@ -215,6 +260,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.Single(queryKeys);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_BodyPropertyNamedHeaders_DoesNotOverwriteHeadersKey()
     {
@@ -232,6 +280,9 @@ public class HttpTriggerMetadataHelperTests
         Assert.Single(headerKeys);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void PopulateTriggerMetadata_BodyPropertyQueryCaseVariants_DoesNotDuplicate()
     {

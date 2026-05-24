@@ -7,13 +7,25 @@ namespace TestProject;
 /// <summary>Tests for Services, ConfigureSetting, env vars, and ALC isolation.</summary>
 public abstract class FrameworkFeaturesTestsBase : TestHostTestBase
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected FrameworkFeaturesTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithServicesAsync(Action<IServiceCollection> configure);
 
     // Override CreateTestHostAsync to not be required for individual tests in this class
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected override Task<IFunctionsTestHost> CreateTestHostAsync() => CreateTestHostWithServicesAsync(_ => { });
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task Services_ReturnsConfiguredSingletonService()
     {
@@ -27,6 +39,9 @@ public abstract class FrameworkFeaturesTestsBase : TestHostTestBase
         Assert.Same(seededService, resolvedService);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InProcessMethodInfoLocator_PreventsAssemblyDualLoading()
     {

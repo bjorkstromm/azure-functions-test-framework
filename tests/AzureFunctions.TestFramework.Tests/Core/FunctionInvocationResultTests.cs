@@ -11,6 +11,9 @@ public class FunctionInvocationResultTests
 {
     // ── ReadReturnValueAs<T> ──────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadReturnValueAs_NullReturnValue_ReturnsDefault()
     {
@@ -19,6 +22,9 @@ public class FunctionInvocationResultTests
         Assert.Null(value);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadReturnValueAs_TypedValue_ReturnsSameInstance()
     {
@@ -28,6 +34,9 @@ public class FunctionInvocationResultTests
         Assert.Equal(expected, value);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadReturnValueAs_JsonElementToString_Deserializes()
     {
@@ -41,6 +50,9 @@ public class FunctionInvocationResultTests
         Assert.Equal("Alice", obj!.Name);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadReturnValueAs_IntReturnValue_Deserializes()
     {
@@ -51,6 +63,9 @@ public class FunctionInvocationResultTests
 
     // ── ReadOutputAs<T> ───────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadOutputAs_ExistingBinding_ReturnsValue()
     {
@@ -61,6 +76,9 @@ public class FunctionInvocationResultTests
         Assert.Equal("queue-message", value);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadOutputAs_MissingBinding_ThrowsKeyNotFoundException()
     {
@@ -68,6 +86,9 @@ public class FunctionInvocationResultTests
         Assert.Throws<KeyNotFoundException>(() => result.ReadOutputAs<string>("nonexistent"));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadOutputAs_NullValue_ReturnsDefault()
     {
@@ -77,6 +98,9 @@ public class FunctionInvocationResultTests
         Assert.Null(value);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadOutputAs_JsonElementValue_Deserializes()
     {
@@ -91,6 +115,9 @@ public class FunctionInvocationResultTests
         Assert.Equal("Bob", obj!.Name);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadOutputAs_EmptyBindingName_Throws()
     {
@@ -98,6 +125,9 @@ public class FunctionInvocationResultTests
         Assert.Throws<ArgumentException>(() => result.ReadOutputAs<string>(""));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ReadOutputAs_WhitespaceBindingName_Throws()
     {
@@ -107,6 +137,9 @@ public class FunctionInvocationResultTests
 
     // ── Properties ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void DefaultInstance_HasExpectedDefaults()
     {

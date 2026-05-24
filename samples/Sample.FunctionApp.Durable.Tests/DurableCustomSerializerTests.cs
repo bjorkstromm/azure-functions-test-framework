@@ -29,6 +29,9 @@ public sealed class DurableCustomSerializerTests
 
     private readonly ITestOutputHelper _output;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public DurableCustomSerializerTests(ITestOutputHelper output)
     {
         _output = output;

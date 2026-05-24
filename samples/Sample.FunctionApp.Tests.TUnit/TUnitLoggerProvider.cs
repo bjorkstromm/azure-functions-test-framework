@@ -9,8 +9,14 @@ namespace Sample.FunctionApp.Tests.TUnit;
 /// </summary>
 public sealed class TUnitLoggerProvider : ILoggerProvider
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public ILogger CreateLogger(string categoryName) => new TUnitForwardingLogger(categoryName);
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public void Dispose() { }
 
     private sealed class TUnitForwardingLogger : ILogger

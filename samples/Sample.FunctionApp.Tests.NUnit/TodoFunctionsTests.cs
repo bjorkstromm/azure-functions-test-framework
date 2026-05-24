@@ -19,6 +19,9 @@ public class TodoFunctionsTests
     private IFunctionsTestHost? _host;
     private HttpClient? _client;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [SetUp]
     public async Task SetUp()
     {
@@ -36,6 +39,9 @@ public class TodoFunctionsTests
         _client = _host.CreateHttpClient();
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [TearDown]
     public async Task TearDown()
     {
@@ -43,6 +49,9 @@ public class TodoFunctionsTests
         if (_host != null) await _host.DisposeAsync();
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Test]
     public async Task GetTodos_ReturnsEmptyList_WhenNoTodosExist()
     {
@@ -53,6 +62,9 @@ public class TodoFunctionsTests
         Assert.That(todos!, Is.Empty);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Test]
     public async Task CreateTodo_ReturnsTodo_WithGeneratedId()
     {
@@ -64,6 +76,9 @@ public class TodoFunctionsTests
         Assert.That(todo.Title, Is.EqualTo("Buy milk"));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Test]
     public async Task Health_ReturnsHealthy()
     {

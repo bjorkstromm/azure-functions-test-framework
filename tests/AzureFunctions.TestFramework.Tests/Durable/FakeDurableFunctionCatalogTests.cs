@@ -21,6 +21,9 @@ public class FakeDurableFunctionCatalogTests
 
     // ── GetActivity ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetActivity_KnownName_ReturnsDescriptorWithCorrectFunctionName()
     {
@@ -30,6 +33,9 @@ public class FakeDurableFunctionCatalogTests
         Assert.NotNull(descriptor.Method);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetActivity_UnknownName_ThrowsInvalidOperationException()
     {
@@ -39,6 +45,9 @@ public class FakeDurableFunctionCatalogTests
         Assert.Contains("NonExistentCatalogActivity", ex.Message);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetActivity_CaseInsensitive_FindsFunction()
     {
@@ -49,6 +58,9 @@ public class FakeDurableFunctionCatalogTests
 
     // ── GetOrchestrator ───────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetOrchestrator_KnownName_ReturnsDescriptorWithCorrectFunctionName()
     {
@@ -58,6 +70,9 @@ public class FakeDurableFunctionCatalogTests
         Assert.NotNull(descriptor.Method);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetOrchestrator_UnknownName_ThrowsInvalidOperationException()
     {
@@ -67,6 +82,9 @@ public class FakeDurableFunctionCatalogTests
         Assert.Contains("NonExistentCatalogOrchestrator", ex.Message);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetOrchestrator_CaseInsensitive_FindsFunction()
     {
@@ -76,6 +94,9 @@ public class FakeDurableFunctionCatalogTests
 
     // ── GetEntityType ─────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetEntityType_KnownName_ReturnsCorrectType()
     {
@@ -84,6 +105,9 @@ public class FakeDurableFunctionCatalogTests
         Assert.Equal(typeof(CatalogTestEntity), type);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetEntityType_UnknownName_ThrowsInvalidOperationException()
     {
@@ -93,6 +117,9 @@ public class FakeDurableFunctionCatalogTests
         Assert.Contains("NonExistentCatalogEntity", ex.Message);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetEntityType_CaseInsensitive_FindsEntity()
     {
@@ -108,11 +135,17 @@ public class FakeDurableFunctionCatalogTests
 
     // ── Helper functions in this assembly for catalog scanning ────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Function(CatalogTestActivityFunctionName)]
     public static string CatalogTestActivityFn([ActivityTrigger] string input) => input;
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(CatalogTestOrchestratorFunctionName)]
-    public static Task CatalogTestOrchestratorFn(
+    internal static Task CatalogTestOrchestratorFn(
         [OrchestrationTrigger] TaskOrchestrationContext ctx) => Task.CompletedTask;
 
     /// <summary>
@@ -124,6 +157,9 @@ public class FakeDurableFunctionCatalogTests
         /// <summary>Returns the current state value.</summary>
         public int Get() => State;
 
+        /// <summary>
+        /// Executes this operation.
+        /// </summary>
         [Function(CatalogTestEntityFunctionName)]
         public Task Run([EntityTrigger] TaskEntityDispatcher dispatcher)
             => dispatcher.DispatchAsync<CatalogTestEntity>();

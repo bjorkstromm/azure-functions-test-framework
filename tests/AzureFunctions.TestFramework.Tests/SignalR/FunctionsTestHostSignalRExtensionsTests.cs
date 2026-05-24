@@ -18,22 +18,31 @@ public class FunctionsTestHostSignalRExtensionsTests
 
     // ── InvokeSignalRAsync ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeSignalRAsync_NullHost_Throws()
     {
         var context = new SignalRInvocationContext { ConnectionId = "c1", Hub = "chat" };
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(null!, "SignalRFunc", context));
+            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(null!, "SignalRFunc", context, TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeSignalRAsync_NullContext_Throws()
     {
         var host = new FakeHost();
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", null!));
+            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", null!, TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void InvokeSignalRAsync_SetsCorrectTriggerType()
     {
@@ -46,11 +55,14 @@ public class FunctionsTestHostSignalRExtensionsTests
             Event = "sendMessage"
         };
 
-        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext);
+        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext, TestContext.Current.CancellationToken);
 
         Assert.Equal("signalRTrigger", host.LastContext!.TriggerType);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void InvokeSignalRAsync_SerializesInvocationContextToJson()
     {
@@ -64,7 +76,7 @@ public class FunctionsTestHostSignalRExtensionsTests
             Event = "sendMessage"
         };
 
-        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext);
+        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         Assert.True(host.LastContext!.InputData.ContainsKey("$invocationContextJson"));
@@ -77,6 +89,9 @@ public class FunctionsTestHostSignalRExtensionsTests
         Assert.Equal("sendMessage", doc.RootElement.GetProperty("event").GetString());
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void InvokeSignalRAsync_ConnectionEvent_SerializesCategory()
     {
@@ -89,13 +104,16 @@ public class FunctionsTestHostSignalRExtensionsTests
             Event = "connected"
         };
 
-        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext);
+        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext, TestContext.Current.CancellationToken);
 
         var json = host.LastContext!.InputData["$invocationContextJson"]!.ToString()!;
         using var doc = JsonDocument.Parse(json);
         Assert.Equal("connected", doc.RootElement.GetProperty("event").GetString());
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void InvokeSignalRAsync_WithArguments_SerializesArguments()
     {
@@ -109,7 +127,7 @@ public class FunctionsTestHostSignalRExtensionsTests
             Arguments = ["Hello World", "second arg"]
         };
 
-        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext);
+        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext, TestContext.Current.CancellationToken);
 
         var json = host.LastContext!.InputData["$invocationContextJson"]!.ToString()!;
         using var doc = JsonDocument.Parse(json);
@@ -121,6 +139,9 @@ public class FunctionsTestHostSignalRExtensionsTests
 
     // ── CreateBindingData (internal) ──────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateBindingData_WithContextJson_ProducesJsonParam()
     {
@@ -140,6 +161,9 @@ public class FunctionsTestHostSignalRExtensionsTests
         Assert.Contains("c1", param.Json!);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateBindingData_MissingContextJson_UsesEmptyObject()
     {
@@ -151,6 +175,9 @@ public class FunctionsTestHostSignalRExtensionsTests
         Assert.Equal("{}", binding.InputData[0].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateBindingData_NullContextJsonValue_UsesEmptyObject()
     {

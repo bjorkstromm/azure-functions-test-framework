@@ -3,6 +3,5 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
 </Project>

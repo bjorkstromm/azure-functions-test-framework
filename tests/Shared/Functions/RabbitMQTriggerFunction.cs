@@ -25,7 +25,8 @@ public partial class RabbitMQTriggerFunction(ILogger<RabbitMQTriggerFunction> lo
     }
 
     /// <summary>
-    /// Return type used to exercise named <see cref="RabbitMQOutputAttribute"/> capture via <see cref="FunctionInvocationResult.OutputData"/>.
+    /// Return type used to exercise named <see cref="RabbitMQOutputAttribute"/> capture via
+    /// <c>FunctionInvocationResult.OutputData</c>.
     /// </summary>
     public sealed class RabbitMqOutputBindingResult
     {

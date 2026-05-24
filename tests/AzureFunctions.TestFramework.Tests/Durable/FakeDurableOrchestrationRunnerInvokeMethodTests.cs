@@ -19,6 +19,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
     // InvokeMethodAsync
     // -------------------------------------------------------------------------
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMethodAsync_SyncVoidMethod_ReturnsNull()
     {
@@ -27,6 +30,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMethodAsync_SyncReturnMethod_ReturnsValue()
     {
@@ -35,6 +41,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
         Assert.Equal(42, result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMethodAsync_AsyncTaskMethod_ReturnsNull()
     {
@@ -43,6 +52,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMethodAsync_AsyncTaskOfTMethod_ReturnsValue()
     {
@@ -51,6 +63,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
         Assert.Equal("hello", result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMethodAsync_ValueTaskMethod_ReturnsNull()
     {
@@ -59,6 +74,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMethodAsync_ValueTaskOfTMethod_ReturnsValue()
     {
@@ -67,6 +85,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
         Assert.Equal(99, result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMethodAsync_InstanceMethod_InvokesOnTarget()
     {
@@ -80,6 +101,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
     // BuildArguments
     // -------------------------------------------------------------------------
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void BuildArguments_ActivityTrigger_SetsInputArgument()
     {
@@ -100,6 +124,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
         Assert.Equal("my-input", args[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void BuildArguments_OrchestrationTrigger_SetsOrchestrationContext()
     {
@@ -135,6 +162,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
         Assert.Same(orchestrationContext, args[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void BuildArguments_FunctionContextParam_InjectsFunctionContext()
     {
@@ -155,6 +185,9 @@ public class FakeDurableOrchestrationRunnerInvokeMethodTests
         Assert.Same(functionContext, args[1]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void BuildArguments_CancellationTokenParam_InjectsCancellationToken()
     {

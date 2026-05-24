@@ -4,8 +4,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.DataExplorer;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class KustoInputSyntheticBindingProviderTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void BindingType_IsExpected()
     {
@@ -14,6 +20,9 @@ public class KustoInputSyntheticBindingProviderTests
         Assert.Equal("kusto", provider.BindingType);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MatchingKey_ReturnsJson()
     {
@@ -29,6 +38,9 @@ public class KustoInputSyntheticBindingProviderTests
         Assert.Equal("""[{"id":1}]""", result.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_OutputDirection_ReturnsNullJson()
     {
@@ -40,6 +52,9 @@ public class KustoInputSyntheticBindingProviderTests
         Assert.Equal("null", result.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MissingMapping_ReturnsNullJson()
     {
@@ -51,6 +66,9 @@ public class KustoInputSyntheticBindingProviderTests
         Assert.Equal("null", result.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_NullDictionary_Throws()
     {

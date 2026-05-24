@@ -11,6 +11,9 @@ public class FakeTaskEntityStateTests
 {
     // ── HasState ──────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void HasState_InitiallyFalse()
     {
@@ -18,6 +21,9 @@ public class FakeTaskEntityStateTests
         Assert.False(state.HasState);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void HasState_AfterSetState_NonNull_ReturnsTrue()
     {
@@ -26,6 +32,9 @@ public class FakeTaskEntityStateTests
         Assert.True(state.HasState);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void HasState_AfterSetState_Null_ReturnsFalse()
     {
@@ -35,6 +44,9 @@ public class FakeTaskEntityStateTests
         Assert.False(state.HasState);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void HasState_AfterSetState_EmptyString_ReturnsTrue()
     {
@@ -46,6 +58,9 @@ public class FakeTaskEntityStateTests
 
     // ── Constructor with initial serialized state ─────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_WithNullSerializedState_HasState_False()
     {
@@ -53,6 +68,9 @@ public class FakeTaskEntityStateTests
         Assert.False(state.HasState);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_WithSerializedState_HasState_True()
     {
@@ -62,6 +80,9 @@ public class FakeTaskEntityStateTests
 
     // ── GetState ──────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetState_BeforeSetState_ReturnsNull()
     {
@@ -69,6 +90,9 @@ public class FakeTaskEntityStateTests
         Assert.Null(state.GetState(typeof(string)));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetState_AfterSetState_Int_ReturnsDeserializedValue()
     {
@@ -78,6 +102,9 @@ public class FakeTaskEntityStateTests
         Assert.Equal(99, result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetState_AfterSetState_String_ReturnsDeserializedValue()
     {
@@ -87,6 +114,9 @@ public class FakeTaskEntityStateTests
         Assert.Equal("hello", result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetState_AfterSetState_ComplexType_RoundTrips()
     {
@@ -102,6 +132,9 @@ public class FakeTaskEntityStateTests
 
     // ── SerializedState property ──────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void SerializedState_InitiallyNull()
     {
@@ -109,6 +142,9 @@ public class FakeTaskEntityStateTests
         Assert.Null(state.SerializedState);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void SerializedState_AfterSetState_IsNotNull()
     {
@@ -117,6 +153,9 @@ public class FakeTaskEntityStateTests
         Assert.NotNull(state.SerializedState);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void SerializedState_AfterSetState_Null_IsNull()
     {
@@ -126,6 +165,9 @@ public class FakeTaskEntityStateTests
         Assert.Null(state.SerializedState);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void SerializedState_ConstructorValue_IsPreserved()
     {
@@ -136,6 +178,9 @@ public class FakeTaskEntityStateTests
 
     // ── Round-trip consistency ────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void SetState_ThenGetState_ProducesOriginalValue()
     {
@@ -145,6 +190,9 @@ public class FakeTaskEntityStateTests
         Assert.Equal(3.14, result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void SetState_MultipleUpdates_LastValueWins()
     {

@@ -8,10 +8,16 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace TestProject;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class HttpVerbsFunction
 {
     private const int MaxEchoChars = 4096;
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("HttpVerbsProbe")]
     public async Task<HttpResponseData> HttpVerbsProbe(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "head", "options", "patch", Route = "http-verbs-probe")]
@@ -31,6 +37,9 @@ public class HttpVerbsFunction
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("Echo")]
     public async Task<HttpResponseData> Echo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "echo")] HttpRequestData req)
@@ -43,6 +52,9 @@ public class HttpVerbsFunction
     }
 
 #if USE_ASPNET_CORE
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("HttpVerbsProbeAspNetCore")]
     public async Task<IActionResult> HttpVerbsProbeAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", "head", "options", "patch", Route = "aspnetcore/http-verbs-probe")]
@@ -61,6 +73,9 @@ public class HttpVerbsFunction
         return new OkResult();
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("EchoAspNetCore")]
     public async Task<IActionResult> EchoAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "aspnetcore/echo")] HttpRequest req)

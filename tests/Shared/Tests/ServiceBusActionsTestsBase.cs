@@ -6,15 +6,21 @@ using Xunit;
 namespace TestProject;
 
 /// <summary>
-/// Shared abstract test base for verifying <see cref="ServiceBusMessageActions"/> and
-/// <see cref="ServiceBusSessionMessageActions"/> fake injection across all four host flavours.
+/// Shared abstract test base for verifying <c>ServiceBusMessageActions</c> and
+/// <c>ServiceBusSessionMessageActions</c> fake injection across all four host flavours.
 /// </summary>
 public abstract class ServiceBusActionsTestsBase : TestHostTestBase
 {
     private InMemoryProcessedItemsService? _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected ServiceBusActionsTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
@@ -28,6 +34,9 @@ public abstract class ServiceBusActionsTestsBase : TestHostTestBase
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithServicesAsync(
         InMemoryProcessedItemsService processedItems);
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeServiceBusAsync_WithMessageActions_CompletesMessage()
     {

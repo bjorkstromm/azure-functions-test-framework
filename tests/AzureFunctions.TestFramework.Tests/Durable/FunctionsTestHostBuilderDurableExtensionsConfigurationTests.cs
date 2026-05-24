@@ -7,8 +7,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Durable;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FunctionsTestHostBuilderDurableExtensionsConfigurationTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConfigureFakeDurableSupport_NullBuilder_Throws()
     {
@@ -16,6 +22,9 @@ public class FunctionsTestHostBuilderDurableExtensionsConfigurationTests
             FunctionsTestHostBuilderDurableExtensions.ConfigureFakeDurableSupport(null!, Assembly.GetExecutingAssembly()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConfigureFakeDurableSupport_NullAssembly_Throws()
     {
@@ -24,6 +33,9 @@ public class FunctionsTestHostBuilderDurableExtensionsConfigurationTests
             builder.ConfigureFakeDurableSupport(null!));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConfigureFakeDurableSupport_RegistersCoreDurableServices()
     {
@@ -83,8 +95,14 @@ public class FunctionsTestHostBuilderDurableExtensionsConfigurationTests
         public IFunctionsTestHost Build() => throw new NotSupportedException();
     }
 
+    /// <summary>
+    /// Represents this type.
+    /// </summary>
     public static class TestFunctions
     {
+        /// <summary>
+        /// Executes this operation.
+        /// </summary>
         public static void Starter([Microsoft.Azure.Functions.Worker.DurableClient(TaskHub = "hub", ConnectionName = "conn")] DurableTaskClient client)
         {
         }

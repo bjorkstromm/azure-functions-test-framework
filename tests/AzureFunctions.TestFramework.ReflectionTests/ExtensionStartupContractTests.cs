@@ -18,6 +18,9 @@ namespace AzureFunctions.TestFramework.ReflectionTests;
 /// </summary>
 public class ExtensionStartupContractTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WorkerExtensionStartupCodeExecutorInfoAttribute_IsPublicClass()
     {
@@ -28,6 +31,9 @@ public class ExtensionStartupContractTests
         Assert.True(typeof(Attribute).IsAssignableFrom(type));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WorkerExtensionStartupCodeExecutorInfoAttribute_HasStartupCodeExecutorTypeProperty()
     {
@@ -38,6 +44,9 @@ public class ExtensionStartupContractTests
         Assert.Equal(typeof(Type), prop.PropertyType);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WorkerExtensionStartup_IsPublicAbstractClass()
     {
@@ -48,6 +57,9 @@ public class ExtensionStartupContractTests
         Assert.True(type.IsAbstract);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WorkerExtensionStartup_HasConfigureMethod()
     {

@@ -18,6 +18,9 @@ public class FakeDurableTaskClientTests
 {
     // ── GetAllInstancesAsync ───────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetAllInstancesAsync_ReturnsScheduledInstances()
     {
@@ -45,6 +48,9 @@ public class FakeDurableTaskClientTests
 
     // ── GetInstancesAsync ─────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetInstancesAsync_NonExistentInstance_ReturnsNull()
     {
@@ -60,6 +66,9 @@ public class FakeDurableTaskClientTests
         Assert.Null(metadata);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetInstancesAsync_CancelledToken_ThrowsOperationCanceledException()
     {
@@ -73,6 +82,9 @@ public class FakeDurableTaskClientTests
 
     // ── Operations on non-existent instances ─────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task RaiseEventAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -86,6 +98,9 @@ public class FakeDurableTaskClientTests
         Assert.Contains("missing", ex.Message);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task SuspendInstanceAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -97,6 +112,9 @@ public class FakeDurableTaskClientTests
 #pragma warning restore xUnit1051
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ResumeInstanceAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -108,6 +126,9 @@ public class FakeDurableTaskClientTests
 #pragma warning restore xUnit1051
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task TerminateInstanceAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -119,6 +140,9 @@ public class FakeDurableTaskClientTests
 #pragma warning restore xUnit1051
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForInstanceCompletionAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -130,6 +154,9 @@ public class FakeDurableTaskClientTests
 #pragma warning restore xUnit1051
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task WaitForInstanceStartAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -143,6 +170,9 @@ public class FakeDurableTaskClientTests
 
     // ── PurgeInstanceAsync ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task PurgeInstanceAsync_NonExistentInstance_ReturnsZeroPurgedCount()
     {
@@ -157,6 +187,9 @@ public class FakeDurableTaskClientTests
 
     // ── ScheduleNewOrchestrationInstanceAsync ─────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ScheduleNewOrchestrationInstanceAsync_CustomInstanceId_ReturnsIt()
     {
@@ -173,6 +206,9 @@ public class FakeDurableTaskClientTests
         Assert.Equal(instanceId, returned);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ScheduleNewOrchestrationInstanceAsync_NoInstanceId_ReturnsGeneratedId()
     {
@@ -187,19 +223,21 @@ public class FakeDurableTaskClientTests
         Assert.False(string.IsNullOrEmpty(returned));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ScheduleNewOrchestrationInstanceAsync_AlreadyRunning_ThrowsInvalidOperation()
     {
         using var resources = CreateResources();
         const string instanceId = "duplicate-id";
 
-#pragma warning disable xUnit1051
         // Use a blocking orchestrator so the instance stays in Running state
         // long enough for the second scheduling attempt to observe it.
         await resources.Client.ScheduleNewOrchestrationInstanceAsync(
             BlockingOrchestratorName,
             options: new StartOrchestrationOptions { InstanceId = instanceId },
-            cancellation: CancellationToken.None);
+            cancellation: TestContext.Current.CancellationToken);
 
         // Scheduling a second orchestration with the same ID while the first is still
         // Running (or Pending) should throw.
@@ -207,10 +245,12 @@ public class FakeDurableTaskClientTests
             resources.Client.ScheduleNewOrchestrationInstanceAsync(
                 BlockingOrchestratorName,
                 options: new StartOrchestrationOptions { InstanceId = instanceId },
-                cancellation: CancellationToken.None));
-#pragma warning restore xUnit1051
+                cancellation: TestContext.Current.CancellationToken));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ScheduleNewOrchestrationInstanceAsync_CancelledToken_ThrowsOperationCanceled()
     {
@@ -234,7 +274,7 @@ public class FakeDurableTaskClientTests
     /// until it is terminated or the event arrives.
     /// </summary>
     [Function(BlockingOrchestratorName)]
-    public static Task BlockingOrchestratorFn([OrchestrationTrigger] TaskOrchestrationContext ctx)
+    internal static Task BlockingOrchestratorFn([OrchestrationTrigger] TaskOrchestrationContext ctx)
         => ctx.WaitForExternalEvent<object>("Unblock");
 
     private static TestResources CreateResources()

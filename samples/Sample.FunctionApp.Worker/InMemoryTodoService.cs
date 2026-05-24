@@ -10,12 +10,21 @@ public sealed class InMemoryTodoService : ITodoService
     /// <summary>Removes all todos, returning the service to a clean state for the next test.</summary>
     public void Reset() => _todos.Clear();
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public Task<IEnumerable<TodoItem>> GetAllAsync()
         => Task.FromResult<IEnumerable<TodoItem>>(_todos);
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public Task<TodoItem?> GetByIdAsync(string id)
         => Task.FromResult(_todos.FirstOrDefault(t => t.Id == id));
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public Task<TodoItem> CreateAsync(TodoItem item)
     {
         item.Id = Guid.NewGuid().ToString();
@@ -24,6 +33,9 @@ public sealed class InMemoryTodoService : ITodoService
         return Task.FromResult(item);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public Task<TodoItem?> UpdateAsync(string id, TodoItem updates)
     {
         var existing = _todos.FirstOrDefault(t => t.Id == id);
@@ -35,6 +47,9 @@ public sealed class InMemoryTodoService : ITodoService
         return Task.FromResult<TodoItem?>(existing);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public Task<bool> DeleteAsync(string id)
     {
         var todo = _todos.FirstOrDefault(t => t.Id == id);

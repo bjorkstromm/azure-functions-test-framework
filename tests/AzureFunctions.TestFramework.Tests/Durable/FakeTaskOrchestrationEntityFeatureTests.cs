@@ -6,8 +6,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Durable;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FakeTaskOrchestrationEntityFeatureTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task EntityFeature_DelegatesSignalAndCallOperations()
     {
@@ -24,6 +30,9 @@ public class FakeTaskOrchestrationEntityFeatureTests
         Assert.Equal(7, value2);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task EntityFeature_LockAndCriticalSection_AreNoOp()
     {

@@ -6,7 +6,7 @@ namespace AzureFunctions.TestFramework.Tests.Dapr;
 
 /// <summary>
 /// Unit tests for <see cref="FunctionsTestHostDaprExtensions"/> internal binding-data factories
-/// and <see cref="FunctionsTestHostDaprExtensions.GetJsonFromContext"/>.
+/// and <c>GetJsonFromContext</c>.
 /// </summary>
 public class FunctionsTestHostDaprExtensionsBindingDataTests
 {
@@ -17,6 +17,9 @@ public class FunctionsTestHostDaprExtensionsBindingDataTests
     // CreateInvocationBindingDataFromJson
     // -------------------------------------------------------------------------
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationBindingDataFromJson_WithJson_ReturnsJsonBinding()
     {
@@ -34,6 +37,9 @@ public class FunctionsTestHostDaprExtensionsBindingDataTests
         Assert.Equal("""{"name":"Alice"}""", binding.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationBindingDataFromJson_MissingKey_ReturnsEmptyJsonObject()
     {
@@ -45,6 +51,9 @@ public class FunctionsTestHostDaprExtensionsBindingDataTests
         Assert.Equal("{}", result.InputData[0].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationBindingDataFromJson_NullValueInContext_ReturnsEmptyJsonObject()
     {
@@ -63,6 +72,9 @@ public class FunctionsTestHostDaprExtensionsBindingDataTests
     // CreateTopicBindingDataFromJson
     // -------------------------------------------------------------------------
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateTopicBindingDataFromJson_WithJson_ReturnsJsonBinding()
     {
@@ -79,6 +91,9 @@ public class FunctionsTestHostDaprExtensionsBindingDataTests
         Assert.Equal("""{"event":"test"}""", result.InputData[0].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateTopicBindingDataFromJson_MissingKey_ReturnsEmptyJsonObject()
     {
@@ -90,6 +105,9 @@ public class FunctionsTestHostDaprExtensionsBindingDataTests
         Assert.Equal("{}", result.InputData[0].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateTopicBindingDataFromJson_NullValueInContext_ReturnsEmptyJsonObject()
     {
@@ -104,6 +122,9 @@ public class FunctionsTestHostDaprExtensionsBindingDataTests
         Assert.Equal("{}", result.InputData[0].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateTopicBindingDataFromJson_UsesCorrectParameterName()
     {

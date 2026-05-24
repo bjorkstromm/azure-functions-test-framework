@@ -9,16 +9,28 @@ public abstract class McpTestsBase : TestHostTestBase
 {
     private InMemoryProcessedItemsService? _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected McpTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
         return await CreateTestHostWithProcessedItemsAsync(_processedItems);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems);
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMcpToolAsync_WithNoArguments_Succeeds()
     {
@@ -30,6 +42,9 @@ public abstract class McpTestsBase : TestHostTestBase
         Assert.Equal("InvokeMcpTool", processed[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMcpToolAsync_WithToolName_UsesProvidedName()
     {
@@ -46,6 +61,9 @@ public abstract class McpTestsBase : TestHostTestBase
         Assert.Equal(toolName, processed[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMcpResourceAsync_WithResourceUri_Succeeds()
     {
@@ -59,6 +77,9 @@ public abstract class McpTestsBase : TestHostTestBase
         Assert.Equal(resourceUri, processed[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMcpPromptAsync_WithNoArguments_Succeeds()
     {
@@ -70,6 +91,9 @@ public abstract class McpTestsBase : TestHostTestBase
         Assert.Equal("InvokeMcpPrompt", processed[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeMcpPromptAsync_WithPromptName_UsesProvidedName()
     {

@@ -16,6 +16,9 @@ public class FunctionsTestHostWarmupExtensionsTests
     private static readonly FunctionRegistration FakeRegistration =
         new("fn-id-1", "WarmupFunc", "warmupTrigger", "warmupContext");
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateBindingData_DefaultWarmupContextJson_ProducesJsonParam()
     {
@@ -33,6 +36,9 @@ public class FunctionsTestHostWarmupExtensionsTests
         Assert.Equal("{}", param.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateBindingData_MissingWarmupContextJson_UsesEmptyJson()
     {
@@ -44,6 +50,9 @@ public class FunctionsTestHostWarmupExtensionsTests
         Assert.Equal("{}", binding.InputData[0].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateBindingData_NullWarmupContextJson_UsesEmptyJson()
     {
@@ -58,11 +67,14 @@ public class FunctionsTestHostWarmupExtensionsTests
         Assert.Equal("{}", binding.InputData[0].Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void InvokeWarmupAsync_NullContext_UsesDefaultPayload()
     {
         var host = new FakeHost();
-        _ = FunctionsTestHostWarmupExtensions.InvokeWarmupAsync(host, "WarmupFunc", null);
+        _ = FunctionsTestHostWarmupExtensions.InvokeWarmupAsync(host, "WarmupFunc", null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         Assert.Equal("warmupTrigger", host.LastContext!.TriggerType);
@@ -71,12 +83,15 @@ public class FunctionsTestHostWarmupExtensionsTests
         Assert.Equal("{}", json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void InvokeWarmupAsync_WithContext_SerializesWarmupContext()
     {
         var host = new FakeHost();
         var warmupContext = new WarmupContext();
-        _ = FunctionsTestHostWarmupExtensions.InvokeWarmupAsync(host, "WarmupFunc", warmupContext);
+        _ = FunctionsTestHostWarmupExtensions.InvokeWarmupAsync(host, "WarmupFunc", warmupContext, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         var json = host.LastContext!.InputData["$warmupContextJson"]?.ToString();

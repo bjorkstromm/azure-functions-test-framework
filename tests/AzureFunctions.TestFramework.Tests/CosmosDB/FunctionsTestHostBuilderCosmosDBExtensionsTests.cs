@@ -5,8 +5,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.CosmosDB;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FunctionsTestHostBuilderCosmosDBExtensionsTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithCosmosDBInputDocuments_SingleDocument_RegistersProvider()
     {
@@ -19,6 +25,9 @@ public class FunctionsTestHostBuilderCosmosDBExtensionsTests
         Assert.IsType<CosmosDBInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithCosmosDBInputDocuments_List_RegistersProvider()
     {
@@ -31,6 +40,9 @@ public class FunctionsTestHostBuilderCosmosDBExtensionsTests
         Assert.IsType<CosmosDBInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithCosmosDBInputJson_RegistersProvider()
     {
@@ -43,6 +55,9 @@ public class FunctionsTestHostBuilderCosmosDBExtensionsTests
         Assert.IsType<CosmosDBInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithCosmosDBInputDocuments_NullBuilder_Throws()
     {

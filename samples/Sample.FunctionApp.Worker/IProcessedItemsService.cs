@@ -24,6 +24,9 @@ public sealed class InMemoryProcessedItemsService : IProcessedItemsService
     private readonly List<string> _items = new();
     private readonly object _lock = new();
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public void Add(string item)
     {
         lock (_lock)
@@ -32,6 +35,9 @@ public sealed class InMemoryProcessedItemsService : IProcessedItemsService
         }
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public IReadOnlyList<string> TakeAll()
     {
         lock (_lock)
@@ -42,6 +48,9 @@ public sealed class InMemoryProcessedItemsService : IProcessedItemsService
         }
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public void Reset()
     {
         lock (_lock)

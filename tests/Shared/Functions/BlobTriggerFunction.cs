@@ -4,17 +4,26 @@ using Microsoft.Extensions.Logging;
 
 namespace TestProject;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class BlobTriggerFunction
 {
     private readonly ILogger<BlobTriggerFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public BlobTriggerFunction(ILogger<BlobTriggerFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
         _processedItems = processedItems;
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Function("ProcessBlob")]
     public void Run([BlobTrigger("test-container/{name}")] string content, string name)
     {
@@ -22,6 +31,9 @@ public class BlobTriggerFunction
         _processedItems.Add($"{name}:{content}");
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Function("ProcessBlobClient")]
     public void RunBlobClient([BlobTrigger("test-container/{name}")] BlobClient client, string name)
     {

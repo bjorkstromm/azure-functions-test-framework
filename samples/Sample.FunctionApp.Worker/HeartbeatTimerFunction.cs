@@ -10,11 +10,17 @@ public class HeartbeatTimerFunction
 {
     private readonly ILogger<HeartbeatTimerFunction> _logger;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public HeartbeatTimerFunction(ILogger<HeartbeatTimerFunction> logger)
     {
         _logger = logger;
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Function("HeartbeatTimer")]
     public void Run([TimerTrigger("0 */5 * * * *")] TimerInfo myTimer)
     {

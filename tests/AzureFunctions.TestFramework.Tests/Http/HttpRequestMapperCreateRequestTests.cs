@@ -14,6 +14,9 @@ public class HttpRequestMapperCreateRequestTests
 
     // ── CreateInvocationRequest — basic ───────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationRequest_MinimalArgs_BuildsValidRequest()
     {
@@ -25,6 +28,9 @@ public class HttpRequestMapperCreateRequestTests
         Assert.NotEmpty(message.RequestId);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationRequest_Method_NormalisedToUpperCase()
     {
@@ -36,6 +42,9 @@ public class HttpRequestMapperCreateRequestTests
         Assert.Equal("POST", httpBinding!.Data.Http.Method);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationRequest_WithHeaders_AddsHeaders()
     {
@@ -54,6 +63,9 @@ public class HttpRequestMapperCreateRequestTests
         Assert.Equal("abc123", http.Headers["X-Correlation-Id"]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationRequest_WithQueryParams_AddsQueryParams()
     {
@@ -69,6 +81,9 @@ public class HttpRequestMapperCreateRequestTests
         Assert.Equal("10", http.Query["size"]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationRequest_WithBody_SetsBodyAndRawBody()
     {
@@ -86,6 +101,9 @@ public class HttpRequestMapperCreateRequestTests
             System.Text.Encoding.UTF8.GetString(http.Body.Bytes.ToByteArray()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationRequest_NoBody_DoesNotSetBody()
     {
@@ -98,6 +116,9 @@ public class HttpRequestMapperCreateRequestTests
         Assert.Equal(TypedData.DataOneofCase.None, http.Body?.DataCase ?? TypedData.DataOneofCase.None);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationRequest_AddsSysTriggerMetadata()
     {
@@ -110,6 +131,9 @@ public class HttpRequestMapperCreateRequestTests
         Assert.Equal("GET", meta["sys.MethodName"].String);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationRequest_WithContentTypeHeader_PopulatesMetadata()
     {
@@ -124,6 +148,9 @@ public class HttpRequestMapperCreateRequestTests
         Assert.True(meta.ContainsKey("name"));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationRequest_CustomBindingName_UsedInInputData()
     {
@@ -139,6 +166,9 @@ public class HttpRequestMapperCreateRequestTests
 
     // ── CreateJsonInvocationRequest ───────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateJsonInvocationRequest_SetsContentTypeAndSerializesBody()
     {
@@ -154,6 +184,9 @@ public class HttpRequestMapperCreateRequestTests
         Assert.Contains("Buy milk", rawBody);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateJsonInvocationRequest_MergesExtraHeaders()
     {

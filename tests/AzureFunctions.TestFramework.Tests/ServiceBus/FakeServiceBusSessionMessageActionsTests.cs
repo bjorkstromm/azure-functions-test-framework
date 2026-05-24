@@ -3,18 +3,24 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.ServiceBus;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FakeServiceBusSessionMessageActionsTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task SessionMethods_RecordActions_AndPreserveState()
     {
         var sut = new FakeServiceBusSessionMessageActions();
         var state = BinaryData.FromString("abc");
 
-        await sut.SetSessionStateAsync(state);
-        var readState = await sut.GetSessionStateAsync();
-        await sut.ReleaseSession();
-        await sut.RenewSessionLockAsync();
+        await sut.SetSessionStateAsync(state, TestContext.Current.CancellationToken);
+        var readState = await sut.GetSessionStateAsync(TestContext.Current.CancellationToken);
+        await sut.ReleaseSession(TestContext.Current.CancellationToken);
+        await sut.RenewSessionLockAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(state, readState);
         Assert.Collection(
@@ -25,16 +31,22 @@ public class FakeServiceBusSessionMessageActionsTests
             x => Assert.Equal("RenewSessionLock", x.Action));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetSessionStateAsync_DefaultsToEmptyBinaryData()
     {
         var sut = new FakeServiceBusSessionMessageActions();
 
-        var state = await sut.GetSessionStateAsync();
+        var state = await sut.GetSessionStateAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(BinaryData.Empty, state);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Reset_ClearsRecordedActions()
     {

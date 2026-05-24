@@ -17,11 +17,17 @@ public sealed class DurableFunctionsAspNetCoreTests
 
     private readonly ITestOutputHelper _output;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public DurableFunctionsAspNetCoreTests(ITestOutputHelper output)
     {
         _output = output;
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HttpStarter_ReturnsOk_ForFakeDurableExecution()
     {
@@ -38,6 +44,9 @@ public sealed class DurableFunctionsAspNetCoreTests
         Assert.Equal("Hello, martin!", content);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_WithExpectedOutput()
     {

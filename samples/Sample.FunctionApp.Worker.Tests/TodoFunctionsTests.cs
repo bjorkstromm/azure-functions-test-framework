@@ -14,6 +14,9 @@ public class TodoFunctionsTests : IAsyncLifetime
     private IFunctionsTestHost _testHost = default!;
     private HttpClient _client = default!;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public async ValueTask InitializeAsync()
     {
         _testHost = await new FunctionsTestHostBuilder()
@@ -24,6 +27,9 @@ public class TodoFunctionsTests : IAsyncLifetime
         _client = _testHost.CreateHttpClient();
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public async ValueTask DisposeAsync()
     {
         _client.Dispose();
@@ -31,6 +37,9 @@ public class TodoFunctionsTests : IAsyncLifetime
         _testHost.Dispose();
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetTodos_ReturnsEmptyList()
     {
@@ -42,6 +51,9 @@ public class TodoFunctionsTests : IAsyncLifetime
         Assert.Empty(todos);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task CreateAndGetTodo_RoundTrips()
     {
@@ -56,6 +68,9 @@ public class TodoFunctionsTests : IAsyncLifetime
         Assert.Equal("Test Task", fetched.Title);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeTimerAsync_Succeeds()
     {
@@ -65,10 +80,22 @@ public class TodoFunctionsTests : IAsyncLifetime
     }
 }
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class TodoDto
 {
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public Guid Id { get; set; }
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public string Title { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public bool IsCompleted { get; set; }
 }
 

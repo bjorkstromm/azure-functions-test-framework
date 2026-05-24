@@ -8,6 +8,9 @@ namespace AzureFunctions.TestFramework.Tests.Durable;
 /// </summary>
 public class FakeDurableOrchestrationRunnerConvertValueTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConvertValue_Null_ReferenceType_ReturnsNull()
     {
@@ -15,6 +18,9 @@ public class FakeDurableOrchestrationRunnerConvertValueTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConvertValue_Null_NullableValueType_ReturnsNull()
     {
@@ -22,6 +28,9 @@ public class FakeDurableOrchestrationRunnerConvertValueTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConvertValue_Null_NonNullableValueType_ReturnsDefault()
     {
@@ -29,6 +38,9 @@ public class FakeDurableOrchestrationRunnerConvertValueTests
         Assert.Equal(0, result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConvertValue_Null_BoolValueType_ReturnsFalse()
     {
@@ -36,6 +48,9 @@ public class FakeDurableOrchestrationRunnerConvertValueTests
         Assert.Equal(false, result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConvertValue_AlreadyCorrectType_ReturnsSameInstance()
     {
@@ -44,6 +59,9 @@ public class FakeDurableOrchestrationRunnerConvertValueTests
         Assert.Same(value, result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConvertValue_DerivedType_ReturnsSameInstance()
     {
@@ -52,6 +70,9 @@ public class FakeDurableOrchestrationRunnerConvertValueTests
         Assert.Same(value, result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConvertValue_AnonymousObject_ConvertsToTargetType()
     {
@@ -62,6 +83,9 @@ public class FakeDurableOrchestrationRunnerConvertValueTests
         Assert.Equal(30, person.Age);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConvertValue_IntToLong_Deserializes()
     {
@@ -71,6 +95,9 @@ public class FakeDurableOrchestrationRunnerConvertValueTests
         Assert.Equal(42L, result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ConvertValue_DictionaryToDto_Deserializes()
     {

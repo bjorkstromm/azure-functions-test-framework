@@ -8,8 +8,14 @@ namespace TestProject;
 /// </summary>
 public abstract class AspNetCoreFromBodyTestsBase : TestHostTestBase
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected AspNetCoreFromBodyTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task EchoFromBodyAspNetCore_DeserializesBodyViaFromBodyAttribute()
     {

@@ -8,6 +8,9 @@ namespace AzureFunctions.TestFramework.Tests.Core;
 /// </summary>
 public class FunctionBindingDataTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithBytes_SetsNameAndBytes()
     {
@@ -22,6 +25,9 @@ public class FunctionBindingDataTests
         Assert.Null(data.CollectionModelBindingData);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithJson_SetsNameAndJson()
     {
@@ -34,6 +40,9 @@ public class FunctionBindingDataTests
         Assert.Null(data.StringValue);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithString_SetsNameAndStringValue()
     {
@@ -45,6 +54,9 @@ public class FunctionBindingDataTests
         Assert.Null(data.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithModelBindingData_SetsModelBindingData()
     {
@@ -61,6 +73,9 @@ public class FunctionBindingDataTests
         Assert.Null(data.CollectionModelBindingData);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithCollectionModelBindingData_SetsCollection()
     {

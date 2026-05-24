@@ -11,6 +11,9 @@ namespace AzureFunctions.TestFramework.Tests.Tables;
 /// </summary>
 public class FunctionsTestHostBuilderTablesExtensionsTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntity_ReturnsSameBuilder_AndRegistersExactKeyProvider()
     {
@@ -36,6 +39,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
             binding.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntities_TableScope_ReturnsSameBuilder_AndRegistersTableProvider()
     {
@@ -60,6 +66,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
             binding.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntities_PartitionScope_ReturnsSameBuilder_AndRegistersPartitionProvider()
     {
@@ -83,6 +92,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
             binding.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableInputData_ReturnsSameBuilder_AndUsesProvidedJsonMap()
     {
@@ -104,6 +116,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
         Assert.Equal("""{"PayloadValue":"from-map"}""", binding.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntity_NullBuilder_Throws()
     {
@@ -116,6 +131,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
                 new SampleEntity()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntity_EmptyTableName_Throws()
     {
@@ -129,6 +147,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
                 new SampleEntity()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntity_EmptyPartitionKey_Throws()
     {
@@ -142,6 +163,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
                 new SampleEntity()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntity_EmptyRowKey_Throws()
     {
@@ -155,6 +179,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
                 new SampleEntity()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntity_NullEntity_Throws()
     {
@@ -168,6 +195,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
                 null!));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntities_TableScope_NullBuilder_Throws()
     {
@@ -178,6 +208,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
                 Array.Empty<SampleEntity>()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntities_TableScope_EmptyTableName_Throws()
     {
@@ -187,6 +220,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
             builder.WithTableEntities(string.Empty, Array.Empty<SampleEntity>()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntities_TableScope_NullEntities_Throws()
     {
@@ -196,6 +232,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
             builder.WithTableEntities<SampleEntity>("Orders", null!));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntities_PartitionScope_NullBuilder_Throws()
     {
@@ -207,6 +246,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
                 Array.Empty<SampleEntity>()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntities_PartitionScope_EmptyTableName_Throws()
     {
@@ -216,6 +258,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
             builder.WithTableEntities(string.Empty, "Retail", Array.Empty<SampleEntity>()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntities_PartitionScope_EmptyPartitionKey_Throws()
     {
@@ -225,6 +270,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
             builder.WithTableEntities("Orders", string.Empty, Array.Empty<SampleEntity>()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableEntities_PartitionScope_NullEntities_Throws()
     {
@@ -234,6 +282,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
             builder.WithTableEntities<SampleEntity>("Orders", "Retail", null!));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableInputData_NullBuilder_Throws()
     {
@@ -243,6 +294,9 @@ public class FunctionsTestHostBuilderTablesExtensionsTests
                 new Dictionary<string, string>()));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithTableInputData_NullJsonMap_Throws()
     {

@@ -29,6 +29,9 @@ public class InMemoryGrpcClientFactoryTests
 
     // ── TryGetWorkerGrpcAssembly ─────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void TryGetWorkerGrpcAssembly_WhenLoaded_ReturnsTrueAndAssembly()
     {
@@ -42,6 +45,9 @@ public class InMemoryGrpcClientFactoryTests
 
     // ── TryGetRequiredTypes ──────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void TryGetRequiredTypes_WithWorkerGrpcAssembly_ReturnsTrueAndTypes()
     {
@@ -61,6 +67,9 @@ public class InMemoryGrpcClientFactoryTests
         Assert.NotNull(functionRpcClientType);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void TryGetRequiredTypes_WithUnrelatedAssembly_ReturnsFalse()
     {
@@ -77,6 +86,9 @@ public class InMemoryGrpcClientFactoryTests
 
     // ── TryGetRequiredMethods ────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void TryGetRequiredMethods_WithValidTypes_ReturnsTrueAndMethods()
     {
@@ -97,6 +109,9 @@ public class InMemoryGrpcClientFactoryTests
         Assert.NotNull(processMessageAsync);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void TryGetRequiredMethods_WithTypeWithoutEventStream_ReturnsFalse()
     {
@@ -119,6 +134,9 @@ public class InMemoryGrpcClientFactoryTests
 
     // ── TryRegister ──────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void TryRegister_WithRealWorkerGrpcAssembly_ReturnsTrue()
     {

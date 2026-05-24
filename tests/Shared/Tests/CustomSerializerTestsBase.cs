@@ -25,6 +25,9 @@ public abstract class CustomSerializerTestsBase : TestHostTestBase
         PropertyNameCaseInsensitive = true,
     };
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected CustomSerializerTestsBase(ITestOutputHelper output) : base(output) { }
 
     /// <summary>
@@ -34,6 +37,9 @@ public abstract class CustomSerializerTestsBase : TestHostTestBase
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithCustomSerializerAsync();
 
     // Override so the abstract base type does not require a separate default host
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected override Task<IFunctionsTestHost> CreateTestHostAsync() =>
         CreateTestHostWithCustomSerializerAsync();
 

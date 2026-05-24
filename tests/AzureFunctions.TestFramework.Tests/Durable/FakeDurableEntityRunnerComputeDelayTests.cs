@@ -9,6 +9,9 @@ namespace AzureFunctions.TestFramework.Tests.Durable;
 /// </summary>
 public class FakeDurableEntityRunnerComputeDelayTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ComputeDelay_NullOptions_ReturnsZero()
     {
@@ -16,6 +19,9 @@ public class FakeDurableEntityRunnerComputeDelayTests
         Assert.Equal(TimeSpan.Zero, delay);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ComputeDelay_OptionsWithNoSignalTime_ReturnsZero()
     {
@@ -24,6 +30,9 @@ public class FakeDurableEntityRunnerComputeDelayTests
         Assert.Equal(TimeSpan.Zero, delay);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ComputeDelay_SignalTimeInPast_ReturnsZero()
     {
@@ -35,6 +44,9 @@ public class FakeDurableEntityRunnerComputeDelayTests
         Assert.Equal(TimeSpan.Zero, delay);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ComputeDelay_SignalTimeAtExactlyNow_ReturnsZero()
     {
@@ -46,6 +58,9 @@ public class FakeDurableEntityRunnerComputeDelayTests
         Assert.Equal(TimeSpan.Zero, delay);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ComputeDelay_SignalTimeInFuture_ReturnsPositiveDelay()
     {
@@ -58,6 +73,9 @@ public class FakeDurableEntityRunnerComputeDelayTests
         Assert.True(delay <= TimeSpan.FromSeconds(10));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ComputeDelay_SignalTimeFarFuture_ReturnsClamped()
     {

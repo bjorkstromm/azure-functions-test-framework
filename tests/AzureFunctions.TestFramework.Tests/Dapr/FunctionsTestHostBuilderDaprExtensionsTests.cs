@@ -5,8 +5,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Dapr;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FunctionsTestHostBuilderDaprExtensionsTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithDaprStateInput_ValidArgs_RegistersProvider()
     {
@@ -19,6 +25,9 @@ public class FunctionsTestHostBuilderDaprExtensionsTests
         Assert.IsType<DaprStateInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithDaprStateInputJson_ValidArgs_RegistersProvider()
     {
@@ -31,6 +40,9 @@ public class FunctionsTestHostBuilderDaprExtensionsTests
         Assert.IsType<DaprStateInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithDaprSecretInput_ValidArgs_RegistersProvider()
     {
@@ -43,6 +55,9 @@ public class FunctionsTestHostBuilderDaprExtensionsTests
         Assert.IsType<DaprSecretInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithDaprSecretInputJson_ValidArgs_RegistersProvider()
     {
@@ -55,6 +70,9 @@ public class FunctionsTestHostBuilderDaprExtensionsTests
         Assert.IsType<DaprSecretInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithDaprStateInput_NullBuilder_Throws()
     {
@@ -62,6 +80,9 @@ public class FunctionsTestHostBuilderDaprExtensionsTests
             FunctionsTestHostBuilderDaprExtensions.WithDaprStateInput(null!, "store", "key", "value"));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void WithDaprSecretInput_NullBuilder_Throws()
     {

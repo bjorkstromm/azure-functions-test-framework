@@ -9,14 +9,23 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace TestProject.CustomRoutePrefix;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class HttpTriggerFunction
 {
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
 
     private readonly IItemService _itemService;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public HttpTriggerFunction(IItemService itemService) => _itemService = itemService;
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetItemsCrp")]
     public HttpResponseData GetItems(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "items")] HttpRequestData req)
@@ -27,6 +36,9 @@ public class HttpTriggerFunction
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetItemCrp")]
     public HttpResponseData GetItem(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "items/{id}")] HttpRequestData req,
@@ -40,6 +52,9 @@ public class HttpTriggerFunction
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("CreateItemCrp")]
     public async Task<HttpResponseData> CreateItem(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "items")] HttpRequestData req)
@@ -65,6 +80,9 @@ public class HttpTriggerFunction
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("DeleteItemCrp")]
     public HttpResponseData DeleteItem(
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "items/{id}")] HttpRequestData req,
@@ -75,11 +93,17 @@ public class HttpTriggerFunction
     }
 
 #if USE_ASPNET_CORE
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetItemsAspNetCoreCrp")]
     public IActionResult GetItemsAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "aspnetcore/items")] HttpRequest req)
         => new OkObjectResult(_itemService.GetAll());
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetItemAspNetCoreCrp")]
     public IActionResult GetItemAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "aspnetcore/items/{id}")] HttpRequest req,
@@ -89,6 +113,9 @@ public class HttpTriggerFunction
         return item == null ? new NotFoundResult() : new OkObjectResult(item);
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("CreateItemAspNetCoreCrp")]
     public async Task<IActionResult> CreateItemAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "aspnetcore/items")] HttpRequest req)
@@ -102,4 +129,7 @@ public class HttpTriggerFunction
 #endif
 }
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed record CreateItemCrpRequest(string Name);

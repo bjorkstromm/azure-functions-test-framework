@@ -26,16 +26,28 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
 
     private InMemoryProcessedItemsService? _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected BlobAndEventGridTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
         return await CreateTestHostWithProcessedItemsAsync(_processedItems);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems);
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeBlobAsync_WithTextContent_Succeeds()
     {
@@ -48,6 +60,9 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
         Assert.Contains("Hello from blob!", processed[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeBlobAsync_WithBlobClientParam_Succeeds()
     {
@@ -63,6 +78,9 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
         Assert.Equal("test-container/myblob.txt", processed[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeWithBlobInput_ReadsRegisteredContent()
     {
@@ -77,6 +95,9 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
         Assert.Equal(BlobInputTestContent, processed[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeBlobInput_WithBlobClientParam_Succeeds()
     {
@@ -88,6 +109,9 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
         Assert.Equal("test-input-client/data.txt", processed[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task InvokeEventGridAsync_WithEventGridEvent_Succeeds()
     {

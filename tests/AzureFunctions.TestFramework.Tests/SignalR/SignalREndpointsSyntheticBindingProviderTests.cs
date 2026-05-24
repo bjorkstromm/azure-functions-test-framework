@@ -15,6 +15,9 @@ public class SignalREndpointsSyntheticBindingProviderTests
 
     // ── BindingType ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void BindingType_ReturnsSignalREndpoints()
     {
@@ -25,6 +28,9 @@ public class SignalREndpointsSyntheticBindingProviderTests
 
     // ── Constructor ───────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_NullEndpoints_Throws()
     {
@@ -32,6 +38,9 @@ public class SignalREndpointsSyntheticBindingProviderTests
             new SignalREndpointsSyntheticBindingProvider(null!));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_EmptyEndpoints_SerializesToEmptyArray()
     {
@@ -45,6 +54,9 @@ public class SignalREndpointsSyntheticBindingProviderTests
         Assert.Equal(0, doc.RootElement.GetArrayLength());
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_WithEndpoints_SerializesAll()
     {
@@ -70,6 +82,9 @@ public class SignalREndpointsSyntheticBindingProviderTests
 
     // ── CreateSyntheticParameter ──────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_ParameterNameIsPreserved()
     {
@@ -80,6 +95,9 @@ public class SignalREndpointsSyntheticBindingProviderTests
         Assert.Equal("myEndpoints", result!.Name);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_JsonIsNotNull()
     {
@@ -90,6 +108,9 @@ public class SignalREndpointsSyntheticBindingProviderTests
         Assert.NotNull(result!.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_SingleEndpoint_ContainsEndpointData()
     {

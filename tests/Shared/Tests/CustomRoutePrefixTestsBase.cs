@@ -6,8 +6,14 @@ namespace TestProject;
 /// <summary>Tests verifying custom route prefix (v1) routing with HttpRequestData.</summary>
 public abstract class CustomRoutePrefixTestsBase : TestHostTestBase
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected CustomRoutePrefixTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetItems_WithCustomRoutePrefix_ReturnsEmptyList()
     {
@@ -15,6 +21,9 @@ public abstract class CustomRoutePrefixTestsBase : TestHostTestBase
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetItems_WithDefaultApiPrefix_ReturnsNotFound()
     {
@@ -22,6 +31,9 @@ public abstract class CustomRoutePrefixTestsBase : TestHostTestBase
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task CreateItem_WithCustomRoutePrefix_ReturnsCreated()
     {
@@ -30,6 +42,9 @@ public abstract class CustomRoutePrefixTestsBase : TestHostTestBase
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task GetItem_WithCustomRoutePrefix_ReturnsNotFound_WhenMissing()
     {
@@ -37,6 +52,9 @@ public abstract class CustomRoutePrefixTestsBase : TestHostTestBase
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task DeleteItem_WithCustomRoutePrefix_ReturnsNotFound_WhenMissing()
     {

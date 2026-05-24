@@ -13,6 +13,9 @@ public class GrpcHostServiceHandleMessageTests
 {
     private readonly GrpcHostService _service;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public GrpcHostServiceHandleMessageTests()
     {
         _service = new GrpcHostService(
@@ -22,6 +25,9 @@ public class GrpcHostServiceHandleMessageTests
 
     // ── HandleWorkerInitResponse ─────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleWorkerInitResponse_SetsTcs()
     {
@@ -37,6 +43,9 @@ public class GrpcHostServiceHandleMessageTests
         Assert.Equal(message, await tcs.Task);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleWorkerInitResponse_NullTcs_DoesNotThrow()
     {
@@ -50,6 +59,9 @@ public class GrpcHostServiceHandleMessageTests
 
     // ── HandleLoadOrMetadataResponse ─────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleLoadOrMetadataResponse_FunctionLoadResponse_CompletesPending()
     {
@@ -68,6 +80,9 @@ public class GrpcHostServiceHandleMessageTests
         Assert.Equal(message, await tcs.Task);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleLoadOrMetadataResponse_UnknownRequestId_DoesNotThrow()
     {
@@ -83,6 +98,9 @@ public class GrpcHostServiceHandleMessageTests
 
     // ── HandleInvocationResponse ─────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleInvocationResponse_Success_CompletesPending()
     {
@@ -105,6 +123,9 @@ public class GrpcHostServiceHandleMessageTests
         Assert.Equal(message, await tcs.Task);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleInvocationResponse_Failure_CompletesPendingAndDoesNotThrow()
     {
@@ -130,6 +151,9 @@ public class GrpcHostServiceHandleMessageTests
         Assert.True(tcs.Task.IsCompleted);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleInvocationResponse_NullInvocationResponse_DoesNotThrow()
     {
@@ -144,6 +168,9 @@ public class GrpcHostServiceHandleMessageTests
 
     // ── LogInvocationFailure ──────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void LogInvocationFailure_NullResponse_DoesNotThrow()
     {
@@ -151,6 +178,9 @@ public class GrpcHostServiceHandleMessageTests
         _service.LogInvocationFailure(null);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void LogInvocationFailure_ResponseWithExceptionMessage_DoesNotThrow()
     {
@@ -167,6 +197,9 @@ public class GrpcHostServiceHandleMessageTests
         _service.LogInvocationFailure(response);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void LogInvocationFailure_ResponseWithNullException_UsesUnknown()
     {
@@ -183,6 +216,9 @@ public class GrpcHostServiceHandleMessageTests
 
     // ── HandleRpcLogMessage ───────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleRpcLogMessage_ReturnsCompletedTask()
     {
@@ -200,6 +236,9 @@ public class GrpcHostServiceHandleMessageTests
 
     // ── HandleUnknownMessage ─────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleUnknownMessage_DoesNotThrow()
     {
@@ -210,6 +249,9 @@ public class GrpcHostServiceHandleMessageTests
 
     // ── HandleWorkerMessageAsync dispatch ────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_WorkerInitResponse_DispatchesToHandler()
     {
@@ -224,6 +266,9 @@ public class GrpcHostServiceHandleMessageTests
         Assert.True(tcs.Task.IsCompleted);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_InvocationResponse_DispatchesToHandler()
     {
@@ -245,6 +290,9 @@ public class GrpcHostServiceHandleMessageTests
         Assert.True(tcs.Task.IsCompleted);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_FunctionLoadResponse_DispatchesToHandler()
     {
@@ -262,6 +310,9 @@ public class GrpcHostServiceHandleMessageTests
         Assert.True(tcs.Task.IsCompleted);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_FunctionMetadataResponse_DispatchesToHandler()
     {
@@ -279,6 +330,9 @@ public class GrpcHostServiceHandleMessageTests
         Assert.True(tcs.Task.IsCompleted);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_RpcLog_DoesNotThrow()
     {
@@ -290,6 +344,9 @@ public class GrpcHostServiceHandleMessageTests
         await _service.HandleWorkerMessageAsync(message, CancellationToken.None);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_UnknownContentCase_DoesNotThrow()
     {

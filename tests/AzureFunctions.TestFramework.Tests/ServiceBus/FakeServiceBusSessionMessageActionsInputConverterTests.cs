@@ -7,8 +7,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.ServiceBus;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FakeServiceBusSessionMessageActionsInputConverterTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ConvertAsync_TargetTypeMatches_ReturnsRegisteredFakeActions()
     {
@@ -26,6 +32,9 @@ public class FakeServiceBusSessionMessageActionsInputConverterTests
         Assert.Same(services.GetRequiredService<FakeServiceBusSessionMessageActions>(), resolved);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task ConvertAsync_TargetTypeDoesNotMatch_ReturnsUnhandled()
     {
@@ -41,6 +50,9 @@ public class FakeServiceBusSessionMessageActionsInputConverterTests
         Assert.Equal(ConversionStatus.Unhandled, result.Status);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_MissingDependencies_Throws()
     {

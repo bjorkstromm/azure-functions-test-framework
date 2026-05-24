@@ -8,8 +8,14 @@ namespace TestProject;
 /// </summary>
 public abstract class FromBodyTestsBase : TestHostTestBase
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected FromBodyTestsBase(ITestOutputHelper output) : base(output) { }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public async Task EchoFromBody_DeserializesBodyViaFromBodyAttribute()
     {

@@ -11,12 +11,18 @@ public class QueueFunction
     private readonly ILogger<QueueFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public QueueFunction(ILogger<QueueFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
         _processedItems = processedItems;
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Function("ProcessQueueMessage")]
     public void Run([QueueTrigger("test-queue")] string message)
     {

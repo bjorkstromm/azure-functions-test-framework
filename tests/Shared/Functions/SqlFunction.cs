@@ -24,6 +24,9 @@ public class SqlFunction
     private readonly ILogger<SqlFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public SqlFunction(ILogger<SqlFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
@@ -87,6 +90,12 @@ public class SqlFunction
 /// <summary>A simple SQL row model used in tests.</summary>
 public sealed class SqlProduct
 {
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public int Id { get; set; }
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public string? Name { get; set; }
 }

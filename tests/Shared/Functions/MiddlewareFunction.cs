@@ -8,8 +8,14 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace TestProject;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class MiddlewareFunction
 {
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetCorrelation")]
     public async Task<HttpResponseData> GetCorrelation(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "correlation")] HttpRequestData req,
@@ -22,6 +28,9 @@ public class MiddlewareFunction
     }
 
 #if USE_ASPNET_CORE
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetCorrelationAspNetCore")]
     public IActionResult GetCorrelationAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "aspnetcore/correlation")] HttpRequest req,
@@ -33,4 +42,7 @@ public class MiddlewareFunction
 #endif
 }
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed record CorrelationIdResponse(string? CorrelationId);

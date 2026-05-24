@@ -14,7 +14,6 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" />
-    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http.AspNetCore" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" />
   </ItemGroup>
   <ItemGroup>
@@ -30,4 +29,3 @@
     </None>
   </ItemGroup>
 </Project>
-

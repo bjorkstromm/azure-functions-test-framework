@@ -8,14 +8,23 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace TestProject;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class HttpTriggerFunction
 {
     private readonly IItemService _itemService;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public HttpTriggerFunction(IItemService itemService) => _itemService = itemService;
 
     // ── HttpRequestData (all 4 flavors) ──────────────────────────────────────
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetItems")]
     public async Task<HttpResponseData> GetItems(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "items")] HttpRequestData req)
@@ -25,6 +34,9 @@ public class HttpTriggerFunction
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetItem")]
     public async Task<HttpResponseData> GetItem(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "items/{id}")] HttpRequestData req,
@@ -37,6 +49,9 @@ public class HttpTriggerFunction
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("CreateItem")]
     public async Task<HttpResponseData> CreateItem(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "items")] HttpRequestData req)
@@ -56,6 +71,9 @@ public class HttpTriggerFunction
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("UpdateItem")]
     public async Task<HttpResponseData> UpdateItem(
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "items/{id}")] HttpRequestData req,
@@ -76,6 +94,9 @@ public class HttpTriggerFunction
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("DeleteItem")]
     public HttpResponseData DeleteItem(
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "items/{id}")] HttpRequestData req,
@@ -151,11 +172,17 @@ public class HttpTriggerFunction
 #if USE_ASPNET_CORE
     // ── HttpRequest (ASP.NET Core flavors only) ───────────────────────────────
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetItemsAspNetCore")]
     public IActionResult GetItemsAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "aspnetcore/items")] HttpRequest req)
         => new OkObjectResult(_itemService.GetAll());
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetItemAspNetCore")]
     public IActionResult GetItemAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "aspnetcore/items/{id}")] HttpRequest req,
@@ -165,6 +192,9 @@ public class HttpTriggerFunction
         return item == null ? new NotFoundResult() : new OkObjectResult(item);
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetItemByGuidAspNetCore")]
     public IActionResult GetItemByGuidAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "aspnetcore/items/by-guid/{itemId:guid}")]
@@ -178,6 +208,9 @@ public class HttpTriggerFunction
         return item == null ? new NotFoundResult() : new OkObjectResult(item);
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("CreateItemAspNetCore")]
     public async Task<IActionResult> CreateItemAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "aspnetcore/items")] HttpRequest req)
@@ -190,6 +223,9 @@ public class HttpTriggerFunction
         return new CreatedResult($"/api/aspnetcore/items/{item.Id}", item);
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("UpdateItemAspNetCore")]
     public async Task<IActionResult> UpdateItemAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "aspnetcore/items/{id}")] HttpRequest req,
@@ -203,6 +239,9 @@ public class HttpTriggerFunction
         return item == null ? new NotFoundResult() : new OkObjectResult(item);
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("DeleteItemAspNetCore")]
     public IActionResult DeleteItemAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "aspnetcore/items/{id}")] HttpRequest req,
@@ -214,5 +253,11 @@ public class HttpTriggerFunction
 #endif
 }
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed record CreateItemRequest(string Name);
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed record UpdateItemRequest(string Name, bool IsCompleted);

@@ -6,8 +6,14 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Durable;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class FunctionsDurableClientProviderTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Provider_ReturnsSameClient_FromPropertyAndMethod()
     {

@@ -9,12 +9,21 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace TestProject;
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public class ConfigurationFunction
 {
     private readonly IConfiguration _configuration;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public ConfigurationFunction(IConfiguration configuration) => _configuration = configuration;
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetConfigValue")]
     public async Task<HttpResponseData> GetConfigValue(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "config/{key}")] HttpRequestData req,
@@ -25,6 +34,9 @@ public class ConfigurationFunction
         return response;
     }
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("Health")]
     public async Task<HttpResponseData> Health(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
@@ -35,12 +47,18 @@ public class ConfigurationFunction
     }
 
 #if USE_ASPNET_CORE
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("GetConfigValueAspNetCore")]
     public IActionResult GetConfigValueAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "aspnetcore/config/{key}")] HttpRequest req,
         string key)
         => new OkObjectResult(new ConfigValueResponse(key, _configuration[key]));
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function("HealthAspNetCore")]
     public IActionResult HealthAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "aspnetcore/health")] HttpRequest req)
@@ -48,4 +66,7 @@ public class ConfigurationFunction
 #endif
 }
 
+/// <summary>
+/// Represents this type.
+/// </summary>
 public sealed record ConfigValueResponse(string Key, string? Value);

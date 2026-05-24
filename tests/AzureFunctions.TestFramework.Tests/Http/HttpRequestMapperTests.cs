@@ -10,6 +10,9 @@ public class HttpRequestMapperTests
 {
     private readonly HttpRequestMapper _mapper = new();
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ExtractRouteParameters_SimpleParam_ReturnsParam()
     {
@@ -18,6 +21,9 @@ public class HttpRequestMapperTests
         Assert.Equal("123", result["id"]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ExtractRouteParameters_MultipleParams_ReturnsAll()
     {
@@ -30,6 +36,9 @@ public class HttpRequestMapperTests
         Assert.Equal("99", result["orderId"]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ExtractRouteParameters_NoParams_ReturnsEmpty()
     {
@@ -37,6 +46,9 @@ public class HttpRequestMapperTests
         Assert.Empty(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ExtractRouteParameters_TemplateLongerThanPath_OnlyMatchesAvailable()
     {
@@ -48,6 +60,9 @@ public class HttpRequestMapperTests
         Assert.Equal("y", result["b"]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ExtractRouteParameters_PathLongerThanTemplate_IgnoresExtra()
     {
@@ -58,6 +73,9 @@ public class HttpRequestMapperTests
         Assert.Equal("42", result["id"]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ExtractRouteParameters_EmptyTemplate_ReturnsEmpty()
     {
@@ -65,6 +83,9 @@ public class HttpRequestMapperTests
         Assert.Empty(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ExtractRouteParameters_EmptyPath_ReturnsEmpty()
     {
@@ -72,6 +93,9 @@ public class HttpRequestMapperTests
         Assert.Empty(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ExtractRouteParameters_StaticSegmentNotCaptured()
     {

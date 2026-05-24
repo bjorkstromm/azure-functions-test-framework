@@ -54,15 +54,33 @@ public class CustomSerializerFunction
 /// <summary>Input DTO for the custom-serializer echo endpoints.</summary>
 public sealed class ProductRequest
 {
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public string ProductId { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public string ProductName { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public bool IsActive { get; set; }
 }
 
 /// <summary>Output DTO for the custom-serializer echo endpoints.</summary>
 public sealed class ProductResponse
 {
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public string ProductId { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public string ProductName { get; set; } = string.Empty;
+    /// <summary>
+    /// Gets or sets the value.
+    /// </summary>
     public bool IsActive { get; set; }
 }

@@ -11,6 +11,9 @@ namespace Sample.FunctionApp.Durable;
 /// </summary>
 public class DurableGreetingAspNetCoreFunctions
 {
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     [Function(nameof(StartGreetingOrchestrationAspNetCore))]
     public async Task<IActionResult> StartGreetingOrchestrationAspNetCore(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "aspnetcore/durable/hello/{name}")]

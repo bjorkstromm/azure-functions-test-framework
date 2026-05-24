@@ -34,7 +34,7 @@ public partial class DaprTriggerFunction(ILogger<DaprTriggerFunction> logger, IP
 
     /// <summary>
     /// Return type used to exercise named <see cref="DaprPublishOutputAttribute"/> capture via
-    /// <see cref="FunctionInvocationResult.OutputData"/>.
+    /// <c>FunctionInvocationResult.OutputData</c>.
     /// </summary>
     public sealed class DaprPublishOutputResult
     {

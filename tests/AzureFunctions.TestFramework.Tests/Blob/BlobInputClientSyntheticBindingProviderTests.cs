@@ -9,6 +9,9 @@ namespace AzureFunctions.TestFramework.Tests.Blob;
 /// </summary>
 public class BlobInputClientSyntheticBindingProviderTests
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void BindingType_ReturnsBlob()
     {
@@ -16,6 +19,9 @@ public class BlobInputClientSyntheticBindingProviderTests
         Assert.Equal("blob", provider.BindingType);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_RegisteredPath_ReturnsJsonBinding()
     {
@@ -30,6 +36,9 @@ public class BlobInputClientSyntheticBindingProviderTests
         Assert.Contains(FakeBlobClientInputConverter.BindingMarker, result.Json!);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_CaseInsensitivePath_Matches()
     {
@@ -41,6 +50,9 @@ public class BlobInputClientSyntheticBindingProviderTests
         Assert.NotNull(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_OutDirection_ReturnsNull()
     {
@@ -52,6 +64,9 @@ public class BlobInputClientSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_UnregisteredPath_ReturnsNull()
     {
@@ -63,6 +78,9 @@ public class BlobInputClientSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_NoBlobPath_ReturnsNull()
     {
@@ -74,6 +92,9 @@ public class BlobInputClientSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void Constructor_NullPaths_Throws()
     {
@@ -83,6 +104,9 @@ public class BlobInputClientSyntheticBindingProviderTests
 
     // ── ParseBlobPath ─────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ParseBlobPath_WithSlash_SplitsCorrectly()
     {
@@ -94,6 +118,9 @@ public class BlobInputClientSyntheticBindingProviderTests
         Assert.Equal("path/to/blob.txt", blobName);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ParseBlobPath_NoSlash_ContainerNameOnly()
     {
@@ -105,6 +132,9 @@ public class BlobInputClientSyntheticBindingProviderTests
         Assert.Null(blobName);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ParseBlobPath_SingleLevelBlob_ExtractsCorrectly()
     {

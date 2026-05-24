@@ -12,12 +12,15 @@ namespace AzureFunctions.TestFramework.Tests.Core;
 /// <summary>
 /// Unit tests for <see cref="GrpcHostService.ToTypedData"/>,
 /// <see cref="GrpcHostService.ToParameterBinding"/>, and
-/// <see cref="GrpcHostService.ProcessRawBinding"/>-related private logic.
+/// <c>ProcessRawBinding</c>-related private logic.
 /// </summary>
 public class GrpcHostServiceBindingTests
 {
     private readonly GrpcHostService _service;
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     public GrpcHostServiceBindingTests()
     {
         _service = new GrpcHostService(
@@ -27,6 +30,9 @@ public class GrpcHostServiceBindingTests
 
     // ── ToTypedData ────────────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ToTypedData_WithBytes_ReturnsTypedDataWithBytes()
     {
@@ -36,6 +42,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal(new byte[] { 1, 2, 3 }, result.Bytes.ToByteArray());
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ToTypedData_WithJson_ReturnsTypedDataWithJson()
     {
@@ -45,6 +54,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("""{"key":"value"}""", result.Json);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ToTypedData_WithString_ReturnsTypedDataWithString()
     {
@@ -54,6 +66,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("hello", result.String);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ToTypedData_WithModelBindingData_ReturnsModelBindingData()
     {
@@ -71,6 +86,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("application/json", result.ModelBindingData.ContentType);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ToTypedData_WithCollectionModelBindingData_ReturnsCollection()
     {
@@ -86,6 +104,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal(2, result.CollectionModelBindingData.ModelBindingData.Count);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ToTypedData_NoValueSet_ReturnsEmptyTypedData()
     {
@@ -97,6 +118,9 @@ public class GrpcHostServiceBindingTests
 
     // ── ToParameterBinding ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ToParameterBinding_SetsNameAndData()
     {
@@ -110,6 +134,9 @@ public class GrpcHostServiceBindingTests
 
     // ── GetSyntheticInputParameters ────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetSyntheticInputParameters_UnknownFunctionId_ReturnsEmpty()
     {
@@ -119,6 +146,9 @@ public class GrpcHostServiceBindingTests
 
     // ── GetHttpTriggerBindingName ─────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetHttpTriggerBindingName_UnknownFunctionId_ReturnsDefaultReq()
     {
@@ -128,6 +158,9 @@ public class GrpcHostServiceBindingTests
 
     // ── GetFunctionRegistration ───────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void GetFunctionRegistration_UnknownFunction_ReturnsNull()
     {
@@ -137,6 +170,9 @@ public class GrpcHostServiceBindingTests
 
     // ── FindFunctionMatch ─────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void FindFunctionMatch_NoRoutesRegistered_ReturnsNullFunctionId()
     {
@@ -144,6 +180,9 @@ public class GrpcHostServiceBindingTests
         Assert.Null(fnId);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void FindFunctionId_NoRoutesRegistered_ReturnsNull()
     {
@@ -153,6 +192,9 @@ public class GrpcHostServiceBindingTests
 
     // ── FindFunctionMatch with route prefix stripping ────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void FindFunctionMatch_StripsApiPrefix()
     {
@@ -164,6 +206,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("fn-id-1", fnId);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void FindFunctionMatch_StripsQueryString()
     {
@@ -174,6 +219,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("fn-id-2", fnId);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void FindFunctionMatch_CustomRoutePrefix_Stripped()
     {
@@ -184,6 +232,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("fn-id-3", fnId);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void FindFunctionMatch_EmptyRoutePrefix_DoesNotStrip()
     {
@@ -196,6 +247,9 @@ public class GrpcHostServiceBindingTests
 
     // ── CreateInvocationResult ────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationResult_Success_ReturnsSuccessResult()
     {
@@ -211,6 +265,9 @@ public class GrpcHostServiceBindingTests
         Assert.Null(result.Error);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationResult_Failure_ReturnsFailureResult()
     {
@@ -229,6 +286,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("oops", result.Error);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationResult_NullResponse_ReturnsFailureResult()
     {
@@ -239,6 +299,9 @@ public class GrpcHostServiceBindingTests
         Assert.Null(result.ReturnValue);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationResult_WithOutputData_PopulatesOutputData()
     {
@@ -259,6 +322,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("queued-message", result.OutputData["outputQueue"]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void CreateInvocationResult_WithReturnValue_PopulatesReturnValue()
     {
@@ -276,6 +342,9 @@ public class GrpcHostServiceBindingTests
 
     // ── ProcessRawBinding ────────────────────────────────────────────────────
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ProcessRawBinding_HttpTrigger_PopulatesRouteMatcher()
     {
@@ -289,6 +358,9 @@ public class GrpcHostServiceBindingTests
         Assert.True(_service.FunctionRouteMap.ContainsKey("GET:mytodos"));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ProcessRawBinding_HttpTrigger_NoRoute_UsesDefaultFunctionName()
     {
@@ -303,6 +375,9 @@ public class GrpcHostServiceBindingTests
         Assert.Contains(_service.FunctionRouteMap, kv => kv.Key.EndsWith(":NoRouteFunc", StringComparison.OrdinalIgnoreCase));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ProcessRawBinding_HttpTrigger_NoMethods_RegistersAllMethods()
     {
@@ -319,6 +394,9 @@ public class GrpcHostServiceBindingTests
         Assert.True(_service.FunctionRouteMap.ContainsKey("DELETE:allroute"));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ProcessRawBinding_TimerTrigger_RegistersFunction()
     {
@@ -335,6 +413,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("myTimer", reg.ParameterName);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ProcessRawBinding_QueueTrigger_RegistersFunction()
     {
@@ -351,6 +432,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("myQueueItem", reg.ParameterName);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ProcessRawBinding_MalformedJson_DoesNotThrow()
     {
@@ -360,6 +444,9 @@ public class GrpcHostServiceBindingTests
         InvokeProcessRawBinding(metadata, metadata.RawBindings[0]);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ProcessRawBinding_NoTypeProperty_DoesNotRegister()
     {
@@ -373,6 +460,9 @@ public class GrpcHostServiceBindingTests
         Assert.Null(_service.GetFunctionRegistration("NoTypeFunc"));
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ProcessRawBinding_WithSyntheticProvider_RegistersSyntheticParam()
     {
@@ -394,6 +484,9 @@ public class GrpcHostServiceBindingTests
         Assert.Equal("client", synth[0].Name);
     }
 
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     [Fact]
     public void ProcessRawBinding_WithSyntheticProvider_ProviderReturnsNull_SkipsBinding()
     {

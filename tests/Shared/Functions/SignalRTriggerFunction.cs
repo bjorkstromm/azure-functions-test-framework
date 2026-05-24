@@ -12,6 +12,9 @@ public class SignalRTriggerFunction
     private readonly ILogger<SignalRTriggerFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
+    /// <summary>
+    /// Represents this member.
+    /// </summary>
     public SignalRTriggerFunction(
         ILogger<SignalRTriggerFunction> logger,
         IProcessedItemsService processedItems)

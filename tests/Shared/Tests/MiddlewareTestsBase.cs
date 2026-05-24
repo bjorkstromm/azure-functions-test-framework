@@ -5,6 +5,9 @@ namespace TestProject;
 /// <summary>Tests for the correlation middleware pipeline.</summary>
 public abstract class MiddlewareTestsBase : TestHostTestBase
 {
+    /// <summary>
+    /// Executes this operation.
+    /// </summary>
     protected MiddlewareTestsBase(ITestOutputHelper output) : base(output) { }
 
     /// <summary>
