@@ -16,6 +16,7 @@
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.DurableTask" Version="1.16.5" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.EventGrid" Version="3.6.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.EventHubs" Version="6.5.0" />
+    <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Kafka" Version="4.2.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.3.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Mcp" Version="1.5.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Kusto" Version="1.0.13-preview" />

@@ -12,6 +12,7 @@
     <Project Path="src/AzureFunctions.TestFramework.Durable/AzureFunctions.TestFramework.Durable.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.EventGrid/AzureFunctions.TestFramework.EventGrid.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.EventHubs/AzureFunctions.TestFramework.EventHubs.csproj" />
+    <Project Path="src/AzureFunctions.TestFramework.Kafka/AzureFunctions.TestFramework.Kafka.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Http/AzureFunctions.TestFramework.Http.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.DataExplorer/AzureFunctions.TestFramework.DataExplorer.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Mcp/AzureFunctions.TestFramework.Mcp.csproj" />
