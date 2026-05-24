@@ -130,6 +130,15 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 
 > **`[SqlInput]` scope:** `WithSqlInputRows(commandText, rows)` injects a list of rows for parameters typed as `IEnumerable<T>`. The key is the `commandText` value declared in the `[SqlInput]` attribute (case-insensitive). For raw JSON injection use `WithSqlInputJson(commandText, json)`. When using `InvokeSqlAsync(string changesJson)`, `SqlChangeOperation` values must be integers (0=Insert, 1=Update, 2=Delete).
 
+#### `AzureFunctions.TestFramework.DataExplorer` ✅ Fully Covered
+
+| Binding | Worker Extension | Test Framework | Status |
+|---------|-----------------|----------------|--------|
+| `[KustoInput]` (input) | ✅ | ✅ `WithKustoInputRows(...)` / `WithKustoInputJson(...)` via `KustoInputSyntheticBindingProvider` | ✅ |
+| `[KustoOutput]` (output) | ✅ | ✅ Generic output capture | ✅ |
+
+> **`[KustoInput]` scope:** `WithKustoInputRows(database, table, rows)` injects rows for parameters typed as POCO types, `string`, and collections handled by the extension converter. Lookup key is `"{database}/{table}"` (case-insensitive), where `table` is derived from the first table identifier in `KqlCommand`.
+
 #### `AzureFunctions.TestFramework.Redis` ✅ Fully Covered
 
 | Binding | Worker Extension | Test Framework | Status |
@@ -191,7 +200,6 @@ Not a built-in extension (separate NuGet: `Microsoft.Azure.Functions.Worker.Exte
 | **Kafka** | `Microsoft.Azure.Functions.Worker.Extensions.Kafka` | `[KafkaTrigger]` | — | `[KafkaOutput]` |
 | **SendGrid** | `Microsoft.Azure.Functions.Worker.Extensions.SendGrid` | — | — | `[SendGrid]` |
 | **Warmup** | `Microsoft.Azure.Functions.Worker.Extensions.Warmup` | `[WarmupTrigger]` | — | — |
-| **Azure Data Explorer** | `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)* | — | `[KustoInput]` | `[KustoOutput]` |
 
 ### Not Applicable — No Isolated Worker Support
 
@@ -381,21 +389,17 @@ See the "Already Supported" section above for the full binding audit. Key facts:
 
 ---
 
-### Issue 11: Azure Data Explorer Input & Output bindings *(preview)*
+### ~~Issue 11: Azure Data Explorer Input & Output bindings~~ ✅ Done
 
-**Package:** `AzureFunctions.TestFramework.DataExplorer`
+**Package:** `AzureFunctions.TestFramework.DataExplorer` — shipped.
 
-**Bindings:**
-- **Input:** `[KustoInput]` — reads query results from an Azure Data Explorer (Kusto) cluster
-- **Output:** `[KustoOutput]` — ingests rows into an Azure Data Explorer table
-
-> **Note:** No trigger binding exists for Azure Data Explorer. This is an input/output-only extension (preview).
-
-**Scope:**
-- New package: `AzureFunctions.TestFramework.DataExplorer`
-- `ISyntheticBindingProvider` (`KustoInputSyntheticBindingProvider`): `WithKustoInputRows(database, table, rows)` — injects fake query results for `[KustoInput]`
-- Output bindings captured generically by `FunctionInvocationResult.OutputData`
-- Test across 4-flavour matrix
+See the "Already Supported" section above for the full binding audit. Key facts:
+- No trigger helper is required (Kusto extension has input/output bindings only)
+- `WithKustoInputRows(database, table, row)` — injects a single row for `[KustoInput]`
+- `WithKustoInputRows(database, table, IReadOnlyList<T>)` — injects a list of rows
+- `WithKustoInputJson(database, table, json)` — injects raw JSON for `[KustoInput]`
+- `[KustoOutput]` captured generically by `FunctionInvocationResult.OutputData` or `ReadReturnValueAs<T>()`
+- Tested across 4-flavour matrix: `IHostBuilder`×gRPC, `IHostBuilder`×ASP.NET Core, `FunctionsApplicationBuilder`×gRPC, `FunctionsApplicationBuilder`×ASP.NET Core
 
 **NuGet dependency:** `Microsoft.Azure.Functions.Worker.Extensions.Kusto` *(preview)*
 
@@ -471,5 +475,5 @@ Each new package follows the established pattern (see existing Timer, Queue, Blo
 8. ~~**RabbitMQ** — Niche but important~~ ✅ Done
 9. **SendGrid** — Output-only, low complexity
 10. ~~**Dapr** — Kubernetes/Container Apps only; rich binding set~~ ✅ Done
-11. **Azure Data Explorer** — Preview, input/output only; niche data-engineering scenarios
+11. ~~**Azure Data Explorer** — Preview, input/output only; niche data-engineering scenarios~~ ✅ Done
 12. **Warmup** — Simplest, rarely tested in isolation

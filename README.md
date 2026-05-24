@@ -9,11 +9,12 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 `FunctionsTestHost` — the single unified test host — is **fully functional** for the Worker SDK 2.x (.NET 10) samples and test suites. It supports both **direct gRPC mode** (`ConfigureFunctionsWorkerDefaults()`) and **ASP.NET Core integration mode** (`ConfigureFunctionsWebApplication()`), and works with both the classic `IHostBuilder` API and the newer `IHostApplicationBuilder` / `FunctionsApplicationBuilder` API introduced in Worker SDK 2.x. No active blockers.
 
-### Latest update (2026-05-23)
+### Latest update (2026-05-24)
 
 - Library coverage work completed for the framework solution: all `AzureFunctions.TestFramework.*` libraries are now at **80%+ line coverage** in the CI coverage report.
 - Coverage reporting now excludes generated `obj` files (`-filefilters:-*/obj/*`) so metrics reflect maintainable source code rather than generated protobuf artifacts.
 - New unit tests were added for Dapr builder extensions, CosmosDB/SQL builder and synthetic binding providers, Service Bus fake action/converter helpers, and additional Durable utility/configuration paths.
+- Added `AzureFunctions.TestFramework.DataExplorer` with `[KustoInput]` synthetic input support (`WithKustoInputRows` / `WithKustoInputJson`) and verified `[KustoOutput]` capture across the 4-flavour matrix.
 
 ### Capabilities
 
@@ -21,7 +22,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 |------|--------|
 | **HTTP invocation** (GET / POST / PUT / PATCH / DELETE / HEAD / OPTIONS) | ✅ Both direct gRPC and ASP.NET Core integration modes |
 | **`BindingContext.BindingData` from HTTP request** | ✅ JSON body top-level properties, `Query`, and `Headers` populated — matches real Azure Functions host behavior |
-| **Trigger packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis, RabbitMQ) | ✅ Extension methods + result capture |
+| **Trigger packages + binding helper packages** (Timer, Queue, ServiceBus, Blob, EventGrid, EventHubs, CosmosDB, SQL, SignalR, MCP, Redis, RabbitMQ, DataExplorer) | ✅ Extension methods + result capture |
 | **Table input bindings** (`[TableInput]`) | ✅ `WithTableEntity` / `WithTableEntities` via `ISyntheticBindingProvider` |
 | **CosmosDB input bindings** (`[CosmosDBInput]`) | ✅ `WithCosmosDBInputDocuments` via `ISyntheticBindingProvider` |
 | **SQL input bindings** (`[SqlInput]`) | ✅ `WithSqlInputRows` via `ISyntheticBindingProvider` |
@@ -66,6 +67,7 @@ This framework aims to provide:
 | [`AzureFunctions.TestFramework.EventHubs`](https://www.nuget.org/packages/AzureFunctions.TestFramework.EventHubs) | `InvokeEventHubAsync(...)` for single event, `InvokeEventHubBatchAsync(...)` for batch-trigger functions | [README](src/AzureFunctions.TestFramework.EventHubs/README.md) |
 | [`AzureFunctions.TestFramework.CosmosDB`](https://www.nuget.org/packages/AzureFunctions.TestFramework.CosmosDB) | `InvokeCosmosDBAsync(...)` for change-feed trigger, `WithCosmosDBInputDocuments(...)` for input binding injection | [README](src/AzureFunctions.TestFramework.CosmosDB/README.md) |
 | [`AzureFunctions.TestFramework.Sql`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Sql) | `InvokeSqlAsync(...)` for change-tracking trigger, `WithSqlInputRows(...)` for input binding injection | [README](src/AzureFunctions.TestFramework.Sql/README.md) |
+| [`AzureFunctions.TestFramework.DataExplorer`](https://www.nuget.org/packages/AzureFunctions.TestFramework.DataExplorer) | `WithKustoInputRows(...)` / `WithKustoInputJson(...)` for `[KustoInput]` binding injection; `[KustoOutput]` captured via Core | [README](src/AzureFunctions.TestFramework.DataExplorer/README.md) |
 | [`AzureFunctions.TestFramework.Tables`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Tables) | `WithTableEntity(...)`, `WithTableEntities(...)` (input binding injection); `[TableOutput]` capture works generically via Core | [README](src/AzureFunctions.TestFramework.Tables/README.md) |
 | [`AzureFunctions.TestFramework.SignalR`](https://www.nuget.org/packages/AzureFunctions.TestFramework.SignalR) | `InvokeSignalRAsync(...)` for `[SignalRTrigger]`; `WithSignalRConnectionInfo(...)`, `WithSignalRNegotiation(...)`, `WithSignalREndpoints(...)` for input binding injection; `[SignalROutput]` captured via Core | [README](src/AzureFunctions.TestFramework.SignalR/README.md) |
 | [`AzureFunctions.TestFramework.Durable`](https://www.nuget.org/packages/AzureFunctions.TestFramework.Durable) | Fake-backed durable helpers, `ConfigureFakeDurableSupport(...)`, `FakeDurableTaskClient`, activity invocation, external events | [README](src/AzureFunctions.TestFramework.Durable/README.md) |
@@ -142,6 +144,7 @@ src/
   AzureFunctions.TestFramework.EventHubs/    # EventHubTrigger invocation — single + batch (net8.0;net10.0)
   AzureFunctions.TestFramework.CosmosDB/     # CosmosDBTrigger invocation + CosmosDBInput injection (net8.0;net10.0)
   AzureFunctions.TestFramework.Sql/          # SqlTrigger invocation + SqlInput injection (net8.0;net10.0)
+  AzureFunctions.TestFramework.DataExplorer/ # KustoInput injection for Azure Data Explorer + generic KustoOutput capture (net8.0;net10.0)
   AzureFunctions.TestFramework.Tables/       # TableInput injection via ISyntheticBindingProvider (net8.0;net10.0)
   AzureFunctions.TestFramework.SignalR/      # SignalRTrigger invocation + SignalR input binding injection (net8.0;net10.0)
   AzureFunctions.TestFramework.Redis/        # RedisPubSubTrigger/RedisListTrigger/RedisStreamTrigger invocation + RedisInput injection (net8.0;net10.0)
