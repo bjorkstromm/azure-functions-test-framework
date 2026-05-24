@@ -123,7 +123,7 @@ dotnet pack --configuration Release --output ./artifacts
 - Direct gRPC parity for `[FromBody]`-style binding behavior
 - Richer durable lifecycle fidelity, especially pagination/continuation token behavior
 - Broader synthetic input support for SDK client-typed bindings (for example `TableClient` / `CosmosClient` scenarios)
-- Additional trigger/binding packages (for example SendGrid) and deeper edge-case coverage across existing packages
+- Additional trigger/binding packages and deeper edge-case coverage across existing packages
 
 ## Project Structure
 
