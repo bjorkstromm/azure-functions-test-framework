@@ -6,6 +6,7 @@ For current capabilities, package layout, and common commands, see `README.md`. 
 
 - No active blockers for the current Worker SDK 2.x sample/test suites (including the latest Durable fake API support and CI-aligned test expectations).
 - No active coverage blockers for framework libraries: CI coverage now reports 80%+ line coverage across all `AzureFunctions.TestFramework.*` libraries.
+- Kafka package coverage blocker resolved: local Cobertura run now reports `AzureFunctions.TestFramework.Kafka` at 100% line coverage after adding dedicated `FunctionsTestHostKafkaExtensions` unit tests.
 - Warmup trigger support is now available via `AzureFunctions.TestFramework.Warmup` (`InvokeWarmupAsync(...)`) and is covered in the 4-flavour test matrix.
 
 ## Known issues

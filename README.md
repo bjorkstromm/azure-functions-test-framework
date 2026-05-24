@@ -13,6 +13,7 @@ An integration testing framework for Azure Functions (dotnet-isolated) that prov
 
 - Added `AzureFunctions.TestFramework.Warmup` with `InvokeWarmupAsync(...)` for `[WarmupTrigger]` functions, including 4-flavour matrix coverage.
 - Added `AzureFunctions.TestFramework.Kafka` with `InvokeKafkaAsync(...)` and `InvokeKafkaBatchAsync(...)` — full trigger invocation support for `string`, `byte[]`, `KafkaRecord`, and JSON POCO parameter types; batch overloads for `IsBatched = true`; `[KafkaOutput]` captured via Core generically.
+- Expanded Kafka package unit coverage with new `FunctionsTestHostKafkaExtensions` tests; local Cobertura run now reports `AzureFunctions.TestFramework.Kafka` at 100% line coverage (well above the 80% target).
 - Library coverage work completed for the framework solution: all `AzureFunctions.TestFramework.*` libraries are now at **80%+ line coverage** in the CI coverage report.
 - Coverage reporting now excludes generated `obj` files (`-filefilters:-*/obj/*`) so metrics reflect maintainable source code rather than generated protobuf artifacts.
 - New unit tests were added for Dapr builder extensions, CosmosDB/SQL builder and synthetic binding providers, Service Bus fake action/converter helpers, and additional Durable utility/configuration paths.
