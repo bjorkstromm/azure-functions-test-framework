@@ -22,6 +22,7 @@
     <Project Path="src/AzureFunctions.TestFramework.ServiceBus/AzureFunctions.TestFramework.ServiceBus.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Tables/AzureFunctions.TestFramework.Tables.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Timer/AzureFunctions.TestFramework.Timer.csproj" />
+    <Project Path="src/AzureFunctions.TestFramework.Warmup/AzureFunctions.TestFramework.Warmup.csproj" />
     <Project Path="src/AzureFunctions.TestFramework.Sql/AzureFunctions.TestFramework.Sql.csproj" />
   </Folder>
   <Folder Name="/tests/TestProjects/">
