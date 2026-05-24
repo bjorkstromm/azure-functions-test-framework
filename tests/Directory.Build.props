@@ -3,6 +3,7 @@
 
   <PropertyGroup>
     <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);AD0001;NU1603</NoWarn>
   </PropertyGroup>
 </Project>
