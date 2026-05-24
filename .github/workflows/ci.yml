@@ -62,6 +62,7 @@ jobs:
           -targetdir:"./coverage"
           -reporttypes:"Cobertura"
           "-assemblyfilters:+AzureFunctions.TestFramework.*;-AzureFunctions.TestFramework.Tests"
+          "-filefilters:-*/obj/*"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
