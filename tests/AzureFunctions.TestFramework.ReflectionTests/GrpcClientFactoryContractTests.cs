@@ -46,9 +46,6 @@ public class GrpcClientFactoryContractTests
         }
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IWorkerClientFactory_ExistsInWorkerGrpcAssembly()
     {
@@ -57,9 +54,6 @@ public class GrpcClientFactoryContractTests
         Assert.True(type.IsInterface);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IWorkerClientFactory_HasCreateClientMethod()
     {
@@ -73,9 +67,6 @@ public class GrpcClientFactoryContractTests
         Assert.Single(createClient.GetParameters());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IWorkerClient_ExistsInWorkerGrpcAssembly()
     {
@@ -84,9 +75,6 @@ public class GrpcClientFactoryContractTests
         Assert.True(type.IsInterface);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IWorkerClient_HasStartAsyncAndSendMessageAsync()
     {
@@ -105,9 +93,6 @@ public class GrpcClientFactoryContractTests
         Assert.NotNull(sendMessageAsync);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IMessageProcessor_ExistsInWorkerGrpcAssembly()
     {
@@ -116,9 +101,6 @@ public class GrpcClientFactoryContractTests
         Assert.True(type.IsInterface);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IMessageProcessor_HasProcessMessageAsync()
     {
@@ -130,9 +112,6 @@ public class GrpcClientFactoryContractTests
         Assert.Single(method.GetParameters());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionRpc_FunctionRpcClient_NestedTypeExists()
     {
@@ -143,9 +122,6 @@ public class GrpcClientFactoryContractTests
         Assert.NotNull(clientType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionRpcClient_HasEventStreamMethodWithThreeParameters()
     {
@@ -167,9 +143,6 @@ public class GrpcClientFactoryContractTests
         Assert.Equal("cancellationToken", parameters[2].Name);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionRpcClient_HasPublicChannelConstructor()
     {
@@ -191,9 +164,6 @@ public class GrpcClientFactoryContractTests
         Assert.NotNull(ctor);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void EventStreamCall_HasRequestStreamAndResponseStreamProperties()
     {
@@ -211,9 +181,6 @@ public class GrpcClientFactoryContractTests
         Assert.NotNull(returnType.GetProperty("ResponseStream"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void StartStream_TypeExistsWithWorkerIdProperty()
     {
@@ -226,9 +193,6 @@ public class GrpcClientFactoryContractTests
         Assert.Equal(typeof(string), workerIdProp.PropertyType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void StreamingMessage_TypeExistsWithStartStreamProperty()
     {
@@ -243,9 +207,6 @@ public class GrpcClientFactoryContractTests
         Assert.Equal(startStreamType, prop.PropertyType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void DispatchProxy_Create_CanBeInvokedWithWorkerClientInterface()
     {
@@ -262,9 +223,6 @@ public class GrpcClientFactoryContractTests
         Assert.IsAssignableFrom(clientInterface, proxy);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void DispatchProxy_Create_CanBeInvokedWithWorkerClientFactoryInterface()
     {
@@ -284,21 +242,12 @@ public class GrpcClientFactoryContractTests
     /// <summary>Minimal DispatchProxy subclasses used to validate proxy creation.</summary>
     public class NoOpWorkerClientProxy : DispatchProxy
     {
-        /// <summary>
-        /// Executes this operation.
-        /// </summary>
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) =>
             throw new NotSupportedException("Should not be invoked in contract tests.");
     }
 
-    /// <summary>
-    /// Represents this type.
-    /// </summary>
     public class NoOpClientFactoryProxy : DispatchProxy
     {
-        /// <summary>
-        /// Executes this operation.
-        /// </summary>
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) =>
             throw new NotSupportedException("Should not be invoked in contract tests.");
     }

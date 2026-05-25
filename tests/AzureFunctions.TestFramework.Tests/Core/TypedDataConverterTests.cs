@@ -11,9 +11,6 @@ namespace AzureFunctions.TestFramework.Tests.Core;
 /// </summary>
 public class TypedDataConverterTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_Null_ReturnsNull()
     {
@@ -21,9 +18,6 @@ public class TypedDataConverterTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_None_ReturnsNull()
     {
@@ -32,9 +26,6 @@ public class TypedDataConverterTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_String_ReturnsString()
     {
@@ -43,9 +34,6 @@ public class TypedDataConverterTests
         Assert.Equal("hello", result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_Json_ReturnsJsonElement()
     {
@@ -56,9 +44,6 @@ public class TypedDataConverterTests
         Assert.Equal("value", element.GetProperty("key").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_Json_EmptyString_ReturnsNull()
     {
@@ -67,9 +52,6 @@ public class TypedDataConverterTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_Json_WhitespaceOnly_ReturnsNull()
     {
@@ -78,9 +60,6 @@ public class TypedDataConverterTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_Bytes_ReturnsByteArray()
     {
@@ -90,9 +69,6 @@ public class TypedDataConverterTests
         Assert.Equal(bytes, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_Stream_ReturnsByteArray()
     {
@@ -102,9 +78,6 @@ public class TypedDataConverterTests
         Assert.Equal(bytes, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_Int_ReturnsLong()
     {
@@ -113,9 +86,6 @@ public class TypedDataConverterTests
         Assert.Equal(42L, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_Double_ReturnsDouble()
     {
@@ -124,9 +94,6 @@ public class TypedDataConverterTests
         Assert.Equal(3.14, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_CollectionString_ReturnsStringArray()
     {
@@ -138,9 +105,6 @@ public class TypedDataConverterTests
         Assert.Equal(new[] { "a", "b" }, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_CollectionBytes_ReturnsByteArrayArray()
     {
@@ -155,9 +119,6 @@ public class TypedDataConverterTests
         Assert.Equal(new byte[] { 2, 3 }, arr[1]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_CollectionDouble_ReturnsDoubleArray()
     {
@@ -169,9 +130,6 @@ public class TypedDataConverterTests
         Assert.Equal(new[] { 1.1, 2.2 }, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_CollectionSint64_ReturnsLongArray()
     {
@@ -183,9 +141,6 @@ public class TypedDataConverterTests
         Assert.Equal(new[] { 100L, 200L }, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_ModelBindingData_ReturnsAnonymousObject()
     {
@@ -205,9 +160,6 @@ public class TypedDataConverterTests
         Assert.Equal("application/json", type.GetProperty("ContentType")!.GetValue(result));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_CollectionModelBindingData_ReturnsObjectArray()
     {
@@ -222,9 +174,6 @@ public class TypedDataConverterTests
         Assert.Equal(2, arr.Length);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Convert_Http_ReturnsRpcHttp()
     {
@@ -235,9 +184,6 @@ public class TypedDataConverterTests
         Assert.Equal("GET", ((RpcHttp)result).Method);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ParseJsonValue_NullInput_ReturnsNull()
     {
@@ -245,9 +191,6 @@ public class TypedDataConverterTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ParseJsonValue_ValidJson_ReturnsClonedElement()
     {

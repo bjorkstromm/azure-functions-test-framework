@@ -19,9 +19,6 @@ public class BindingCacheContractTests
     // ConversionResult is public and lives in the Worker SDK core assembly.
     private static Assembly WorkerAssembly => typeof(ConversionResult).Assembly;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IBindingCache_GenericInterfaceExistsInWorkerAssembly()
     {
@@ -34,9 +31,6 @@ public class BindingCacheContractTests
         Assert.NotNull(cacheOpenType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IBindingCache_CanBeClosedWithConversionResult()
     {
@@ -50,9 +44,6 @@ public class BindingCacheContractTests
         Assert.NotNull(closedType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IBindingCache_HasConcreteImplementationInWorkerAssembly()
     {
@@ -75,9 +66,6 @@ public class BindingCacheContractTests
         Assert.NotEmpty(implementations);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IBindingCache_Implementation_HasPrivateConcurrentDictionaryField()
     {
@@ -107,9 +95,6 @@ public class BindingCacheContractTests
             "private ConcurrentDictionary field. BindingCacheCleaner's reflection will break.");
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ConcurrentDictionary_HasClearMethod()
     {

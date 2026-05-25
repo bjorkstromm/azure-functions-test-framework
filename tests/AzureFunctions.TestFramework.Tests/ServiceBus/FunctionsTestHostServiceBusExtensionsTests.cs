@@ -20,9 +20,6 @@ public class FunctionsTestHostServiceBusExtensionsTests
 
     // ── CreateBindingDataFromBytes ─────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromBytes_WithBytes_UsesBytesAndMetadata()
     {
@@ -46,9 +43,6 @@ public class FunctionsTestHostServiceBusExtensionsTests
         Assert.Equal("""{"messageId":"msg-1"}""", binding.TriggerMetadataJson!["myMessage"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromBytes_MissingBytes_UsesEmptyArray()
     {
@@ -59,9 +53,6 @@ public class FunctionsTestHostServiceBusExtensionsTests
         Assert.Equal(Array.Empty<byte>(), binding.InputData[0].Bytes);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromBytes_NoTriggerMetadata_NullMetadata()
     {
@@ -78,9 +69,6 @@ public class FunctionsTestHostServiceBusExtensionsTests
 
     // ── CreateBindingDataFromReceivedMessages — single message ────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromReceivedMessages_SingleMessage_UsesModelBindingData()
     {
@@ -107,9 +95,6 @@ public class FunctionsTestHostServiceBusExtensionsTests
 
     // ── CreateBindingDataFromReceivedMessages — batch ─────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromReceivedMessages_BatchMessages_UsesCollectionModelBindingData()
     {
@@ -134,9 +119,6 @@ public class FunctionsTestHostServiceBusExtensionsTests
 
     // ── InvokeServiceBusAsync (from ServiceBusMessage) validation ─────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeServiceBusAsync_ServiceBusMessage_NullMessage_Throws()
     {
@@ -147,9 +129,6 @@ public class FunctionsTestHostServiceBusExtensionsTests
 
     // ── InvokeServiceBusBatchAsync validation ──────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeServiceBusBatchAsync_EmptyBatch_Throws()
     {

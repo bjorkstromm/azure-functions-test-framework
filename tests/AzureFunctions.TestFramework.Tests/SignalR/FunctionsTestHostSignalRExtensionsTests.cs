@@ -18,9 +18,6 @@ public class FunctionsTestHostSignalRExtensionsTests
 
     // ── InvokeSignalRAsync ────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeSignalRAsync_NullHost_Throws()
     {
@@ -29,9 +26,6 @@ public class FunctionsTestHostSignalRExtensionsTests
             FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(null!, "SignalRFunc", context, TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeSignalRAsync_NullContext_Throws()
     {
@@ -40,9 +34,6 @@ public class FunctionsTestHostSignalRExtensionsTests
             FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", null!, TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeSignalRAsync_SetsCorrectTriggerType()
     {
@@ -60,9 +51,6 @@ public class FunctionsTestHostSignalRExtensionsTests
         Assert.Equal("signalRTrigger", host.LastContext!.TriggerType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeSignalRAsync_SerializesInvocationContextToJson()
     {
@@ -89,9 +77,6 @@ public class FunctionsTestHostSignalRExtensionsTests
         Assert.Equal("sendMessage", doc.RootElement.GetProperty("event").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeSignalRAsync_ConnectionEvent_SerializesCategory()
     {
@@ -111,9 +96,6 @@ public class FunctionsTestHostSignalRExtensionsTests
         Assert.Equal("connected", doc.RootElement.GetProperty("event").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeSignalRAsync_WithArguments_SerializesArguments()
     {
@@ -139,9 +121,6 @@ public class FunctionsTestHostSignalRExtensionsTests
 
     // ── CreateBindingData (internal) ──────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingData_WithContextJson_ProducesJsonParam()
     {
@@ -161,9 +140,6 @@ public class FunctionsTestHostSignalRExtensionsTests
         Assert.Contains("c1", param.Json!);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingData_MissingContextJson_UsesEmptyObject()
     {
@@ -175,9 +151,6 @@ public class FunctionsTestHostSignalRExtensionsTests
         Assert.Equal("{}", binding.InputData[0].Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingData_NullContextJsonValue_UsesEmptyObject()
     {

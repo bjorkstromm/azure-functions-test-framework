@@ -9,9 +9,6 @@ namespace AzureFunctions.TestFramework.Tests.Durable;
 /// </summary>
 public class DurableFunctionMetadataExtensionsTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasBindingType_MatchingType_ReturnsTrue()
     {
@@ -22,9 +19,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.True(metadata.HasBindingType("durableClient"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasBindingType_MatchingType_CaseInsensitive_ReturnsTrue()
     {
@@ -35,9 +29,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.True(metadata.HasBindingType("durableClient"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasBindingType_NoMatchingType_ReturnsFalse()
     {
@@ -48,9 +39,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.False(metadata.HasBindingType("durableClient"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasBindingType_EmptyRawBindings_ReturnsFalse()
     {
@@ -58,9 +46,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.False(metadata.HasBindingType("durableClient"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasBindingType_NullRawBindings_ReturnsFalse()
     {
@@ -68,9 +53,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.False(metadata.HasBindingType("durableClient"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasBindingType_BindingWithoutTypeProperty_Skipped()
     {
@@ -81,9 +63,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.False(metadata.HasBindingType("durableClient"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasBindingType_MultipleBindings_FindsCorrectOne()
     {
@@ -98,9 +77,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.False(metadata.HasBindingType("timerTrigger"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasBindingType_NullMetadata_Throws()
     {
@@ -108,9 +84,6 @@ public class DurableFunctionMetadataExtensionsTests
             ((IFunctionMetadata)null!).HasBindingType("durableClient"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasBindingType_EmptyBindingType_Throws()
     {
@@ -118,9 +91,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.Throws<ArgumentException>(() => metadata.HasBindingType(""));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void GetDurableTriggerType_OrchestratorTrigger_ReturnsOrchestratorTrigger()
     {
@@ -131,9 +101,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.Equal("orchestrationTrigger", metadata.GetDurableTriggerType());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void GetDurableTriggerType_ActivityTrigger_ReturnsActivityTrigger()
     {
@@ -144,9 +111,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.Equal("activityTrigger", metadata.GetDurableTriggerType());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void GetDurableTriggerType_EntityTrigger_ReturnsEntityTrigger()
     {
@@ -157,9 +121,6 @@ public class DurableFunctionMetadataExtensionsTests
         Assert.Equal("entityTrigger", metadata.GetDurableTriggerType());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void GetDurableTriggerType_NoDurableTrigger_ReturnsNull()
     {

@@ -11,19 +11,10 @@ public sealed class XUnitLoggerProvider : ILoggerProvider
 {
     private readonly ITestOutputHelper _output;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public XUnitLoggerProvider(ITestOutputHelper output) => _output = output;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public ILogger CreateLogger(string categoryName) => new XUnitLogger(_output, categoryName);
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public void Dispose() { }
 
     private sealed class XUnitLogger : ILogger

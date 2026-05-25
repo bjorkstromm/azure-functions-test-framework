@@ -12,28 +12,16 @@ public abstract class TriggerTestsBase : TestHostTestBase
 {
     private InMemoryProcessedItemsService? _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected TriggerTestsBase(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
         return await CreateTestHostWithProcessedItemsAsync(_processedItems);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems);
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeQueueAsync_WithTextMessage_Succeeds()
     {
@@ -47,9 +35,6 @@ public abstract class TriggerTestsBase : TestHostTestBase
         Assert.Equal(messageText, processed[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeQueueAsync_WithQueueMessageParam_Succeeds()
     {
@@ -64,9 +49,6 @@ public abstract class TriggerTestsBase : TestHostTestBase
         Assert.Equal(messageText, processed[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeServiceBusAsync_WithTextBody_Succeeds()
     {
@@ -81,9 +63,6 @@ public abstract class TriggerTestsBase : TestHostTestBase
         Assert.Equal(body, processed[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeServiceBusAsync_WithReceivedMessage_Succeeds()
     {
@@ -100,9 +79,6 @@ public abstract class TriggerTestsBase : TestHostTestBase
         Assert.Equal(body, processed[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeServiceBusBatchAsync_WithMultipleMessages_Succeeds()
     {
@@ -122,9 +98,6 @@ public abstract class TriggerTestsBase : TestHostTestBase
         Assert.Equal(bodies, processed);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeQueueAsync_CapturesPlainReturnValue()
     {
@@ -136,9 +109,6 @@ public abstract class TriggerTestsBase : TestHostTestBase
         Assert.Equal($"return:{messageText}", result.ReadReturnValueAs<string>());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeQueueAsync_CapturesOutputBindingData()
     {
@@ -153,9 +123,6 @@ public abstract class TriggerTestsBase : TestHostTestBase
         Assert.Equal(2, messages.Length);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeQueueAsync_CapturesBlobOutputBindingData()
     {
@@ -168,9 +135,6 @@ public abstract class TriggerTestsBase : TestHostTestBase
         Assert.Equal($"blob:{messageText}", content);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeQueueAsync_CapturesTableOutputBindingData()
     {

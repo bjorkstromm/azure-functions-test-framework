@@ -7,27 +7,18 @@ public abstract class DaprTriggerTestsBase(ITestOutputHelper output) : TestHostT
 {
     private InMemoryProcessedItemsService? _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
         return await CreateTestHostWithProcessedItemsAsync(_processedItems);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems);
 
     // -------------------------------------------------------------------------
     // DaprBindingTrigger — string overload
     // -------------------------------------------------------------------------
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeDaprBindingAsync_WithString_Succeeds()
     {
@@ -45,9 +36,6 @@ public abstract class DaprTriggerTestsBase(ITestOutputHelper output) : TestHostT
     // DaprBindingTrigger — POCO overload
     // -------------------------------------------------------------------------
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeDaprBindingAsync_WithPoco_Succeeds()
     {
@@ -65,9 +53,6 @@ public abstract class DaprTriggerTestsBase(ITestOutputHelper output) : TestHostT
     // DaprServiceInvocationTrigger — string overload
     // -------------------------------------------------------------------------
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeDaprServiceInvocationAsync_WithString_Succeeds()
     {
@@ -85,9 +70,6 @@ public abstract class DaprTriggerTestsBase(ITestOutputHelper output) : TestHostT
     // DaprTopicTrigger — string overload
     // -------------------------------------------------------------------------
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeDaprTopicAsync_WithString_Succeeds()
     {

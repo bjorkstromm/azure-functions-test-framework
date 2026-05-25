@@ -4,14 +4,8 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.ServiceBus;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class FakeServiceBusMessageActionsTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SettlementMethods_RecordActions()
     {
@@ -33,9 +27,6 @@ public class FakeServiceBusMessageActionsTests
             x => Assert.Equal("RenewLock", x.Action));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SettlementMethods_NullMessage_Throw()
     {
@@ -48,9 +39,6 @@ public class FakeServiceBusMessageActionsTests
         await Assert.ThrowsAsync<ArgumentNullException>(() => sut.RenewMessageLockAsync(null!, TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task Reset_ClearsRecordedActions()
     {

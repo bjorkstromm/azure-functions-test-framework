@@ -20,9 +20,6 @@ public class FunctionsTestHostEventGridExtensionsTests
 
     // ── CreateBindingData ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingData_WithEventJson_ProducesJsonParam()
     {
@@ -41,9 +38,6 @@ public class FunctionsTestHostEventGridExtensionsTests
         Assert.Contains("test.event", param.Json!);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingData_MissingEventJson_UsesEmptyJson()
     {
@@ -56,9 +50,6 @@ public class FunctionsTestHostEventGridExtensionsTests
 
     // ── InvokeEventGridAsync with EventGridEvent ───────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeEventGridAsync_EventGridEvent_BuildsCorrectJson()
     {
@@ -79,9 +70,6 @@ public class FunctionsTestHostEventGridExtensionsTests
         Assert.Equal("1.0", doc.RootElement.GetProperty("dataVersion").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeEventGridAsync_EventGridEvent_NullData_DataIsNull()
     {
@@ -98,9 +86,6 @@ public class FunctionsTestHostEventGridExtensionsTests
         Assert.NotNull(host.LastContext);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeEventGridAsync_EventGridEvent_NullArg_Throws()
     {
@@ -111,9 +96,6 @@ public class FunctionsTestHostEventGridExtensionsTests
 
     // ── InvokeEventGridAsync with CloudEvent ──────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeEventGridAsync_CloudEvent_BuildsCorrectJson()
     {
@@ -134,9 +116,6 @@ public class FunctionsTestHostEventGridExtensionsTests
         Assert.Equal("/test/source", doc.RootElement.GetProperty("source").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeEventGridAsync_CloudEvent_NullData_DataFieldIsNull()
     {
@@ -154,9 +133,6 @@ public class FunctionsTestHostEventGridExtensionsTests
         Assert.Equal(JsonValueKind.Null, doc.RootElement.GetProperty("data").ValueKind);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeEventGridAsync_CloudEvent_NullArg_Throws()
     {
@@ -167,9 +143,6 @@ public class FunctionsTestHostEventGridExtensionsTests
 
     // ── TryParseJson ──────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TryParseJson_ValidJson_ReturnsJsonElement()
     {
@@ -178,9 +151,6 @@ public class FunctionsTestHostEventGridExtensionsTests
         Assert.IsType<JsonElement>(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TryParseJson_NullBinaryData_ReturnsNull()
     {
@@ -188,9 +158,6 @@ public class FunctionsTestHostEventGridExtensionsTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TryParseJson_NonJsonBinaryData_ReturnsStringFallback()
     {

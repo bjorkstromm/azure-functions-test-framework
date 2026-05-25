@@ -24,9 +24,6 @@ public class TableInputFunction
     private readonly ILogger<TableInputFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public TableInputFunction(ILogger<TableInputFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;

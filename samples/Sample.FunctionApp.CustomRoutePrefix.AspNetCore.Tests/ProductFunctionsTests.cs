@@ -12,9 +12,6 @@ public class ProductFunctionsTests : IAsyncLifetime
     private IFunctionsTestHost? _testHost;
     private HttpClient? _client;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public async ValueTask InitializeAsync()
     {
         _testHost = await new FunctionsTestHostBuilder()
@@ -25,18 +22,12 @@ public class ProductFunctionsTests : IAsyncLifetime
         _client = _testHost.CreateHttpClient();
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public async ValueTask DisposeAsync()
     {
         _client?.Dispose();
         if (_testHost != null) await _testHost.DisposeAsync();
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetProducts_WithCustomRoutePrefix_ReturnsEmptyList()
     {
@@ -47,9 +38,6 @@ public class ProductFunctionsTests : IAsyncLifetime
         Assert.Equal("[]", body.Trim());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetProductById_WithHttpRequest_ReturnsOk()
     {
@@ -66,9 +54,6 @@ public class ProductFunctionsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HealthWithHttpRequest_ReturnsOk()
     {

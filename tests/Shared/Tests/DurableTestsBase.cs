@@ -6,14 +6,8 @@ namespace TestProject;
 /// <summary>Simple durable tests: DurableTaskClient invocation + entity.</summary>
 public abstract class DurableTestsBase : TestHostTestBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected DurableTestsBase(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task StartOrchestration_ReturnsExpectedOutput()
     {

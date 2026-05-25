@@ -4,19 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace TestProject;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class BlobAndEventGridTests : BlobAndEventGridTestsBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public BlobAndEventGridTests(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected override Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems) =>
         new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(BlobTriggerFunction).Assembly)

@@ -5,14 +5,8 @@ namespace TestProject;
 /// <summary>Tests verifying GET/HEAD/OPTIONS/PATCH routing.</summary>
 public abstract class HttpVerbsTestsBase : TestHostTestBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected HttpVerbsTestsBase(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Theory]
     [InlineData("GET", "probe", false)]
     [InlineData("HEAD", "", false)]

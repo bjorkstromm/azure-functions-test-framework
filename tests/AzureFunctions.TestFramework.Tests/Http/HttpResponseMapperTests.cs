@@ -15,9 +15,6 @@ public class HttpResponseMapperTests
 
     // ── Null InvocationResponse ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_NullInvocationResponse_Throws()
     {
@@ -27,9 +24,6 @@ public class HttpResponseMapperTests
 
     // ── Failure result ─────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_FailureResult_Returns500()
     {
@@ -43,9 +37,6 @@ public class HttpResponseMapperTests
         Assert.Equal("Something went wrong", response.Error);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_FailureWithNullException_UsesDefaultError()
     {
@@ -60,9 +51,6 @@ public class HttpResponseMapperTests
 
     // ── Success with no HTTP response data ────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_SuccessWithNullReturnValue_Returns200Empty()
     {
@@ -75,9 +63,6 @@ public class HttpResponseMapperTests
         Assert.Equal(string.Empty, response.Body);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_SuccessWithStringReturnValue_BodyIsString()
     {
@@ -94,9 +79,6 @@ public class HttpResponseMapperTests
         Assert.Equal("plain text", response.Body);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_SuccessWithJsonReturnValue_BodyIsJson()
     {
@@ -112,9 +94,6 @@ public class HttpResponseMapperTests
         Assert.Equal("""{"key":"value"}""", response.Body);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_SuccessWithBytesReturnValue_BodyIsUtf8String()
     {
@@ -130,9 +109,6 @@ public class HttpResponseMapperTests
         Assert.Equal("byte-body", response.Body);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_SuccessWithStreamReturnValue_BodyIsUtf8String()
     {
@@ -150,9 +126,6 @@ public class HttpResponseMapperTests
 
     // ── Success with HTTP response data in ReturnValue ─────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_ReturnValueHttp_ExtractsHttpResponse()
     {
@@ -178,9 +151,6 @@ public class HttpResponseMapperTests
         Assert.Equal("test", response.Headers["X-Custom"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_ReturnValueHttp_NoStatusCode_DefaultsTo200()
     {
@@ -198,9 +168,6 @@ public class HttpResponseMapperTests
         Assert.True(response.Success);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_ReturnValueHttp_InvalidStatusCode_KeepsDefault()
     {
@@ -220,9 +187,6 @@ public class HttpResponseMapperTests
 
     // ── Success with HTTP data in OutputData ───────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapToHttpResponse_OutputDataHttp_ExtractsHttpResponse()
     {
@@ -251,9 +215,6 @@ public class HttpResponseMapperTests
 
     // ── HttpTestResponse helpers ──────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IsStatus_MatchingCode_ReturnsTrue()
     {
@@ -261,9 +222,6 @@ public class HttpResponseMapperTests
         Assert.True(response.IsStatus(HttpStatusCode.OK));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IsStatus_DifferentCode_ReturnsFalse()
     {
@@ -271,9 +229,6 @@ public class HttpResponseMapperTests
         Assert.False(response.IsStatus(HttpStatusCode.NotFound));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IsSuccessStatusCode_200_ReturnsTrue()
     {
@@ -281,9 +236,6 @@ public class HttpResponseMapperTests
         Assert.True(response.IsSuccessStatusCode);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IsSuccessStatusCode_404_ReturnsFalse()
     {
@@ -291,9 +243,6 @@ public class HttpResponseMapperTests
         Assert.False(response.IsSuccessStatusCode);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadFromJson_EmptyBody_ReturnsDefault()
     {
@@ -302,9 +251,6 @@ public class HttpResponseMapperTests
         Assert.Null(obj);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadFromJson_ValidJson_Deserializes()
     {

@@ -23,9 +23,6 @@ public class MethodInfoLocatorContractTests
 
     private static Assembly WorkerCoreAssembly => typeof(WorkerOptions).Assembly;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IMethodInfoLocator_ExistsInWorkerCoreAssembly()
     {
@@ -34,9 +31,6 @@ public class MethodInfoLocatorContractTests
         Assert.True(type.IsInterface, $"{InterfaceFullName} should be an interface.");
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IMethodInfoLocator_HasGetMethodWithTwoStringParameters()
     {
@@ -56,9 +50,6 @@ public class MethodInfoLocatorContractTests
         Assert.Equal(typeof(MethodInfo), getMethod.ReturnType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void DispatchProxy_Create_CanBeInvokedWithInternalInterface()
     {
@@ -83,9 +74,6 @@ public class MethodInfoLocatorContractTests
     /// <summary>Minimal DispatchProxy subclass used to validate proxy creation.</summary>
     public class NoOpDispatchProxy : DispatchProxy
     {
-        /// <summary>
-        /// Executes this operation.
-        /// </summary>
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args) =>
             throw new NotSupportedException("NoOpDispatchProxy should not be invoked in this test.");
     }

@@ -12,9 +12,6 @@ public class TodoFunctionsAspNetCoreTests : IAsyncLifetime
     private IFunctionsTestHost _testHost = default!;
     private HttpClient _client = default!;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public async ValueTask InitializeAsync()
     {
         _testHost = await new FunctionsTestHostBuilder()
@@ -25,9 +22,6 @@ public class TodoFunctionsAspNetCoreTests : IAsyncLifetime
         _client = _testHost.CreateHttpClient();
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public async ValueTask DisposeAsync()
     {
         _client.Dispose();
@@ -35,9 +29,6 @@ public class TodoFunctionsAspNetCoreTests : IAsyncLifetime
         _testHost.Dispose();
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CreateTodo_ReturnsCreated()
     {
@@ -49,9 +40,6 @@ public class TodoFunctionsAspNetCoreTests : IAsyncLifetime
         Assert.Equal("ASP.NET Core Task", todo!.Title);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task Health_ReturnsOk()
     {

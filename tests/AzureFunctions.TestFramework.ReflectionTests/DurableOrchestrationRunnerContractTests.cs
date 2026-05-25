@@ -17,9 +17,6 @@ public class DurableOrchestrationRunnerContractTests
 {
     // ----- Task<T>.Result unwrapping -----
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TaskOfT_HasResultProperty()
     {
@@ -28,9 +25,6 @@ public class DurableOrchestrationRunnerContractTests
         Assert.NotNull(resultProp);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TaskOfT_Result_CanBeReadViaReflection()
     {
@@ -42,9 +36,6 @@ public class DurableOrchestrationRunnerContractTests
         Assert.Equal(42, value);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void GenericTask_IsGenericType()
     {
@@ -56,9 +47,6 @@ public class DurableOrchestrationRunnerContractTests
 
     // ----- ValueTask<T>.AsTask() -----
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ValueTaskOfT_HasAsTaskMethod()
     {
@@ -67,9 +55,6 @@ public class DurableOrchestrationRunnerContractTests
         Assert.Empty(asTaskMethod.GetParameters());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ValueTaskOfT_AsTask_CanBeInvokedViaReflection()
     {
@@ -85,9 +70,6 @@ public class DurableOrchestrationRunnerContractTests
         Assert.Equal(99, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ValueTaskOfT_GetGenericTypeDefinition_MatchesExpectedType()
     {
@@ -98,9 +80,6 @@ public class DurableOrchestrationRunnerContractTests
 
     // ----- MethodInfo.Invoke basics -----
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MethodInfo_Invoke_CanCallSynchronousMethod()
     {
@@ -111,9 +90,6 @@ public class DurableOrchestrationRunnerContractTests
         Assert.Equal("HELLO", result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task MethodInfo_Invoke_CanCallAsyncMethod()
     {
@@ -128,9 +104,6 @@ public class DurableOrchestrationRunnerContractTests
         Assert.Equal("WORLD", value);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task MethodInfo_Invoke_CanCallValueTaskMethod()
     {
@@ -149,9 +122,6 @@ public class DurableOrchestrationRunnerContractTests
 
     // ----- Parameter inspection -----
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MethodInfo_GetParameters_WorksForMultipleTypes()
     {

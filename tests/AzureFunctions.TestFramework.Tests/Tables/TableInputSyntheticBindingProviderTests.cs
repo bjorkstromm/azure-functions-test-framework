@@ -15,9 +15,6 @@ public class TableInputSyntheticBindingProviderTests
         return doc.RootElement.Clone();
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_ExactKeyMatch_ReturnsMatchingJson()
     {
@@ -33,9 +30,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("""{"PartitionKey":"Retail","RowKey":"order-1"}""", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_PartitionKeyMatch_ReturnsMatchingJson()
     {
@@ -51,9 +45,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("""[{"PartitionKey":"Electronics"}]""", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_TableNameOnlyMatch_ReturnsMatchingJson()
     {
@@ -69,9 +60,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("""[{"PartitionKey":"A"},{"PartitionKey":"B"}]""", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_NoMatch_ReturnsEmptyObject()
     {
@@ -83,9 +71,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("{}", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MissingTableName_ReturnsEmptyObject()
     {
@@ -97,9 +82,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("{}", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_OutputDirection_ReturnsEmptyObject()
     {
@@ -115,9 +97,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("{}", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MissingDirection_TreatsBindingAsInput()
     {
@@ -133,9 +112,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("""[{"PartitionKey":"A"}]""", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_ExactKeyPreferredOverPartition()
     {
@@ -153,9 +129,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("""{"exact":true}""", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_PartitionPreferredOverTable()
     {
@@ -173,9 +146,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("""{"partition":true}""", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_FallsThroughToTableWhenNoPartitionMatch()
     {
@@ -191,9 +161,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("""{"table":true}""", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_LookupIsCaseInsensitive()
     {
@@ -209,9 +176,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("""{"found":true}""", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void BindingType_IsExpected()
     {
@@ -219,9 +183,6 @@ public class TableInputSyntheticBindingProviderTests
         Assert.Equal("table", provider.BindingType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Constructor_NullValues_Throws()
     {

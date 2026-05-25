@@ -15,9 +15,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         return doc.RootElement.Clone();
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MatchingKey_ReturnsStringBinding()
     {
@@ -35,9 +32,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         Assert.Equal("hello-state", result.StringValue);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MatchingKey_JsonMode_ReturnsJsonBinding()
     {
@@ -54,9 +48,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         Assert.Equal("""{"count":42}""", result!.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_NoMatchingKey_ReturnsNull()
     {
@@ -72,9 +63,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_OutputDirection_ReturnsNull()
     {
@@ -90,9 +78,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_NoDirectionProperty_TreatedAsInput()
     {
@@ -108,9 +93,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         Assert.NotNull(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MissingStateStore_ReturnsNull()
     {
@@ -126,9 +108,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MissingKey_ReturnsNull()
     {
@@ -144,9 +123,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_KeyLookupIsCaseInsensitive()
     {
@@ -162,9 +138,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         Assert.NotNull(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void BindingType_IsExpected()
     {
@@ -172,9 +145,6 @@ public class DaprStateInputSyntheticBindingProviderTests
         Assert.Equal("daprState", provider.BindingType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Constructor_NullValues_Throws()
     {

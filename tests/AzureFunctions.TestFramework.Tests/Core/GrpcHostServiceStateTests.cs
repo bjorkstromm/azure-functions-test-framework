@@ -18,9 +18,6 @@ public class GrpcHostServiceStateTests
 
     // ── WaitForConnectionAsync ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task WaitForConnectionAsync_AlreadyAheadVersion_CompletesImmediately()
     {
@@ -36,9 +33,6 @@ public class GrpcHostServiceStateTests
         await service.WaitForConnectionAsync(-1, cts.Token);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task WaitForConnectionAsync_SameVersion_WaitsUntilCancelled()
     {
@@ -54,9 +48,6 @@ public class GrpcHostServiceStateTests
 
     // ── ConnectionVersion ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ConnectionVersion_Initial_IsZero()
     {
@@ -66,9 +57,6 @@ public class GrpcHostServiceStateTests
 
     // ── IsConnected ───────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IsConnected_Initially_ReturnsFalse()
     {
@@ -78,9 +66,6 @@ public class GrpcHostServiceStateTests
 
     // ── IsFunctionsLoaded ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IsFunctionsLoaded_Initially_ReturnsFalse()
     {
@@ -90,9 +75,6 @@ public class GrpcHostServiceStateTests
 
     // ── RequestShutdown / SignalShutdown ──────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalShutdownAsync_WithNoActiveStream_CompletesAfterTimeout()
     {
@@ -106,9 +88,6 @@ public class GrpcHostServiceStateTests
 
     // ── HandleWorkerMessageAsync dispatch ─────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_UnknownMessageType_DoesNotThrow()
     {
@@ -119,9 +98,6 @@ public class GrpcHostServiceStateTests
         await service.HandleWorkerMessageAsync(message, CancellationToken.None);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_RpcLog_DoesNotThrow()
     {
@@ -139,9 +115,6 @@ public class GrpcHostServiceStateTests
         await service.HandleWorkerMessageAsync(message, CancellationToken.None);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_InvocationResponse_WithNoRequestId_DoesNotThrow()
     {
@@ -159,9 +132,6 @@ public class GrpcHostServiceStateTests
         await service.HandleWorkerMessageAsync(message, CancellationToken.None);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_InvocationResponse_Failure_DoesNotThrow()
     {
@@ -184,9 +154,6 @@ public class GrpcHostServiceStateTests
         await service.HandleWorkerMessageAsync(message, CancellationToken.None);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_WorkerInitResponse_DoesNotThrow()
     {
@@ -203,9 +170,6 @@ public class GrpcHostServiceStateTests
         await service.HandleWorkerMessageAsync(message, CancellationToken.None);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HandleWorkerMessageAsync_FunctionLoadResponse_DoesNotThrow()
     {
@@ -225,9 +189,6 @@ public class GrpcHostServiceStateTests
 
     // ── MapRpcLogLevel ────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Theory]
     [InlineData(RpcLog.Types.Level.Trace, Microsoft.Extensions.Logging.LogLevel.Trace)]
     [InlineData(RpcLog.Types.Level.Debug, Microsoft.Extensions.Logging.LogLevel.Debug)]
@@ -242,9 +203,6 @@ public class GrpcHostServiceStateTests
         Assert.Equal(expected, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapRpcLogLevel_UnknownLevel_ReturnsNone()
     {
@@ -254,9 +212,6 @@ public class GrpcHostServiceStateTests
 
     // ── InvokeFunctionAsync – unknown function ────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeFunctionAsync_UnknownFunction_ThrowsInvalidOperationException()
     {
@@ -269,9 +224,6 @@ public class GrpcHostServiceStateTests
 
     // ── SendMessageAsync – no connection ─────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SendMessageAsync_NoConnection_ThrowsInvalidOperationException()
     {
@@ -288,9 +240,6 @@ public class GrpcHostServiceStateTests
 
     // ── GetCurrentEventStreamState ────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void GetCurrentEventStreamState_ReturnsNonNullComponents()
     {
@@ -304,9 +253,6 @@ public class GrpcHostServiceStateTests
 
     // ── GetFunctions ──────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void GetFunctions_Initially_ReturnsEmpty()
     {

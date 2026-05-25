@@ -19,9 +19,6 @@ public class FunctionsTestHostTimerExtensionsTests
 
     // ── CreateBindingData ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingData_DefaultTimerJson_ProducesJsonParam()
     {
@@ -45,9 +42,6 @@ public class FunctionsTestHostTimerExtensionsTests
         Assert.False(string.IsNullOrWhiteSpace(param.Json));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingData_MissingTimerJson_UsesEmptyJson()
     {
@@ -59,9 +53,6 @@ public class FunctionsTestHostTimerExtensionsTests
         Assert.Equal("{}", binding.InputData[0].Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingData_NullTimerJson_UsesEmptyJson()
     {
@@ -78,9 +69,6 @@ public class FunctionsTestHostTimerExtensionsTests
 
     // ── InvokeTimerAsync passes default TimerInfo when null ───────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeTimerAsync_NullTimerInfo_CreatesDefaultTimerInfo()
     {
@@ -95,9 +83,6 @@ public class FunctionsTestHostTimerExtensionsTests
         Assert.True(doc.RootElement.TryGetProperty("isPastDue", out _));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeTimerAsync_WithTimerInfo_SerializesTimerInfo()
     {

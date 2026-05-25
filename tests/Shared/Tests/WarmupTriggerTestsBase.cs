@@ -6,14 +6,8 @@ namespace TestProject;
 /// <summary>Tests for warmup-triggered functions.</summary>
 public abstract class WarmupTriggerTestsBase : TestHostTestBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected WarmupTriggerTestsBase(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeWarmupAsync_WithDefaultContext_Succeeds()
     {
@@ -22,9 +16,6 @@ public abstract class WarmupTriggerTestsBase : TestHostTestBase
         Assert.Equal("warmup-complete", result.ReadReturnValueAs<string>());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeWarmupAsync_WithCustomContext_Succeeds()
     {

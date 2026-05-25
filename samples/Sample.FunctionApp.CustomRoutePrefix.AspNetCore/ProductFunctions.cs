@@ -22,18 +22,12 @@ public class ProductFunctions
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase
     };
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public ProductFunctions(IProductService productService, ILogger<ProductFunctions> logger)
     {
         _productService = productService;
         _logger = logger;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("GetProducts")]
     public async Task<HttpResponseData> GetProducts(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "products")] HttpRequestData req)
@@ -47,9 +41,6 @@ public class ProductFunctions
         return response;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("GetProduct")]
     public async Task<HttpResponseData> GetProduct(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "products/{id}")] HttpRequestData req,
@@ -69,9 +60,6 @@ public class ProductFunctions
         return response;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("CreateProduct")]
     public async Task<HttpResponseData> CreateProduct(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "products")] HttpRequestData req)
@@ -101,9 +89,6 @@ public class ProductFunctions
         return response;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("DeleteProduct")]
     public HttpResponseData DeleteProduct(
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "products/{id}")] HttpRequestData req,

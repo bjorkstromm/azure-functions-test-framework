@@ -8,9 +8,6 @@ namespace AzureFunctions.TestFramework.Tests.RabbitMQ;
 /// </summary>
 public class RabbitMqTriggerMessagePropertiesTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasAnySet_AllNull_ReturnsFalse()
     {
@@ -18,9 +15,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.False(props.HasAnySet());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasAnySet_ExchangeSet_ReturnsTrue()
     {
@@ -28,9 +22,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(props.HasAnySet());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasAnySet_RoutingKeySet_ReturnsTrue()
     {
@@ -38,9 +29,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(props.HasAnySet());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasAnySet_DeliveryTagSet_ReturnsTrue()
     {
@@ -48,9 +36,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(props.HasAnySet());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasAnySet_RedeliveredSet_ReturnsTrue()
     {
@@ -58,9 +43,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(props.HasAnySet());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasAnySet_EmptyHeaders_ReturnsFalse()
     {
@@ -71,9 +53,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.False(props.HasAnySet());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HasAnySet_NonEmptyHeaders_ReturnsTrue()
     {
@@ -84,9 +63,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(props.HasAnySet());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_AllNull_ReturnsNull()
     {
@@ -95,9 +71,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_Exchange_ContainsEntry()
     {
@@ -108,9 +81,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.Contains("amq.direct", result["Exchange"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_RoutingKey_ContainsEntry()
     {
@@ -121,9 +91,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.Contains("orders.created", result["RoutingKey"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_ConsumerTag_ContainsEntry()
     {
@@ -133,9 +100,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(result!.ContainsKey("ConsumerTag"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_DeliveryTag_ContainsEntry()
     {
@@ -146,9 +110,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.Contains("42", result["DeliveryTag"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_Redelivered_True_ContainsEntry()
     {
@@ -159,9 +120,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.Contains("true", result["Redelivered"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_Redelivered_False_ContainsEntry()
     {
@@ -172,9 +130,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.Contains("false", result["Redelivered"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_MessageId_ContainsEntry()
     {
@@ -184,9 +139,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(result!.ContainsKey("MessageId"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_ContentType_ContainsEntry()
     {
@@ -196,9 +148,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(result!.ContainsKey("ContentType"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_CorrelationId_ContainsEntry()
     {
@@ -208,9 +157,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(result!.ContainsKey("CorrelationId"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_ReplyTo_ContainsEntry()
     {
@@ -220,9 +166,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.True(result!.ContainsKey("ReplyTo"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_Headers_ContainsEntry()
     {
@@ -236,9 +179,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.Contains("x-trace", result["Headers"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_AllProperties_ContainsAllEntries()
     {
@@ -260,9 +200,6 @@ public class RabbitMqTriggerMessagePropertiesTests
         Assert.Equal(10, result!.Count);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ToTriggerMetadataJson_KeysAreCaseInsensitive()
     {

@@ -32,9 +32,6 @@ public class FakeBlobClientInputConverterTests
     // ConvertAsync — unsupported type
     // -------------------------------------------------------------------------
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ConvertAsync_UnsupportedTargetType_ReturnsUnhandled()
     {
@@ -44,9 +41,6 @@ public class FakeBlobClientInputConverterTests
         Assert.Equal(ConversionStatus.Unhandled, result.Status);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ConvertAsync_NoBlobServiceClient_ReturnsUnhandled()
     {
@@ -57,9 +51,6 @@ public class FakeBlobClientInputConverterTests
         Assert.Equal(ConversionStatus.Unhandled, result.Status);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ConvertAsync_SourceIsNull_ReturnsUnhandled()
     {
@@ -69,9 +60,6 @@ public class FakeBlobClientInputConverterTests
         Assert.Equal(ConversionStatus.Unhandled, result.Status);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ConvertAsync_SourceWithoutMarker_ReturnsUnhandled()
     {
@@ -85,9 +73,6 @@ public class FakeBlobClientInputConverterTests
     // ConvertAsync — BlobContainerClient (no blob name needed)
     // -------------------------------------------------------------------------
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ConvertAsync_BlobContainerClient_ReturnsContainerClient()
     {
@@ -105,9 +90,6 @@ public class FakeBlobClientInputConverterTests
     // ConvertAsync — blob-level clients (blob name required)
     // -------------------------------------------------------------------------
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Theory]
     [InlineData(typeof(BlobClient))]
     [InlineData(typeof(BlockBlobClient))]
@@ -128,9 +110,6 @@ public class FakeBlobClientInputConverterTests
         Assert.IsAssignableFrom<BlobBaseClient>(result.Value);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ConvertAsync_BlobClientWithNoBlob_ReturnsFailed()
     {
@@ -144,9 +123,6 @@ public class FakeBlobClientInputConverterTests
         Assert.Equal(ConversionStatus.Failed, result.Status);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ConvertAsync_MissingContainerName_ReturnsFailed()
     {

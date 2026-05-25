@@ -22,9 +22,6 @@ public class PipelineBuilderContractTests
     /// </summary>
     private static Assembly WorkerCoreAssembly => typeof(WorkerOptions).Assembly;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionsWorkerApplicationBuilder_ExistsInWorkerCoreAssembly()
     {
@@ -35,9 +32,6 @@ public class PipelineBuilderContractTests
         Assert.NotNull(type);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionsWorkerApplicationBuilder_Has_PipelineBuilderField()
     {
@@ -52,9 +46,6 @@ public class PipelineBuilderContractTests
         Assert.NotNull(field);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void DefaultInvocationPipelineBuilder_ExistsInWorkerCoreAssembly()
     {
@@ -64,9 +55,6 @@ public class PipelineBuilderContractTests
         Assert.NotNull(type);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void DefaultInvocationPipelineBuilder_Has_MiddlewareCollectionField()
     {
@@ -86,9 +74,6 @@ public class PipelineBuilderContractTests
         Assert.NotNull(field);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MiddlewareCollectionRuntimeValue_ImplementsIList()
     {

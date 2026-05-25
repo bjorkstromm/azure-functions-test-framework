@@ -8,26 +8,17 @@ using Microsoft.Extensions.Hosting;
 
 namespace Sample.FunctionApp.Durable.Tests;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public sealed class DurableEntityTests
 {
     private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
 
     private readonly ITestOutputHelper _output;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public DurableEntityTests(ITestOutputHelper output)
     {
         _output = output;
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_Add_UpdatesCounterState()
     {
@@ -45,9 +36,6 @@ public sealed class DurableEntityTests
         Assert.Equal(8, metadata.State);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_Reset_ClearsCounterState()
     {
@@ -66,9 +54,6 @@ public sealed class DurableEntityTests
         Assert.Equal(0, metadata.State);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CallEntityAsync_Get_ReturnsCurrentValue()
     {
@@ -85,9 +70,6 @@ public sealed class DurableEntityTests
         Assert.Equal(42, value);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetEntity_BeforeAnyOperation_ReturnsEmptyState()
     {
@@ -104,9 +86,6 @@ public sealed class DurableEntityTests
         Assert.Equal(0, metadata.State);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetEntity_WithReferenceTypeState_ReturnsNonNullDefault()
     {
@@ -124,9 +103,6 @@ public sealed class DurableEntityTests
         Assert.Empty(metadata.State);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_WithFutureSignalTime_DelaysExecution()
     {
@@ -158,9 +134,6 @@ public sealed class DurableEntityTests
         }
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_WithPastSignalTime_ExecutesImmediately()
     {
@@ -178,9 +151,6 @@ public sealed class DurableEntityTests
         Assert.Equal(5, metadata.State);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_WithSignalTime_CancelledOnDispose_DoesNotThrow()
     {
@@ -197,9 +167,6 @@ public sealed class DurableEntityTests
         // Assert — no exception thrown; the delayed signal was cancelled on shutdown
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_MultipleInstances_AreIsolated()
     {
@@ -219,9 +186,6 @@ public sealed class DurableEntityTests
         Assert.Equal(99, metaB?.State);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DurableTaskClient_Entities_SignalAndGet_UpdatesState()
     {
@@ -243,9 +207,6 @@ public sealed class DurableEntityTests
         Assert.Equal(7, metadata.State);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetEntityAsync_NonGeneric_ReturnsSerializedState()
     {
@@ -263,9 +224,6 @@ public sealed class DurableEntityTests
         Assert.Equal(12, metadata.State.ReadAs<int>());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetAllEntitiesAsync_ReturnsAllEntities_WithAndWithoutFilter()
     {
@@ -299,9 +257,6 @@ public sealed class DurableEntityTests
         Assert.Equal(2, filtered.Count);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CleanEntityStorageAsync_RemovesEmptyEntities()
     {
@@ -329,9 +284,6 @@ public sealed class DurableEntityTests
         Assert.Equal(5, statefulMetadata.State);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ScheduleNewOrchestration_FromEntity_StartsOrchestration()
     {
@@ -355,9 +307,6 @@ public sealed class DurableEntityTests
         Assert.Equal("Hello, entity-scheduled!", metadata.ReadOutputAs<string>());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task Invoker_GetFunctions_IncludesEntityTrigger()
     {
@@ -372,9 +321,6 @@ public sealed class DurableEntityTests
         Assert.Equal("entityTrigger", counter.GetDurableTriggerType());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task OrchestratorCallsEntity_ViaContextEntities_ReturnsAccumulatedValue()
     {

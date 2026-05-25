@@ -9,14 +9,8 @@ namespace Sample.FunctionApp.Tests.NUnit;
 /// </summary>
 public sealed class NUnitLoggerProvider : ILoggerProvider
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public ILogger CreateLogger(string categoryName) => new NUnitLogger(categoryName);
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public void Dispose() { }
 
     private sealed class NUnitLogger : ILogger

@@ -5,14 +5,8 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.DataExplorer;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class FunctionsTestHostBuilderDataExplorerExtensionsTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithKustoInputRows_SingleRow_RegistersProvider()
     {
@@ -25,9 +19,6 @@ public class FunctionsTestHostBuilderDataExplorerExtensionsTests
         Assert.IsType<KustoInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithKustoInputRows_List_RegistersProvider()
     {
@@ -40,9 +31,6 @@ public class FunctionsTestHostBuilderDataExplorerExtensionsTests
         Assert.IsType<KustoInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithKustoInputJson_RegistersProvider()
     {
@@ -55,9 +43,6 @@ public class FunctionsTestHostBuilderDataExplorerExtensionsTests
         Assert.IsType<KustoInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithKustoInputRows_NullBuilder_Throws()
     {

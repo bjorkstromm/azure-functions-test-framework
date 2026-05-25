@@ -18,9 +18,6 @@ public class HttpRequestConverterContractTests
     private const string HttpRequestFullName = "Microsoft.AspNetCore.Http.HttpRequest";
     private const string HttpContextItemsKey = "HttpRequestContext";
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HttpContext_HasRequestProperty()
     {
@@ -28,9 +25,6 @@ public class HttpRequestConverterContractTests
         Assert.NotNull(requestProp);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HttpContext_Request_IsHttpRequest()
     {
@@ -39,9 +33,6 @@ public class HttpRequestConverterContractTests
         Assert.Equal(typeof(HttpRequest), requestProp.PropertyType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HttpRequest_FullNameMatchesExpectedConstant()
     {
@@ -50,9 +41,6 @@ public class HttpRequestConverterContractTests
         Assert.Equal(HttpRequestFullName, typeof(HttpRequest).FullName);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void HttpContext_Request_CanBeReadViaReflection()
     {

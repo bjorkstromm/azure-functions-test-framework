@@ -4,24 +4,15 @@ using System.Net;
 
 namespace Sample.FunctionApp.Worker;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class TodoFunctions
 {
     private readonly ITodoService _todoService;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public TodoFunctions(ITodoService todoService)
     {
         _todoService = todoService;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("GetTodos")]
     public async Task<HttpResponseData> GetTodos(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos")] HttpRequestData req)
@@ -32,9 +23,6 @@ public class TodoFunctions
         return response;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("GetTodo")]
     public async Task<HttpResponseData> GetTodo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "todos/{id}")] HttpRequestData req,
@@ -48,9 +36,6 @@ public class TodoFunctions
         return response;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("CreateTodo")]
     public async Task<HttpResponseData> CreateTodo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "todos")] HttpRequestData req)
@@ -70,9 +55,6 @@ public class TodoFunctions
         return response;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("UpdateTodo")]
     public async Task<HttpResponseData> UpdateTodo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "put", Route = "todos/{id}")] HttpRequestData req,
@@ -94,9 +76,6 @@ public class TodoFunctions
         return response;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("DeleteTodo")]
     public async Task<HttpResponseData> DeleteTodo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "delete", Route = "todos/{id}")] HttpRequestData req,
@@ -180,29 +159,11 @@ public class TodoFunctions
     }
 }
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class TodoItem
 {
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public string Id { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public string Title { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public bool IsCompleted { get; set; }
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public DateTime CreatedAt { get; set; }
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public DateTime? UpdatedAt { get; set; }
 }

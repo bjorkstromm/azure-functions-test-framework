@@ -17,9 +17,6 @@ public class FunctionsTestHostDurableExtensionsTests
 
     // ── FunctionsTestHostDurableActivityExtensions ────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeActivityAsync_NullHost_ThrowsArgumentNullException()
     {
@@ -27,9 +24,6 @@ public class FunctionsTestHostDurableExtensionsTests
             ((IFunctionsTestHost)null!).InvokeActivityAsync<string>("SomeActivity", cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeActivityAsync_EmptyFunctionName_ThrowsArgumentException()
     {
@@ -39,9 +33,6 @@ public class FunctionsTestHostDurableExtensionsTests
             host.InvokeActivityAsync<string>(string.Empty, cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeActivityAsync_WhitespaceFunctionName_ThrowsArgumentException()
     {
@@ -51,9 +42,6 @@ public class FunctionsTestHostDurableExtensionsTests
             host.InvokeActivityAsync<string>("   ", cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeActivityAsync_WithoutDurableSupport_ThrowsInvalidOperationException()
     {
@@ -67,9 +55,6 @@ public class FunctionsTestHostDurableExtensionsTests
 
     // ── FunctionsTestHostDurableEntityExtensions — SignalEntityAsync ──────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_NullHost_ThrowsArgumentNullException()
     {
@@ -77,9 +62,6 @@ public class FunctionsTestHostDurableExtensionsTests
             ((IFunctionsTestHost)null!).SignalEntityAsync(TestEntityId, "op", cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_EmptyOperationName_ThrowsArgumentException()
     {
@@ -89,9 +71,6 @@ public class FunctionsTestHostDurableExtensionsTests
             host.SignalEntityAsync(TestEntityId, string.Empty, cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_WithoutDurableSupport_ThrowsInvalidOperationException()
     {
@@ -105,9 +84,6 @@ public class FunctionsTestHostDurableExtensionsTests
 
     // ── FunctionsTestHostDurableEntityExtensions — CallEntityAsync ────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CallEntityAsync_NullHost_ThrowsArgumentNullException()
     {
@@ -115,9 +91,6 @@ public class FunctionsTestHostDurableExtensionsTests
             ((IFunctionsTestHost)null!).CallEntityAsync<int>(TestEntityId, "get", cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CallEntityAsync_EmptyOperationName_ThrowsArgumentException()
     {
@@ -127,9 +100,6 @@ public class FunctionsTestHostDurableExtensionsTests
             host.CallEntityAsync<int>(TestEntityId, string.Empty, cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CallEntityAsync_WithoutDurableSupport_ThrowsInvalidOperationException()
     {
@@ -143,9 +113,6 @@ public class FunctionsTestHostDurableExtensionsTests
 
     // ── FunctionsTestHostDurableEntityExtensions — GetEntity ─────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void GetEntity_NullHost_ThrowsArgumentNullException()
     {
@@ -153,9 +120,6 @@ public class FunctionsTestHostDurableExtensionsTests
             ((IFunctionsTestHost)null!).GetEntity<int>(TestEntityId));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void GetEntity_WithoutDurableSupport_ThrowsInvalidOperationException()
     {

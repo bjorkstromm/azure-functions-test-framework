@@ -12,18 +12,12 @@ namespace AzureFunctions.TestFramework.Tests.Kafka;
 /// </summary>
 public class KafkaRecordProtoWriterTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Encode_NullRecord_ThrowsArgumentNullException()
     {
         Assert.Throws<ArgumentNullException>(() => KafkaRecordProtoWriter.Encode(null!));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Encode_EmptyRecord_ReturnsEmptyBytes()
     {
@@ -34,9 +28,6 @@ public class KafkaRecordProtoWriterTests
         Assert.Empty(bytes);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Encode_RecordWithTopic_ProducesNonEmptyBytes()
     {
@@ -45,9 +36,6 @@ public class KafkaRecordProtoWriterTests
         Assert.NotEmpty(bytes);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Encode_RecordWithAllFields_ProducesNonEmptyBytes()
     {
@@ -74,9 +62,6 @@ public class KafkaRecordProtoWriterTests
         Assert.NotEmpty(bytes);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Encode_CanBeRoundTrippedViaKafkaRecordConverter()
     {
@@ -121,9 +106,6 @@ public class KafkaRecordProtoWriterTests
         Assert.Equal(42L, (long)offsetProperty.GetValue(proto)!);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Encode_TimestampFields_RoundTrips()
     {
@@ -159,9 +141,6 @@ public class KafkaRecordProtoWriterTests
         Assert.Equal(timestampMs, (long)unixMsProperty.GetValue(ts)!);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Encode_MultipleHeaders_RoundTrips()
     {
@@ -200,9 +179,6 @@ public class KafkaRecordProtoWriterTests
         Assert.Equal("x-b", (string)keyProp.GetValue(headerList[1])!);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Encode_NullHeaders_NotIncludedInOutput()
     {
@@ -212,9 +188,6 @@ public class KafkaRecordProtoWriterTests
         Assert.NotNull(bytes);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Encode_NullValueAndKey_NotIncludedInOutput()
     {

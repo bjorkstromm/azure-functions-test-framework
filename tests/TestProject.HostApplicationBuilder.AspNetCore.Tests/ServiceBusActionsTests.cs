@@ -3,19 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace TestProject;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class ServiceBusActionsTests : ServiceBusActionsTestsBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public ServiceBusActionsTests(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     protected override Task<IFunctionsTestHost> CreateTestHostWithServicesAsync(
         InMemoryProcessedItemsService processedItems) =>
         new FunctionsTestHostBuilder()

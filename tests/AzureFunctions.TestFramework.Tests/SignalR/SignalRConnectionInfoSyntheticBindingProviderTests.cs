@@ -15,9 +15,6 @@ public class SignalRConnectionInfoSyntheticBindingProviderTests
 
     // ── BindingType ───────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void BindingType_ReturnsSignalRConnectionInfo()
     {
@@ -30,9 +27,6 @@ public class SignalRConnectionInfoSyntheticBindingProviderTests
 
     // ── Constructor(url, accessToken) ─────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Constructor_WithUrlAndToken_SerializesUrlAndToken()
     {
@@ -51,9 +45,6 @@ public class SignalRConnectionInfoSyntheticBindingProviderTests
             doc.RootElement.GetProperty("accessToken").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Constructor_NullUrl_StillSerializesJson()
     {
@@ -64,9 +55,6 @@ public class SignalRConnectionInfoSyntheticBindingProviderTests
         Assert.NotNull(result!.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Constructor_NullAccessToken_StillSerializesJson()
     {
@@ -77,9 +65,6 @@ public class SignalRConnectionInfoSyntheticBindingProviderTests
 
     // ── Constructor(string json) ──────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Constructor_WithPreserializedJson_ReturnsSameJson()
     {
@@ -91,9 +76,6 @@ public class SignalRConnectionInfoSyntheticBindingProviderTests
         Assert.Equal(json, result!.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Constructor_NullJson_Throws()
     {
@@ -103,9 +85,6 @@ public class SignalRConnectionInfoSyntheticBindingProviderTests
 
     // ── CreateSyntheticParameter ──────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_ParameterNameIsPreserved()
     {
@@ -117,9 +96,6 @@ public class SignalRConnectionInfoSyntheticBindingProviderTests
         Assert.Equal("myParam", result!.Name);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_JsonIsNotNullOrEmpty()
     {
@@ -132,9 +108,6 @@ public class SignalRConnectionInfoSyntheticBindingProviderTests
         Assert.NotEmpty(result.Json!);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_EmptyUrlAndToken_SerializesEmpty()
     {

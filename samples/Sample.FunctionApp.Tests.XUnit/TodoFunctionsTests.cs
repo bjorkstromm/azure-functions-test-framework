@@ -20,14 +20,8 @@ public class TodoFunctionsTests : IAsyncLifetime
     private IFunctionsTestHost? _host;
     private HttpClient? _client;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public TodoFunctionsTests(ITestOutputHelper output) => _output = output;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public async ValueTask InitializeAsync()
     {
         var loggerProvider = new XUnitLoggerProvider(_output);
@@ -44,18 +38,12 @@ public class TodoFunctionsTests : IAsyncLifetime
         _client = _host.CreateHttpClient();
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public async ValueTask DisposeAsync()
     {
         _client?.Dispose();
         if (_host != null) await _host.DisposeAsync();
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetTodos_ReturnsEmptyList_WhenNoTodosExist()
     {
@@ -66,9 +54,6 @@ public class TodoFunctionsTests : IAsyncLifetime
         Assert.Empty(todos);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CreateTodo_ReturnsTodo_WithGeneratedId()
     {
@@ -80,9 +65,6 @@ public class TodoFunctionsTests : IAsyncLifetime
         Assert.Equal("Buy milk", todo.Title);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetTodo_ReturnsTodo_WhenExists()
     {
@@ -95,9 +77,6 @@ public class TodoFunctionsTests : IAsyncLifetime
         Assert.Equal(created.Id, todo!.Id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DeleteTodo_ReturnsNoContent_WhenExists()
     {
@@ -108,9 +87,6 @@ public class TodoFunctionsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task Health_ReturnsHealthy()
     {

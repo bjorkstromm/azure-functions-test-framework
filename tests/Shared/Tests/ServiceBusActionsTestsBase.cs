@@ -13,14 +13,8 @@ public abstract class ServiceBusActionsTestsBase : TestHostTestBase
 {
     private InMemoryProcessedItemsService? _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected ServiceBusActionsTestsBase(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
@@ -34,9 +28,6 @@ public abstract class ServiceBusActionsTestsBase : TestHostTestBase
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithServicesAsync(
         InMemoryProcessedItemsService processedItems);
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeServiceBusAsync_WithMessageActions_CompletesMessage()
     {

@@ -11,27 +11,15 @@ public sealed class FunctionsTestHostReuseFixtureTests :
 
     private readonly SharedFunctionsTestHostFixture _fixture;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public FunctionsTestHostReuseFixtureTests(SharedFunctionsTestHostFixture fixture)
     {
         _fixture = fixture;
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public ValueTask InitializeAsync() => new(_fixture.ResetAsync());
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SharedFixture_CanCreateTodo()
     {
@@ -40,9 +28,6 @@ public sealed class FunctionsTestHostReuseFixtureTests :
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SharedFixture_ResetKeepsTestsIsolated()
     {

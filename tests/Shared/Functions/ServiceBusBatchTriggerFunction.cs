@@ -4,26 +4,17 @@ using Microsoft.Extensions.Logging;
 
 namespace TestProject;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class ServiceBusBatchTriggerFunction
 {
     private readonly ILogger<ServiceBusBatchTriggerFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public ServiceBusBatchTriggerFunction(ILogger<ServiceBusBatchTriggerFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
         _processedItems = processedItems;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("ProcessServiceBusMessageBatch")]
     public void Run(
         [ServiceBusTrigger("test-batch-topic", "test-batch-subscription", IsBatched = true)]

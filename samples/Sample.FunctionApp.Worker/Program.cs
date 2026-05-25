@@ -5,14 +5,8 @@ using Sample.FunctionApp.Worker;
 
 await Program.CreateHostBuilder(args).Build().RunAsync();
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public partial class Program
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public static IHostBuilder CreateHostBuilder(string[] args) =>
         new HostBuilder()
             .ConfigureFunctionsWebApplication(worker => worker.UseMiddleware<CorrelationIdMiddleware>())

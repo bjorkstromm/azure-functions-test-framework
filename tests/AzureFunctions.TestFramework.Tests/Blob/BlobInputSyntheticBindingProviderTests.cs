@@ -9,9 +9,6 @@ namespace AzureFunctions.TestFramework.Tests.Blob;
 /// </summary>
 public class BlobInputSyntheticBindingProviderTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void BindingType_ReturnsBlob()
     {
@@ -20,9 +17,6 @@ public class BlobInputSyntheticBindingProviderTests
         Assert.Equal("blob", provider.BindingType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MatchingPath_ReturnsBytesBinding()
     {
@@ -41,9 +35,6 @@ public class BlobInputSyntheticBindingProviderTests
         Assert.Equal(content.ToArray(), result.Bytes);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_CaseInsensitivePath_Matches()
     {
@@ -60,9 +51,6 @@ public class BlobInputSyntheticBindingProviderTests
         Assert.NotNull(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_OutDirection_ReturnsNull()
     {
@@ -78,9 +66,6 @@ public class BlobInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_NoBlobPath_ReturnsNull()
     {
@@ -96,9 +81,6 @@ public class BlobInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_PathNotRegistered_ReturnsNull()
     {
@@ -111,9 +93,6 @@ public class BlobInputSyntheticBindingProviderTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_NullDirectionProperty_TreatedAsIn()
     {
@@ -131,9 +110,6 @@ public class BlobInputSyntheticBindingProviderTests
         Assert.NotNull(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Constructor_NullContentByPath_Throws()
     {

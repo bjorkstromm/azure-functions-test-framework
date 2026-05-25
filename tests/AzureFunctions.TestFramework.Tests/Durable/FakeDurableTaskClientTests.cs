@@ -18,9 +18,6 @@ public class FakeDurableTaskClientTests
 {
     // ── GetAllInstancesAsync ───────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetAllInstancesAsync_ReturnsScheduledInstances()
     {
@@ -48,9 +45,6 @@ public class FakeDurableTaskClientTests
 
     // ── GetInstancesAsync ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetInstancesAsync_NonExistentInstance_ReturnsNull()
     {
@@ -66,9 +60,6 @@ public class FakeDurableTaskClientTests
         Assert.Null(metadata);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetInstancesAsync_CancelledToken_ThrowsOperationCanceledException()
     {
@@ -82,9 +73,6 @@ public class FakeDurableTaskClientTests
 
     // ── Operations on non-existent instances ─────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task RaiseEventAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -98,9 +86,6 @@ public class FakeDurableTaskClientTests
         Assert.Contains("missing", ex.Message);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SuspendInstanceAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -112,9 +97,6 @@ public class FakeDurableTaskClientTests
 #pragma warning restore xUnit1051
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ResumeInstanceAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -126,9 +108,6 @@ public class FakeDurableTaskClientTests
 #pragma warning restore xUnit1051
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task TerminateInstanceAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -140,9 +119,6 @@ public class FakeDurableTaskClientTests
 #pragma warning restore xUnit1051
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task WaitForInstanceCompletionAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -154,9 +130,6 @@ public class FakeDurableTaskClientTests
 #pragma warning restore xUnit1051
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task WaitForInstanceStartAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -170,9 +143,6 @@ public class FakeDurableTaskClientTests
 
     // ── PurgeInstanceAsync ────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task PurgeInstanceAsync_NonExistentInstance_ReturnsZeroPurgedCount()
     {
@@ -187,9 +157,6 @@ public class FakeDurableTaskClientTests
 
     // ── ScheduleNewOrchestrationInstanceAsync ─────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ScheduleNewOrchestrationInstanceAsync_CustomInstanceId_ReturnsIt()
     {
@@ -206,9 +173,6 @@ public class FakeDurableTaskClientTests
         Assert.Equal(instanceId, returned);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ScheduleNewOrchestrationInstanceAsync_NoInstanceId_ReturnsGeneratedId()
     {
@@ -223,9 +187,6 @@ public class FakeDurableTaskClientTests
         Assert.False(string.IsNullOrEmpty(returned));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ScheduleNewOrchestrationInstanceAsync_AlreadyRunning_ThrowsInvalidOperation()
     {
@@ -248,9 +209,6 @@ public class FakeDurableTaskClientTests
                 cancellation: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ScheduleNewOrchestrationInstanceAsync_CancelledToken_ThrowsOperationCanceled()
     {

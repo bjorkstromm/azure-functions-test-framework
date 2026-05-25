@@ -5,14 +5,8 @@ using TestProject;
 
 await Program.CreateWorkerHostBuilder(args).Build().RunAsync();
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public partial class Program
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public static IHostBuilder CreateWorkerHostBuilder(string[] args) =>
         new HostBuilder()
             .ConfigureFunctionsWorkerDefaults(b => b.UseMiddleware<CorrelationMiddleware>())

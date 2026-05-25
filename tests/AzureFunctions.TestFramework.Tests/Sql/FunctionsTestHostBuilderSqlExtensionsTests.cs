@@ -5,14 +5,8 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Sql;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class FunctionsTestHostBuilderSqlExtensionsTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSqlInputRows_SingleRow_RegistersProvider()
     {
@@ -25,9 +19,6 @@ public class FunctionsTestHostBuilderSqlExtensionsTests
         Assert.IsType<SqlInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSqlInputRows_List_RegistersProvider()
     {
@@ -40,9 +31,6 @@ public class FunctionsTestHostBuilderSqlExtensionsTests
         Assert.IsType<SqlInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSqlInputJson_RegistersProvider()
     {
@@ -55,9 +43,6 @@ public class FunctionsTestHostBuilderSqlExtensionsTests
         Assert.IsType<SqlInputSyntheticBindingProvider>(builder.RegisteredProviders[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSqlInputRows_NullBuilder_Throws()
     {

@@ -8,9 +8,6 @@ namespace AzureFunctions.TestFramework.Tests.Durable;
 /// </summary>
 public class FakeDurableExternalEventHubTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task RaiseEvent_BeforeWait_WaitReturnsPayload()
     {
@@ -22,9 +19,6 @@ public class FakeDurableExternalEventHubTests
         Assert.Equal("approved", result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task WaitForEvent_AfterRaise_ReturnsPayload()
     {
@@ -39,9 +33,6 @@ public class FakeDurableExternalEventHubTests
         Assert.NotNull(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task RaiseEvent_NullPayload_WaitReturnsNull()
     {
@@ -53,9 +44,6 @@ public class FakeDurableExternalEventHubTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task MultipleBufferedEvents_DequeueInOrder()
     {
@@ -70,9 +58,6 @@ public class FakeDurableExternalEventHubTests
         Assert.Equal("step2", second);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task WaitForEvent_CancelledBeforeRaise_ThrowsOperationCancelled()
     {
@@ -85,9 +70,6 @@ public class FakeDurableExternalEventHubTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task RaiseEvent_CancelledToken_ThrowsOperationCancelled()
     {
@@ -99,9 +81,6 @@ public class FakeDurableExternalEventHubTests
             hub.RaiseEventAsync("instance-6", "Event", "payload", cts.Token));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DifferentInstances_DoNotInterfere()
     {
@@ -116,9 +95,6 @@ public class FakeDurableExternalEventHubTests
         Assert.Equal("B-payload", b);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DifferentEventNames_SameInstance_DoNotInterfere()
     {
@@ -133,9 +109,6 @@ public class FakeDurableExternalEventHubTests
         Assert.Equal("y-payload", y);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WaitForEvent_TwoWaitersOnSameKey_ThrowsInvalidOperation()
     {
@@ -153,9 +126,6 @@ public class FakeDurableExternalEventHubTests
         cts.Cancel();
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WaitForEvent_NullInstanceId_Throws()
     {
@@ -164,9 +134,6 @@ public class FakeDurableExternalEventHubTests
             hub.WaitForEventAsync(null!, "Event", CancellationToken.None).GetAwaiter().GetResult());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WaitForEvent_EmptyInstanceId_Throws()
     {
@@ -175,9 +142,6 @@ public class FakeDurableExternalEventHubTests
             hub.WaitForEventAsync("", "Event", CancellationToken.None).GetAwaiter().GetResult());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WaitForEvent_WhitespaceEventName_Throws()
     {
@@ -186,9 +150,6 @@ public class FakeDurableExternalEventHubTests
             hub.WaitForEventAsync("id", "   ", CancellationToken.None).GetAwaiter().GetResult());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void RaiseEvent_NullInstanceId_Throws()
     {

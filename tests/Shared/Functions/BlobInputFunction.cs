@@ -4,26 +4,17 @@ using Microsoft.Extensions.Logging;
 
 namespace TestProject;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class BlobInputFunction
 {
     private readonly ILogger<BlobInputFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public BlobInputFunction(ILogger<BlobInputFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
         _processedItems = processedItems;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("ReadBlobInput")]
     public void Run(
         [QueueTrigger("read-blob-queue")] string unused,
@@ -33,9 +24,6 @@ public class BlobInputFunction
         _processedItems.Add(blobContent);
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("ReadBlobInputClient")]
     public void RunBlobClient(
         [QueueTrigger("read-blob-client-queue")] string unused,

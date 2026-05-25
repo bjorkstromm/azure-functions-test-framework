@@ -15,9 +15,6 @@ public class FakeDurableEntityClientTests
 {
     // ── Query and state operations ────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetEntityAsync_NonGeneric_NoState_ReturnsNull()
     {
@@ -31,9 +28,6 @@ public class FakeDurableEntityClientTests
         Assert.Null(metadata);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetEntityAsync_NonGeneric_WithState_ReturnsSerializedState()
     {
@@ -50,9 +44,6 @@ public class FakeDurableEntityClientTests
         Assert.Equal(7, metadata.State.ReadAs<int>());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetAllEntitiesAsync_NonGeneric_ReturnsEntities()
     {
@@ -72,9 +63,6 @@ public class FakeDurableEntityClientTests
         Assert.Contains(entities, metadata => metadata.Id == entityId);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetAllEntitiesAsync_Generic_ReturnsTypedState()
     {
@@ -96,9 +84,6 @@ public class FakeDurableEntityClientTests
         Assert.Equal(9, selected.State);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CleanEntityStorageAsync_RemovesEmptyEntities()
     {
@@ -124,9 +109,6 @@ public class FakeDurableEntityClientTests
 
     // ── SignalEntityAsync (supported) ─────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntityAsync_CancelledToken_ThrowsOperationCanceledException()
     {
@@ -169,42 +151,21 @@ public class FakeDurableEntityClientTests
     }
 }
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public sealed class MutableTestEntity : TaskEntity<int>
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public int Get() => State;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public void Add(int value) => State += value;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Function(nameof(MutableTestEntity))]
     public Task Run([EntityTrigger] TaskEntityDispatcher dispatcher) => dispatcher.DispatchAsync<MutableTestEntity>();
 }
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public sealed class StatelessTestEntity : ITaskEntity
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public ValueTask<object?> RunAsync(TaskEntityOperation operation)
         => ValueTask.FromResult<object?>(null);
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Function(nameof(StatelessTestEntity))]
     public Task Run([EntityTrigger] TaskEntityDispatcher dispatcher) => dispatcher.DispatchAsync<StatelessTestEntity>();
 }

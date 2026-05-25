@@ -9,9 +9,6 @@ namespace AzureFunctions.TestFramework.Tests.Durable;
 /// </summary>
 public class DurableOrchestrationStatusTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Theory]
     [InlineData("Completed", true)]
     [InlineData("Failed", true)]
@@ -27,9 +24,6 @@ public class DurableOrchestrationStatusTests
         Assert.Equal(expected, status.IsTerminal);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadOutputAsString_StringKind_ReturnsString()
     {
@@ -40,9 +34,6 @@ public class DurableOrchestrationStatusTests
         Assert.Equal("hello world", status.ReadOutputAsString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadOutputAsString_NullKind_ReturnsNull()
     {
@@ -53,9 +44,6 @@ public class DurableOrchestrationStatusTests
         Assert.Null(status.ReadOutputAsString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadOutputAsString_UndefinedKind_ReturnsNull()
     {
@@ -64,9 +52,6 @@ public class DurableOrchestrationStatusTests
         Assert.Null(status.ReadOutputAsString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadOutputAsString_ObjectKind_ReturnsRawText()
     {
@@ -79,9 +64,6 @@ public class DurableOrchestrationStatusTests
         Assert.Contains("42", result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadOutputAsString_ArrayKind_ReturnsRawText()
     {
@@ -94,9 +76,6 @@ public class DurableOrchestrationStatusTests
         Assert.Contains("1", result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadCustomStatusAs_NullKind_ReturnsDefault()
     {
@@ -107,9 +86,6 @@ public class DurableOrchestrationStatusTests
         Assert.Null(status.ReadCustomStatusAs<string>());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadCustomStatusAs_UndefinedKind_ReturnsDefault()
     {
@@ -117,9 +93,6 @@ public class DurableOrchestrationStatusTests
         Assert.Null(status.ReadCustomStatusAs<string>());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadCustomStatusAs_ObjectKind_Deserializes()
     {

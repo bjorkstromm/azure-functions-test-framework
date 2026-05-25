@@ -5,14 +5,8 @@ namespace TestProject;
 /// <summary>Tests for HttpRequestData CRUD endpoints at /api/items.</summary>
 public abstract class HttpTriggerTestsBase : TestHostTestBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected HttpTriggerTestsBase(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetItems_ReturnsEmptyList_WhenNoItemsExist()
     {
@@ -23,9 +17,6 @@ public abstract class HttpTriggerTestsBase : TestHostTestBase
         Assert.Empty(items);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CreateItem_ReturnsCreated_WithGeneratedId()
     {
@@ -37,9 +28,6 @@ public abstract class HttpTriggerTestsBase : TestHostTestBase
         Assert.Equal("Test Item", item.Name);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetItem_ReturnsItem_WhenExists()
     {
@@ -52,9 +40,6 @@ public abstract class HttpTriggerTestsBase : TestHostTestBase
         Assert.Equal(created.Id, item!.Id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetItem_ReturnsNotFound_WhenMissing()
     {
@@ -62,9 +47,6 @@ public abstract class HttpTriggerTestsBase : TestHostTestBase
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task UpdateItem_UpdatesExistingItem()
     {
@@ -82,9 +64,6 @@ public abstract class HttpTriggerTestsBase : TestHostTestBase
         Assert.True(updated.IsCompleted);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DeleteItem_ReturnsNoContent_WhenExists()
     {
@@ -95,9 +74,6 @@ public abstract class HttpTriggerTestsBase : TestHostTestBase
         Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DeleteItem_ReturnsNotFound_WhenMissing()
     {
@@ -105,9 +81,6 @@ public abstract class HttpTriggerTestsBase : TestHostTestBase
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetItemAlt_ReturnsItem_WhenHttpTriggerParamNameIsNotReq()
     {
@@ -120,9 +93,6 @@ public abstract class HttpTriggerTestsBase : TestHostTestBase
         Assert.Equal(created.Id, item!.Id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetItemByBindingData_ReturnsItem_WhenRouteParamInBindingData()
     {
@@ -135,9 +105,6 @@ public abstract class HttpTriggerTestsBase : TestHostTestBase
         Assert.Equal(created.Id, item!.Id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetItemWithContext_ReturnsItem_WhenFunctionContextInjected()
     {

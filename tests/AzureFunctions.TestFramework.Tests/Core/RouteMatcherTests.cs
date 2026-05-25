@@ -12,9 +12,6 @@ public class RouteMatcherTests
 
     // ── Literal routes ────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_LiteralRoute_ExactMatch_ReturnsId()
     {
@@ -25,9 +22,6 @@ public class RouteMatcherTests
         Assert.Equal("fn1", id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_LiteralRoute_DifferentMethod_ReturnsNull()
     {
@@ -38,9 +32,6 @@ public class RouteMatcherTests
         Assert.Null(id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_LiteralRoute_NoMatch_ReturnsNull()
     {
@@ -53,9 +44,6 @@ public class RouteMatcherTests
 
     // ── Parameterised routes ──────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_ParameterisedRoute_ExtractsParam()
     {
@@ -67,9 +55,6 @@ public class RouteMatcherTests
         Assert.Equal("42", routeParams["id"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_MultipleParams_ExtractsAll()
     {
@@ -84,9 +69,6 @@ public class RouteMatcherTests
 
     // ── Route constraints ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_IntConstraint_ValidInt_Matches()
     {
@@ -98,9 +80,6 @@ public class RouteMatcherTests
         Assert.Equal("42", routeParams["id"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_IntConstraint_NonInt_ReturnsNull()
     {
@@ -111,9 +90,6 @@ public class RouteMatcherTests
         Assert.Null(id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_GuidConstraint_ValidGuid_Matches()
     {
@@ -126,9 +102,6 @@ public class RouteMatcherTests
         Assert.Equal(guid, routeParams["id"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_GuidConstraint_NotAGuid_ReturnsNull()
     {
@@ -139,9 +112,6 @@ public class RouteMatcherTests
         Assert.Null(id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_AlphaConstraint_AlphaOnly_Matches()
     {
@@ -153,9 +123,6 @@ public class RouteMatcherTests
         Assert.Equal("fluffy", routeParams["name"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_AlphaConstraint_HasDigits_ReturnsNull()
     {
@@ -168,9 +135,6 @@ public class RouteMatcherTests
 
     // ── Optional parameters ───────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_OptionalParam_Present_ExtractsValue()
     {
@@ -182,9 +146,6 @@ public class RouteMatcherTests
         Assert.Equal("2", routeParams["page"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_OptionalParam_Absent_MatchesWithoutKey()
     {
@@ -198,9 +159,6 @@ public class RouteMatcherTests
 
     // ── Catch-all ─────────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_CatchAll_Matches()
     {
@@ -214,9 +172,6 @@ public class RouteMatcherTests
 
     // ── Route priority ────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_LiteralBeatsParam_ReturnsLiteralFunctionId()
     {
@@ -228,9 +183,6 @@ public class RouteMatcherTests
         Assert.Equal("literal-fn", id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_ConstrainedParamBeatsUnconstrained_ReturnsConstrainedId()
     {
@@ -244,9 +196,6 @@ public class RouteMatcherTests
 
     // ── Case-insensitive method ───────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_MethodCaseInsensitive_Matches()
     {
@@ -259,9 +208,6 @@ public class RouteMatcherTests
 
     // ── Empty routes ──────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_NoRoutesRegistered_ReturnsNull()
     {
@@ -273,9 +219,6 @@ public class RouteMatcherTests
 
     // ── Leading slash in path ─────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Match_PathWithLeadingSlash_Matches()
     {

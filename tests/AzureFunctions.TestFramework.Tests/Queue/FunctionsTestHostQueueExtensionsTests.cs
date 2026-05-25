@@ -20,9 +20,6 @@ public class FunctionsTestHostQueueExtensionsTests
 
     // ── CreateBindingDataFromBytes ─────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromBytes_WithBytes_UsesBytes()
     {
@@ -44,9 +41,6 @@ public class FunctionsTestHostQueueExtensionsTests
         Assert.Equal(bytes, param.Bytes);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromBytes_MissingBytes_UsesEmpty()
     {
@@ -60,9 +54,6 @@ public class FunctionsTestHostQueueExtensionsTests
 
     // ── SerializeQueueMessage ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void SerializeQueueMessage_AllOptionalFields_IncludesAllFields()
     {
@@ -88,9 +79,6 @@ public class FunctionsTestHostQueueExtensionsTests
         Assert.True(doc.RootElement.TryGetProperty("ExpiresOn", out _));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void SerializeQueueMessage_NoOptionalDates_OmitsOptionalFields()
     {
@@ -114,9 +102,6 @@ public class FunctionsTestHostQueueExtensionsTests
 
     // ── CreateBindingDataFromQueueMessage ──────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromQueueMessage_ValidMessage_UsesModelBindingData()
     {
@@ -141,9 +126,6 @@ public class FunctionsTestHostQueueExtensionsTests
         Assert.Equal("AzureStorageQueues", param.ModelBindingData!.Source);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromQueueMessage_MissingMessage_Throws()
     {

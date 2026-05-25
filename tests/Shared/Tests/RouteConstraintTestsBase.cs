@@ -10,16 +10,10 @@ namespace TestProject;
 /// </summary>
 public abstract class RouteConstraintTestsBase : TestHostTestBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected RouteConstraintTestsBase(ITestOutputHelper output) : base(output) { }
 
     // ── Int constraint ────────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task IntConstraint_NumericValue_MatchesIntRoute()
     {
@@ -32,9 +26,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
         Assert.Equal("42", body.Value);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task IntConstraint_NegativeInteger_MatchesIntRoute()
     {
@@ -49,9 +40,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
 
     // ── Alpha constraint ──────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task AlphaConstraint_AlphaValue_MatchesAlphaRoute()
     {
@@ -66,9 +54,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
 
     // ── Best-match ordering ───────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task BestMatch_NumericSegment_RoutesToIntNotAlpha()
     {
@@ -80,9 +65,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
         Assert.Equal("int", body!.Type);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task BestMatch_AlphaSegment_RoutesToAlphaNotInt()
     {
@@ -94,9 +76,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
         Assert.Equal("alpha", body!.Type);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task NoMatchingConstraint_Returns404()
     {
@@ -108,9 +87,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
 
     // ── Optional parameter ────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task OptionalParam_WithValue_ReturnsValue()
     {
@@ -122,9 +98,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
         Assert.Equal("hello", body.Page);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task OptionalParam_Absent_ReturnsNullPage()
     {
@@ -138,9 +111,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
 
     // ── Catch-all parameter ───────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CatchAll_SingleSegment_CapturesSegment()
     {
@@ -152,9 +122,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
         Assert.Equal("readme.txt", body.Rest);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CatchAll_MultipleSegments_CapturesAll()
     {
@@ -168,9 +135,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
 
     // ── Combined constraints ──────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task RangeConstraint_ValueInRange_Matches()
     {
@@ -183,9 +147,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
         Assert.Equal("50", body.Value);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task RangeConstraint_ValueBelowMin_Returns404()
     {
@@ -195,9 +156,6 @@ public abstract class RouteConstraintTestsBase : TestHostTestBase
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task RangeConstraint_ValueAboveMax_Returns404()
     {

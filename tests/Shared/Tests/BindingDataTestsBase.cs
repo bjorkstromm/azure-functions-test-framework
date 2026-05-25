@@ -8,9 +8,6 @@ namespace TestProject;
 /// </summary>
 public abstract class BindingDataTestsBase : TestHostTestBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected BindingDataTestsBase(ITestOutputHelper output) : base(output) { }
 
     private sealed record BindingDataPayload(
@@ -21,9 +18,6 @@ public abstract class BindingDataTestsBase : TestHostTestBase
 
     private sealed record NestedObject(string Inner);
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task EchoBindingData_StringProperty_PresentInBindingData()
     {
@@ -41,9 +35,6 @@ public abstract class BindingDataTestsBase : TestHostTestBase
         Assert.Equal("hello", bindingData["stringField"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task EchoBindingData_NumberProperty_PresentInBindingDataAsString()
     {
@@ -61,9 +52,6 @@ public abstract class BindingDataTestsBase : TestHostTestBase
         Assert.Equal("42", bindingData["numberField"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task EchoBindingData_ObjectProperty_PresentInBindingDataAsJsonString()
     {
@@ -84,9 +72,6 @@ public abstract class BindingDataTestsBase : TestHostTestBase
         Assert.Contains("inner", objectJson, StringComparison.OrdinalIgnoreCase);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task EchoBindingData_ArrayProperty_AbsentFromBindingData()
     {
@@ -104,9 +89,6 @@ public abstract class BindingDataTestsBase : TestHostTestBase
         Assert.False(bindingData.ContainsKey("arrayField"), "BindingData should NOT contain 'arrayField'");
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task EchoBindingData_QueryAndHeaders_PresentInBindingData()
     {

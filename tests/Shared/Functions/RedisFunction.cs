@@ -28,9 +28,6 @@ public class RedisFunction
     private readonly ILogger<RedisFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public RedisFunction(ILogger<RedisFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;

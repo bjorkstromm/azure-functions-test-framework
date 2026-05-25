@@ -19,9 +19,6 @@ public sealed class DurableErrorHandlingTests
 
     private readonly ITestOutputHelper _output;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public DurableErrorHandlingTests(ITestOutputHelper output)
     {
         _output = output;
@@ -29,9 +26,6 @@ public sealed class DurableErrorHandlingTests
 
     // ── Failing orchestrations ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task FailingOrchestration_StatusIsFailed_WithFailureDetails()
     {
@@ -51,9 +45,6 @@ public sealed class DurableErrorHandlingTests
         Assert.False(string.IsNullOrEmpty(metadata.FailureDetails!.ErrorMessage));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task FailingActivity_PropagatesAsOrchestrationFailure_WithFailureDetails()
     {
@@ -75,9 +66,6 @@ public sealed class DurableErrorHandlingTests
 
     // ── CreateTimer (no-op) ───────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task Orchestration_WithCreateTimer_CompletesSuccessfully()
     {
@@ -98,9 +86,6 @@ public sealed class DurableErrorHandlingTests
 
     // ── SendEvent (supported) ─────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task Orchestration_WithSendEvent_CompletesSuccessfully()
     {
@@ -120,9 +105,6 @@ public sealed class DurableErrorHandlingTests
 
     // ── Client query APIs ─────────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetAllInstancesAsync_ReturnsResults()
     {
@@ -141,9 +123,6 @@ public sealed class DurableErrorHandlingTests
 
     // ── Non-existent instance guard ───────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetInstancesAsync_NonExistentInstance_ReturnsNull()
     {
@@ -155,9 +134,6 @@ public sealed class DurableErrorHandlingTests
         Assert.Null(metadata);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task RaiseEventAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -168,9 +144,6 @@ public sealed class DurableErrorHandlingTests
             client.RaiseEventAsync("does-not-exist", "some-event", null, TestCancellation));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SuspendInstanceAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -181,9 +154,6 @@ public sealed class DurableErrorHandlingTests
             client.SuspendInstanceAsync("does-not-exist", reason: null, TestCancellation));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task ResumeInstanceAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -194,9 +164,6 @@ public sealed class DurableErrorHandlingTests
             client.ResumeInstanceAsync("does-not-exist", reason: null, TestCancellation));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task TerminateInstanceAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -207,9 +174,6 @@ public sealed class DurableErrorHandlingTests
             client.TerminateInstanceAsync("does-not-exist", cancellation: TestCancellation));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task WaitForInstanceCompletionAsync_NonExistentInstance_ThrowsInvalidOperationException()
     {
@@ -224,9 +188,6 @@ public sealed class DurableErrorHandlingTests
 
     // ── Unknown function name guard ───────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeActivityAsync_UnknownFunctionName_ThrowsInvalidOperationException()
     {

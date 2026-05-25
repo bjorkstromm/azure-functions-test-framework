@@ -6,14 +6,8 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Durable;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class FakeTaskOrchestrationContextTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task Context_ActivitySubOrchestrationAndState_APIs_Work()
     {
@@ -61,9 +55,6 @@ public class FakeTaskOrchestrationContextTests
         Assert.Equal(("target-instance", "my-event"), (raisedEvents[0].InstanceId, raisedEvents[0].EventName));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task WaitForExternalEvent_WithCanceledToken_Throws()
     {

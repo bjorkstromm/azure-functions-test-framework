@@ -3,14 +3,8 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.ServiceBus;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class FakeServiceBusSessionMessageActionsTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SessionMethods_RecordActions_AndPreserveState()
     {
@@ -31,9 +25,6 @@ public class FakeServiceBusSessionMessageActionsTests
             x => Assert.Equal("RenewSessionLock", x.Action));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetSessionStateAsync_DefaultsToEmptyBinaryData()
     {
@@ -44,9 +35,6 @@ public class FakeServiceBusSessionMessageActionsTests
         Assert.Equal(BinaryData.Empty, state);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Reset_ClearsRecordedActions()
     {

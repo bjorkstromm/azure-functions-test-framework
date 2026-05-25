@@ -27,9 +27,6 @@ public class DurableContractTests
     private static Assembly DurableExtensionsAssembly =>
         typeof(DurableClientAttribute).Assembly;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void DurableTaskClientConverter_TypeExistsInDurableExtensionsAssembly()
     {
@@ -37,9 +34,6 @@ public class DurableContractTests
         Assert.NotNull(type);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionsDurableClientProvider_TypeExistsInDurableExtensionsAssembly()
     {
@@ -47,9 +41,6 @@ public class DurableContractTests
         Assert.NotNull(type);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionsDurableClientProvider_HasClientsPrivateField()
     {
@@ -65,9 +56,6 @@ public class DurableContractTests
             "The 'clients' field should be a dictionary type.");
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionsDurableClientProvider_HasClientKeyNestedType()
     {
@@ -78,9 +66,6 @@ public class DurableContractTests
         Assert.NotNull(clientKeyType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionsDurableClientProvider_ClientKey_HasThreeParameterConstructor()
     {
@@ -105,9 +90,6 @@ public class DurableContractTests
         Assert.NotNull(ctor);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionsDurableClientProvider_HasClientHolderNestedType()
     {
@@ -118,9 +100,6 @@ public class DurableContractTests
         Assert.NotNull(clientHolderType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionsDurableClientProvider_ClientHolder_HasTwoParameterConstructorWithDurableTaskClient()
     {
@@ -143,9 +122,6 @@ public class DurableContractTests
         Assert.NotNull(ctor);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionsDurableClientProvider_CanBeConstructedViaReflection()
     {

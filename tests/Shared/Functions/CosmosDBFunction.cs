@@ -23,9 +23,6 @@ public class CosmosDBFunction
     private readonly ILogger<CosmosDBFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public CosmosDBFunction(ILogger<CosmosDBFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
@@ -101,12 +98,6 @@ public class CosmosDBFunction
 /// <summary>A simple CosmosDB document model used in tests.</summary>
 public sealed class CosmosDocument
 {
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public string? Id { get; set; }
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public string? Title { get; set; }
 }

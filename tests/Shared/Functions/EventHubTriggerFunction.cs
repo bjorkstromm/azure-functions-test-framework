@@ -12,9 +12,6 @@ public class EventHubTriggerFunction
     private readonly ILogger<EventHubTriggerFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public EventHubTriggerFunction(ILogger<EventHubTriggerFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;

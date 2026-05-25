@@ -3,19 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace TestProject;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class RedisTests : RedisTestsBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public RedisTests(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected override Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems) =>
         new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(RedisFunction).Assembly)

@@ -13,9 +13,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
 {
     // ── WithSignalRConnectionInfo(url, accessToken) ───────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalRConnectionInfo_NullBuilder_Throws()
     {
@@ -24,9 +21,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
                 null!, "https://example.signalr.net", "token"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalRConnectionInfo_NullUrl_Throws()
     {
@@ -35,9 +29,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
             builder.WithSignalRConnectionInfo(null!, "token"));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalRConnectionInfo_NullToken_Throws()
     {
@@ -46,9 +37,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
             builder.WithSignalRConnectionInfo("https://example.signalr.net", null!));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalRConnectionInfo_ValidArgs_RegistersProvider()
     {
@@ -65,9 +53,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
 
     // ── WithSignalRConnectionInfo(SignalRConnectionInfo) ──────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalRConnectionInfo_NullConnectionInfo_Throws()
     {
@@ -77,9 +62,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
                 builder, (SignalRConnectionInfo)null!));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalRConnectionInfo_ConnectionInfoObject_RegistersProvider()
     {
@@ -100,9 +82,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
 
     // ── WithSignalRNegotiation ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalRNegotiation_NullBuilder_Throws()
     {
@@ -111,9 +90,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
                 null!, new SignalRNegotiationContext()));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalRNegotiation_NullContext_Throws()
     {
@@ -122,9 +98,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
             builder.WithSignalRNegotiation(null!));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalRNegotiation_ValidArgs_RegistersProvider()
     {
@@ -147,9 +120,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
 
     // ── WithSignalREndpoints ──────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalREndpoints_NullBuilder_Throws()
     {
@@ -158,9 +128,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
                 null!, new SignalREndpoint { Endpoint = "https://ep.signalr.net" }));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalREndpoints_NullEndpoints_Throws()
     {
@@ -169,9 +136,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
             FunctionsTestHostBuilderSignalRExtensions.WithSignalREndpoints(builder, null!));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalREndpoints_EmptyArray_RegistersProvider()
     {
@@ -185,9 +149,6 @@ public class FunctionsTestHostBuilderSignalRExtensionsTests
             builder.RegisteredProviders[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSignalREndpoints_WithEndpoints_RegistersProvider()
     {

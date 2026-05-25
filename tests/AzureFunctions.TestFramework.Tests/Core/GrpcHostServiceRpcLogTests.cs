@@ -10,9 +10,6 @@ namespace AzureFunctions.TestFramework.Tests.Core;
 /// </summary>
 public class GrpcHostServiceRpcLogTests
 {
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Theory]
     [InlineData(RpcLog.Types.Level.Trace, LogLevel.Trace)]
     [InlineData(RpcLog.Types.Level.Debug, LogLevel.Debug)]
@@ -28,9 +25,6 @@ public class GrpcHostServiceRpcLogTests
         Assert.Equal(expectedLogLevel, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void MapRpcLogLevel_UnknownLevel_ReturnsNone()
     {
@@ -38,9 +32,6 @@ public class GrpcHostServiceRpcLogTests
         Assert.Equal(LogLevel.None, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Theory]
     [InlineData(RpcLog.Types.Level.Trace)]
     [InlineData(RpcLog.Types.Level.Debug)]

@@ -4,26 +4,17 @@ using Microsoft.Extensions.Logging;
 
 namespace TestProject;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class EventGridTriggerFunction
 {
     private readonly ILogger<EventGridTriggerFunction> _logger;
     private readonly IProcessedItemsService _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public EventGridTriggerFunction(ILogger<EventGridTriggerFunction> logger, IProcessedItemsService processedItems)
     {
         _logger = logger;
         _processedItems = processedItems;
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Function("ProcessEventGridEvent")]
     public void Run([EventGridTrigger] EventGridEvent eventGridEvent)
     {

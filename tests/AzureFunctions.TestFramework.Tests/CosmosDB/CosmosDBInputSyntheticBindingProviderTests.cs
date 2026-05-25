@@ -4,14 +4,8 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.CosmosDB;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class CosmosDBInputSyntheticBindingProviderTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void BindingType_IsExpected()
     {
@@ -20,9 +14,6 @@ public class CosmosDBInputSyntheticBindingProviderTests
         Assert.Equal("cosmosDB", provider.BindingType);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MatchingKey_ReturnsJson()
     {
@@ -38,9 +29,6 @@ public class CosmosDBInputSyntheticBindingProviderTests
         Assert.Equal("""{"id":"1"}""", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_OutputDirection_ReturnsNullJson()
     {
@@ -52,9 +40,6 @@ public class CosmosDBInputSyntheticBindingProviderTests
         Assert.Equal("null", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateSyntheticParameter_MissingMapping_ReturnsNullJson()
     {
@@ -66,9 +51,6 @@ public class CosmosDBInputSyntheticBindingProviderTests
         Assert.Equal("null", result.Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Constructor_NullDictionary_Throws()
     {

@@ -9,28 +9,16 @@ public abstract class EventHubsTestsBase : TestHostTestBase
 {
     private InMemoryProcessedItemsService? _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected EventHubsTestsBase(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
         return await CreateTestHostWithProcessedItemsAsync(_processedItems);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems);
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeEventHubAsync_WithSingleEvent_Succeeds()
     {
@@ -45,9 +33,6 @@ public abstract class EventHubsTestsBase : TestHostTestBase
         Assert.Equal(body, processed[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeEventHubBatchAsync_WithMultipleEvents_Succeeds()
     {
@@ -62,9 +47,6 @@ public abstract class EventHubsTestsBase : TestHostTestBase
         Assert.Equal(bodies, processed);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeEventHubAsync_WithOutputBinding_CapturesReturnValue()
     {

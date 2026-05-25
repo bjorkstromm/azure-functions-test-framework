@@ -6,26 +6,17 @@ using Microsoft.Extensions.Hosting;
 
 namespace Sample.FunctionApp.Durable.Tests;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public sealed class DurableFunctionsSpikeTests
 {
     private static CancellationToken TestCancellation => TestContext.Current.CancellationToken;
 
     private readonly ITestOutputHelper _output;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public DurableFunctionsSpikeTests(ITestOutputHelper output)
     {
         _output = output;
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HttpStarter_ReturnsOk_ForFakeDurableExecution()
     {
@@ -42,9 +33,6 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("Hello, martin!", content);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HttpStarter_ReturnsOk_ForFakeDurableSubOrchestrationExecution()
     {
@@ -61,9 +49,6 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("Hello, martin! (from parent)", content);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_WithExpectedOutput()
     {
@@ -89,9 +74,6 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("Hello, martin!", metadata.ReadOutputAs<string>());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DurableClientProvider_CompletesFakeSubOrchestration_WithExpectedOutput()
     {
@@ -117,9 +99,6 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("Hello, martin! (from parent)", metadata.ReadOutputAs<string>());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_WithCustomStatus()
     {
@@ -149,9 +128,6 @@ public sealed class DurableFunctionsSpikeTests
         await Verify(customStatus);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task HttpStarter_ReturnsManagementPayload_AndStatusHelpers_ReadCustomStatus()
     {
@@ -180,9 +156,6 @@ public sealed class DurableFunctionsSpikeTests
         await Verify(customStatus);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_AfterExternalEvent()
     {
@@ -231,9 +204,6 @@ public sealed class DurableFunctionsSpikeTests
         await Verify(completedStatus).UseMethodName(nameof(DurableClientProvider_CompletesFakeOrchestration_AfterExternalEvent) + "_completed");
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_AfterBufferedExternalEvent()
     {
@@ -274,9 +244,6 @@ public sealed class DurableFunctionsSpikeTests
         await Verify(completedStatus);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task TestHost_InvokeActivityAsync_CompletesFakeActivity_WithExpectedOutput()
     {
@@ -293,9 +260,6 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("Hello, martin!", result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task TestHost_InvokeActivityAsync_ResolvesServices_ForInstanceActivity()
     {
@@ -312,9 +276,6 @@ public sealed class DurableFunctionsSpikeTests
         Assert.Equal("Hello, martin! (from service)", result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task TestHost_InvokeActivityAsync_ResolvesDurableClient_ForActivityWithDurableClientParameter()
     {
@@ -333,9 +294,6 @@ public sealed class DurableFunctionsSpikeTests
         Assert.StartsWith("Hello, martin! (follow-up: ", result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DurableClientProvider_CompletesFakeOrchestration_WithActivityThatUsesDurableClient()
     {

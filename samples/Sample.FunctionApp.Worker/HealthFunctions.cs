@@ -5,9 +5,6 @@ using System.Net;
 
 namespace Sample.FunctionApp.Worker;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class HealthFunctions
 {
     /// <summary>
@@ -18,17 +15,11 @@ public class HealthFunctions
 
     private readonly IConfiguration _configuration;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public HealthFunctions(IConfiguration configuration)
     {
         _configuration = configuration;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("Health")]
     public async Task<HttpResponseData> Health(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "health")] HttpRequestData req)
@@ -71,9 +62,6 @@ public class HealthFunctions
         return response;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("Echo")]
     public async Task<HttpResponseData> Echo(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "echo")] HttpRequestData req)
@@ -85,9 +73,6 @@ public class HealthFunctions
         return response;
     }
 
-    /// <summary>
-    /// Represents this member.
-    /// </summary>
     [Function("GetConfigurationValue")]
     public async Task<HttpResponseData> GetConfigurationValue(
         [HttpTrigger(AuthorizationLevel.Anonymous, "get", Route = "config/{key}")] HttpRequestData req,
@@ -104,17 +89,8 @@ public class HealthFunctions
     }
 }
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public sealed class ConfigurationValueResponse
 {
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public string Key { get; set; } = string.Empty;
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public string? Value { get; set; }
 }

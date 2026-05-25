@@ -9,17 +9,11 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Kafka;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class FunctionsTestHostKafkaExtensionsTests
 {
     private static readonly FunctionRegistration FakeRegistration =
         new("fn-id-1", "KafkaFunc", "kafkaTrigger", "kafkaItem");
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaAsync_String_UsesJsonBinding()
     {
@@ -32,9 +26,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal("hello", host.LastBindingData.InputData[0].Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaBatchAsync_String_UsesJsonArrayBinding()
     {
@@ -49,9 +40,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal("two", doc.RootElement[1].GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaBatchAsync_String_EmptyBatch_Throws()
     {
@@ -61,9 +49,6 @@ public class FunctionsTestHostKafkaExtensionsTests
             FunctionsTestHostKafkaExtensions.InvokeKafkaBatchAsync(host, "KafkaFunc", Array.Empty<string>(), CancellationToken.None));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaAsync_Bytes_UsesBytesBinding()
     {
@@ -76,9 +61,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal(payload, host.LastBindingData!.InputData[0].Bytes);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaBatchAsync_Bytes_UsesBase64JsonArray()
     {
@@ -97,9 +79,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal(Convert.ToBase64String(payloads[1]), doc.RootElement[1].GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaBatchAsync_Bytes_EmptyBatch_Throws()
     {
@@ -109,9 +88,6 @@ public class FunctionsTestHostKafkaExtensionsTests
             FunctionsTestHostKafkaExtensions.InvokeKafkaBatchAsync(host, "KafkaFunc", Array.Empty<byte[]>(), CancellationToken.None));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaAsync_Record_UsesModelBindingData()
     {
@@ -132,9 +108,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.NotEmpty(model.Content);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaBatchAsync_Record_UsesCollectionModelBindingData()
     {
@@ -158,9 +131,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         });
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaBatchAsync_Record_EmptyBatch_Throws()
     {
@@ -170,9 +140,6 @@ public class FunctionsTestHostKafkaExtensionsTests
             FunctionsTestHostKafkaExtensions.InvokeKafkaBatchAsync(host, "KafkaFunc", Array.Empty<KafkaRecord>(), CancellationToken.None));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaAsync_Generic_UsesCamelCaseByDefault()
     {
@@ -184,9 +151,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal("A1", doc.RootElement.GetProperty("orderId").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaAsync_Generic_UsesProvidedSerializerOptions()
     {
@@ -199,9 +163,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal("A1", doc.RootElement.GetProperty("OrderId").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaBatchAsync_Generic_UsesJsonArray()
     {
@@ -219,9 +180,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal("B2", doc.RootElement[1].GetProperty("orderId").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaBatchAsync_Generic_EmptyBatch_Throws()
     {
@@ -231,9 +189,6 @@ public class FunctionsTestHostKafkaExtensionsTests
             FunctionsTestHostKafkaExtensions.InvokeKafkaBatchAsync(host, "KafkaFunc", Array.Empty<SamplePayload>(), cancellationToken: CancellationToken.None));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromJson_MissingJson_UsesEmptyObject()
     {
@@ -244,9 +199,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal("{}", binding.InputData[0].Json);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromBytes_MissingBytes_UsesEmptyArray()
     {
@@ -257,9 +209,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal(Array.Empty<byte>(), binding.InputData[0].Bytes);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromRecord_MissingRecord_Throws()
     {
@@ -270,9 +219,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.IsType<InvalidOperationException>(ex.InnerException);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBindingDataFromRecords_MissingRecords_UsesEmptyCollection()
     {
@@ -285,9 +231,6 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Empty(collection!);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaAsync_NullHost_Throws()
     {
@@ -295,9 +238,6 @@ public class FunctionsTestHostKafkaExtensionsTests
             FunctionsTestHostKafkaExtensions.InvokeKafkaAsync((IFunctionsTestHost)null!, "KafkaFunc", "hello", CancellationToken.None));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeKafkaAsync_EmptyFunctionName_Throws()
     {

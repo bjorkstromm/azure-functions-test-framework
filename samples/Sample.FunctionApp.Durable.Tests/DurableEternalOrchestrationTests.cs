@@ -18,9 +18,6 @@ public sealed class DurableEternalOrchestrationTests
 
     private readonly ITestOutputHelper _output;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public DurableEternalOrchestrationTests(ITestOutputHelper output)
     {
         _output = output;
@@ -28,9 +25,6 @@ public sealed class DurableEternalOrchestrationTests
 
     // ── HTTP-based lifecycle tests ────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task StartEternalCounter_ReturnsAccepted_AndInstanceIsRunning()
     {
@@ -47,9 +41,6 @@ public sealed class DurableEternalOrchestrationTests
         await WaitForHttpStatusAsync(httpClient, $"/api/eternal/{instanceId}/status", "Running");
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task StartEternalCounter_ReturnsConflict_WhenAlreadyRunning()
     {
@@ -71,9 +62,6 @@ public sealed class DurableEternalOrchestrationTests
         await TerminateAndWaitAsync(host, instanceId);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task IncrementEternalCounter_AdvancesCount()
     {
@@ -101,9 +89,6 @@ public sealed class DurableEternalOrchestrationTests
         await TerminateAndWaitAsync(host, instanceId);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SuspendAndResumeEternalCounter_ChangesStatusAccordingly()
     {
@@ -134,9 +119,6 @@ public sealed class DurableEternalOrchestrationTests
         await TerminateAndWaitAsync(host, instanceId);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task TerminateEternalCounter_ChangesStatusToTerminated()
     {
@@ -159,9 +141,6 @@ public sealed class DurableEternalOrchestrationTests
         await WaitForHttpStatusAsync(httpClient, $"/api/eternal/{instanceId}/status", "Terminated");
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task TerminateWithForce_WhenSuspended_Terminates()
     {
@@ -197,9 +176,6 @@ public sealed class DurableEternalOrchestrationTests
         await WaitForHttpStatusAsync(httpClient, $"/api/eternal/{instanceId}/status", "Terminated");
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task StartEternalCounter_AllowsRestartAfterTermination()
     {
@@ -226,9 +202,6 @@ public sealed class DurableEternalOrchestrationTests
 
     // ── Direct-client eternal orchestrator test ───────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task EternalCounter_DirectClient_LoopsThroughMultipleIterations()
     {

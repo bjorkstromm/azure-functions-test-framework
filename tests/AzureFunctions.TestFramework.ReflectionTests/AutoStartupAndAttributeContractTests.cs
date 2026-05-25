@@ -13,9 +13,6 @@ namespace AzureFunctions.TestFramework.ReflectionTests;
 /// </summary>
 public class AutoStartupAndAttributeContractTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IAutoConfigureStartup_IsPublicInterface()
     {
@@ -27,9 +24,6 @@ public class AutoStartupAndAttributeContractTests
         Assert.True(type.IsPublic);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void IAutoConfigureStartup_HasConfigureMethod()
     {
@@ -40,9 +34,6 @@ public class AutoStartupAndAttributeContractTests
         Assert.NotNull(configureMethod);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void FunctionAttribute_IsPublicAndUsable()
     {
@@ -52,9 +43,6 @@ public class AutoStartupAndAttributeContractTests
         Assert.True(Attribute.IsDefined(attr, typeof(AttributeUsageAttribute)));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ActivityTriggerAttribute_IsPublicAndUsable()
     {
@@ -62,9 +50,6 @@ public class AutoStartupAndAttributeContractTests
         Assert.True(attr.IsPublic);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void OrchestrationTriggerAttribute_IsPublicAndUsable()
     {
@@ -72,9 +57,6 @@ public class AutoStartupAndAttributeContractTests
         Assert.True(attr.IsPublic);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void EntityTriggerAttribute_IsPublicAndUsable()
     {
@@ -82,9 +64,6 @@ public class AutoStartupAndAttributeContractTests
         Assert.True(attr.IsPublic);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void DurableClientAttribute_IsPublicAndUsable()
     {

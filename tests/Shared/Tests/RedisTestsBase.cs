@@ -11,14 +11,8 @@ public abstract class RedisTestsBase : TestHostTestBase
 {
     private InMemoryProcessedItemsService? _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected RedisTestsBase(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();

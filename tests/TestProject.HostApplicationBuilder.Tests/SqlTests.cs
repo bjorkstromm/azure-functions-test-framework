@@ -3,19 +3,10 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace TestProject;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class SqlTests : SqlTestsBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public SqlTests(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected override Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems) =>
         new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(SqlFunction).Assembly)

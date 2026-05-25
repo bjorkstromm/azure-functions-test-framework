@@ -5,14 +5,8 @@ namespace TestProject;
 /// <summary>Tests for HttpRequest CRUD endpoints at /api/aspnetcore/items. ASP.NET Core flavors only.</summary>
 public abstract class AspNetCoreHttpTriggerTestsBase : TestHostTestBase
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected AspNetCoreHttpTriggerTestsBase(ITestOutputHelper output) : base(output) { }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetItemsAspNetCore_ReturnsEmptyList()
     {
@@ -23,9 +17,6 @@ public abstract class AspNetCoreHttpTriggerTestsBase : TestHostTestBase
         Assert.Empty(items);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task CreateItemAspNetCore_ReturnsCreated()
     {
@@ -36,9 +27,6 @@ public abstract class AspNetCoreHttpTriggerTestsBase : TestHostTestBase
         Assert.NotEmpty(item.Id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetItemAspNetCore_ReturnsItem_WhenExists()
     {
@@ -51,9 +39,6 @@ public abstract class AspNetCoreHttpTriggerTestsBase : TestHostTestBase
         Assert.Equal(created.Id, item!.Id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task GetItemByGuidAspNetCore_ReturnsItem_WhenExistsAsGuid()
     {
@@ -66,9 +51,6 @@ public abstract class AspNetCoreHttpTriggerTestsBase : TestHostTestBase
         Assert.Equal(created.Id, item!.Id);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task UpdateItemAspNetCore_UpdatesExistingItem()
     {
@@ -85,9 +67,6 @@ public abstract class AspNetCoreHttpTriggerTestsBase : TestHostTestBase
         Assert.Equal("Updated ANC", updated!.Name);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task DeleteItemAspNetCore_ReturnsNoContent_WhenExists()
     {

@@ -8,14 +8,8 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Durable;
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public class FakeTaskEntityContextTests
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ScheduleNewOrchestration_WithoutDelegate_Throws()
     {
@@ -25,9 +19,6 @@ public class FakeTaskEntityContextTests
         Assert.Throws<NotSupportedException>(() => sut.ScheduleNewOrchestration(new TaskName("orch"), null, null));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ScheduleNewOrchestration_WithDelegate_ReturnsInstanceId()
     {
@@ -43,9 +34,6 @@ public class FakeTaskEntityContextTests
         Assert.Equal("orch-instance", result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task SignalEntity_FireAndForget_ExecutesOperation()
     {

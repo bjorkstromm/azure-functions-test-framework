@@ -12,17 +12,11 @@ public class OutputBindingFunctions
 {
     private readonly ILogger<OutputBindingFunctions> _logger;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     public OutputBindingFunctions(ILogger<OutputBindingFunctions> logger)
     {
         _logger = logger;
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Function("ReturnQueueMessageValue")]
     public string ReturnQueueMessageValue([QueueTrigger("return-value-queue")] string message)
     {
@@ -30,9 +24,6 @@ public class OutputBindingFunctions
         return $"return:{message}";
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Function("CreateQueueOutputMessages")]
     public QueueOutputBindingResult CreateQueueOutputMessages([QueueTrigger("output-binding-queue")] string message)
     {
@@ -47,9 +38,6 @@ public class OutputBindingFunctions
         };
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Function("CreateBlobOutputDocument")]
     public BlobOutputBindingResult CreateBlobOutputDocument([QueueTrigger("blob-output-binding-queue")] string message)
     {
@@ -60,9 +48,6 @@ public class OutputBindingFunctions
         };
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Function("CreateTableOutputEntity")]
     public TableOutputBindingResult CreateTableOutputEntity([QueueTrigger("table-output-binding-queue")] string message)
     {
@@ -79,69 +64,33 @@ public class OutputBindingFunctions
     }
 }
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public sealed class QueueOutputBindingResult
 {
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     [QueueOutput("captured-output-queue")]
     public string[] Messages { get; set; } = [];
 }
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public sealed class BlobOutputBindingResult
 {
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     [BlobOutput("captured-output/blob-output.txt")]
     public string Content { get; set; } = string.Empty;
 }
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public sealed class TableOutputBindingResult
 {
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [TableOutput("CapturedOutputTable")]
     public CapturedTableEntity Entity { get; set; } = new();
 }
 
-/// <summary>
-/// Represents this type.
-/// </summary>
 public sealed class CapturedTableEntity : ITableEntity
 {
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public string PartitionKey { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public string RowKey { get; set; } = string.Empty;
 
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public DateTimeOffset? Timestamp { get; set; }
 
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public ETag ETag { get; set; }
 
-    /// <summary>
-    /// Gets or sets the value.
-    /// </summary>
     public string Payload { get; set; } = string.Empty;
 }

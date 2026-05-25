@@ -18,9 +18,6 @@ public class FunctionsTestHostBlobExtensionsTests
 
     // ── CreateBytesBindingData ─────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBytesBindingData_WithContent_UsesBytesAndNullMetadata()
     {
@@ -39,9 +36,6 @@ public class FunctionsTestHostBlobExtensionsTests
         Assert.Null(binding.TriggerMetadataJson);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBytesBindingData_WithTriggerMetadata_IncludesMetadata()
     {
@@ -63,9 +57,6 @@ public class FunctionsTestHostBlobExtensionsTests
         Assert.Equal(metaJson, binding.TriggerMetadataJson!["myBlob"]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBytesBindingData_MissingContent_UsesEmpty()
     {
@@ -78,9 +69,6 @@ public class FunctionsTestHostBlobExtensionsTests
 
     // ── CreateClientBindingData ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateClientBindingData_WithJson_UsesJsonBinding()
     {
@@ -105,9 +93,6 @@ public class FunctionsTestHostBlobExtensionsTests
         Assert.NotNull(binding.TriggerMetadataJson);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateClientBindingData_MissingJson_UsesEmptyJsonObject()
     {
@@ -121,9 +106,6 @@ public class FunctionsTestHostBlobExtensionsTests
 
     // ── CreateBlobClientJson ───────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBlobClientJson_ContainerAndBlob_ContainsMarker()
     {
@@ -136,9 +118,6 @@ public class FunctionsTestHostBlobExtensionsTests
         Assert.Equal("my-blob.txt", doc.RootElement.GetProperty("BlobName").GetString());
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBlobClientJson_NullBlobName_BlobNameIsNull()
     {
@@ -150,9 +129,6 @@ public class FunctionsTestHostBlobExtensionsTests
 
     // ── InvokeBlobAsync (content overload) validation ─────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeBlobAsync_NullContent_Throws()
     {
@@ -161,9 +137,6 @@ public class FunctionsTestHostBlobExtensionsTests
             () => FunctionsTestHostBlobExtensions.InvokeBlobAsync(host, "BlobFunc", (BinaryData)null!, cancellationToken: TestContext.Current.CancellationToken));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeBlobAsync_WithBlobNameAndContainer_BuildsTriggerMetadata()
     {
@@ -178,9 +151,6 @@ public class FunctionsTestHostBlobExtensionsTests
         Assert.Contains("my-blob.txt", meta);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void InvokeBlobAsync_WithoutBlobName_NoTriggerMetadata()
     {

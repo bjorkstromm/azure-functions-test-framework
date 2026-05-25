@@ -8,23 +8,14 @@ public abstract class RabbitMqTestsBase(ITestOutputHelper output) : TestHostTest
 {
     private InMemoryProcessedItemsService? _processedItems;
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected override async Task<IFunctionsTestHost> CreateTestHostAsync()
     {
         _processedItems = new InMemoryProcessedItemsService();
         return await CreateTestHostWithProcessedItemsAsync(_processedItems);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems);
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeRabbitMQAsync_WithStringBody_Succeeds()
     {
@@ -36,9 +27,6 @@ public abstract class RabbitMqTestsBase(ITestOutputHelper output) : TestHostTest
         Assert.Equal(body, processed[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeRabbitMQAsync_WithByteBody_Succeeds()
     {
@@ -51,9 +39,6 @@ public abstract class RabbitMqTestsBase(ITestOutputHelper output) : TestHostTest
         Assert.Equal(body, processed[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeRabbitMQAsync_WithPocoPayload_Succeeds()
     {
@@ -65,9 +50,6 @@ public abstract class RabbitMqTestsBase(ITestOutputHelper output) : TestHostTest
         Assert.Equal("order-99", processed[0]);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeRabbitMQAsync_WithOptionalMessageProperties_PopulatesBindingData()
     {
@@ -88,9 +70,6 @@ public abstract class RabbitMqTestsBase(ITestOutputHelper output) : TestHostTest
         Assert.Contains("msg-id-42", processed[0], StringComparison.Ordinal);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public async Task InvokeRabbitMQAsync_WithOutputBinding_CapturesOutputDataAndReadOutputAs()
     {

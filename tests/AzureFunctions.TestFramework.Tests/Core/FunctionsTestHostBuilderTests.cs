@@ -10,9 +10,6 @@ public class FunctionsTestHostBuilderTests
 {
     // ── Build without assembly ────────────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void Build_WithoutFunctionsAssembly_ThrowsInvalidOperationException()
     {
@@ -23,9 +20,6 @@ public class FunctionsTestHostBuilderTests
 
     // ── CreateBuilder static helpers ──────────────────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBuilder_ReturnsNewBuilder()
     {
@@ -34,9 +28,6 @@ public class FunctionsTestHostBuilderTests
         Assert.IsType<FunctionsTestHostBuilder>(builder);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void CreateBuilderGeneric_SetsAssembly()
     {
@@ -47,9 +38,6 @@ public class FunctionsTestHostBuilderTests
 
     // ── Fluent builder methods return the same builder instance ───────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ConfigureServices_ReturnsSameBuilder()
     {
@@ -58,9 +46,6 @@ public class FunctionsTestHostBuilderTests
         Assert.Same(builder, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ConfigureSetting_ReturnsSameBuilder()
     {
@@ -69,9 +54,6 @@ public class FunctionsTestHostBuilderTests
         Assert.Same(builder, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ConfigureEnvironmentVariable_ReturnsSameBuilder()
     {
@@ -80,9 +62,6 @@ public class FunctionsTestHostBuilderTests
         Assert.Same(builder, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithInvocationTimeout_ReturnsSameBuilder()
     {
@@ -91,9 +70,6 @@ public class FunctionsTestHostBuilderTests
         Assert.Same(builder, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSyntheticBindingProvider_ReturnsSameBuilder()
     {
@@ -103,9 +79,6 @@ public class FunctionsTestHostBuilderTests
         Assert.Same(builder, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithSyntheticBindingProvider_NullProvider_Throws()
     {
@@ -113,9 +86,6 @@ public class FunctionsTestHostBuilderTests
         Assert.Throws<ArgumentNullException>(() => builder.WithSyntheticBindingProvider(null!));
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithHostBuilderFactory_ReturnsSameBuilder()
     {
@@ -124,9 +94,6 @@ public class FunctionsTestHostBuilderTests
         Assert.Same(builder, result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void WithHostApplicationBuilderFactory_ReturnsSameBuilder()
     {
@@ -137,9 +104,6 @@ public class FunctionsTestHostBuilderTests
 
     // ── ReadRoutePrefixFromHostJson via reflection ─────────────────────────────
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void ReadRoutePrefixFromHostJson_NoHostJson_ReturnsApi()
     {
@@ -148,9 +112,6 @@ public class FunctionsTestHostBuilderTests
         Assert.Equal("api", prefix);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TryReadRoutePrefixFromFile_NonExistentFile_ReturnsNull()
     {
@@ -158,9 +119,6 @@ public class FunctionsTestHostBuilderTests
         Assert.Null(result);
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TryReadRoutePrefixFromFile_ValidHostJsonWithRoutePrefix_ReturnsPrefix()
     {
@@ -177,9 +135,6 @@ public class FunctionsTestHostBuilderTests
         }
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TryReadRoutePrefixFromFile_ValidHostJsonWithoutRoutePrefix_ReturnsNull()
     {
@@ -196,9 +151,6 @@ public class FunctionsTestHostBuilderTests
         }
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TryReadRoutePrefixFromFile_InvalidJson_ReturnsNull()
     {
@@ -215,9 +167,6 @@ public class FunctionsTestHostBuilderTests
         }
     }
 
-    /// <summary>
-    /// Executes this operation.
-    /// </summary>
     [Fact]
     public void TryReadRoutePrefixFromFile_EmptyJsonObject_ReturnsNull()
     {
