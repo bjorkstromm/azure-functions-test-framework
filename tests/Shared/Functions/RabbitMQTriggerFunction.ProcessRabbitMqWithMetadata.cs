@@ -7,7 +7,8 @@ namespace TestProject;
 public partial class RabbitMQTriggerFunction
 {
     /// <summary>
-    /// Records the message body together with selected trigger metadata from <see cref="FunctionContext.BindingContext.BindingData"/>.
+    /// Records the message body together with selected trigger metadata from
+    /// <c>FunctionContext.BindingContext.BindingData</c>.
     /// </summary>
     /// <param name="message">The message body.</param>
     /// <param name="context">Function execution context.</param>

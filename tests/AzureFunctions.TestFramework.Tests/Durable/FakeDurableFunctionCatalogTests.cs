@@ -112,7 +112,7 @@ public class FakeDurableFunctionCatalogTests
     public static string CatalogTestActivityFn([ActivityTrigger] string input) => input;
 
     [Function(CatalogTestOrchestratorFunctionName)]
-    public static Task CatalogTestOrchestratorFn(
+    internal static Task CatalogTestOrchestratorFn(
         [OrchestrationTrigger] TaskOrchestrationContext ctx) => Task.CompletedTask;
 
     /// <summary>

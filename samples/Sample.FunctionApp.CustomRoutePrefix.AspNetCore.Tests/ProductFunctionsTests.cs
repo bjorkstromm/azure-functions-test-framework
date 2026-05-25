@@ -46,9 +46,10 @@ public class ProductFunctionsTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
         var created = await createResponse.Content.ReadFromJsonAsync<JsonElement>(TestCancellation);
         var productId = created.GetProperty("id").GetString();
+        Assert.False(string.IsNullOrWhiteSpace(productId));
 
         // Verify HttpRequest + Guid route param binding works
-        var response = await _client.GetAsync($"/v1/products/by-id/{productId}", TestCancellation);
+        var response = await _client!.GetAsync($"/v1/products/by-id/{productId!}", TestCancellation);
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }

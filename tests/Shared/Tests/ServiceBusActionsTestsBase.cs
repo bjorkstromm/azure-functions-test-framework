@@ -6,8 +6,8 @@ using Xunit;
 namespace TestProject;
 
 /// <summary>
-/// Shared abstract test base for verifying <see cref="ServiceBusMessageActions"/> and
-/// <see cref="ServiceBusSessionMessageActions"/> fake injection across all four host flavours.
+/// Shared abstract test base for verifying <c>ServiceBusMessageActions</c> and
+/// <c>ServiceBusSessionMessageActions</c> fake injection across all four host flavours.
 /// </summary>
 public abstract class ServiceBusActionsTestsBase : TestHostTestBase
 {

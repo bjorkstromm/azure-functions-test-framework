@@ -12,7 +12,7 @@ namespace AzureFunctions.TestFramework.Tests.Core;
 /// <summary>
 /// Unit tests for <see cref="GrpcHostService.ToTypedData"/>,
 /// <see cref="GrpcHostService.ToParameterBinding"/>, and
-/// <see cref="GrpcHostService.ProcessRawBinding"/>-related private logic.
+/// <c>ProcessRawBinding</c>-related private logic.
 /// </summary>
 public class GrpcHostServiceBindingTests
 {

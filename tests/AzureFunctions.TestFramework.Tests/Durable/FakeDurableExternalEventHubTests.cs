@@ -12,9 +12,9 @@ public class FakeDurableExternalEventHubTests
     public async Task RaiseEvent_BeforeWait_WaitReturnsPayload()
     {
         var hub = new FakeDurableExternalEventHub();
-        await hub.RaiseEventAsync("instance-1", "ApprovalReceived", "approved", CancellationToken.None);
+        await hub.RaiseEventAsync("instance-1", "ApprovalReceived", "approved", TestContext.Current.CancellationToken);
 
-        var result = await hub.WaitForEventAsync("instance-1", "ApprovalReceived", CancellationToken.None);
+        var result = await hub.WaitForEventAsync("instance-1", "ApprovalReceived", TestContext.Current.CancellationToken);
 
         Assert.Equal("approved", result);
     }
@@ -24,12 +24,12 @@ public class FakeDurableExternalEventHubTests
     {
         var hub = new FakeDurableExternalEventHub();
 
-        var waitTask = hub.WaitForEventAsync("instance-2", "OrderPlaced", CancellationToken.None);
+        var waitTask = hub.WaitForEventAsync("instance-2", "OrderPlaced", TestContext.Current.CancellationToken);
 
-        await Task.Delay(10);
-        await hub.RaiseEventAsync("instance-2", "OrderPlaced", new { amount = 100 }, CancellationToken.None);
+        await Task.Delay(10, TestContext.Current.CancellationToken);
+        await hub.RaiseEventAsync("instance-2", "OrderPlaced", new { amount = 100 }, TestContext.Current.CancellationToken);
 
-        var result = await waitTask.WaitAsync(TimeSpan.FromSeconds(5));
+        var result = await waitTask.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
         Assert.NotNull(result);
     }
 
@@ -37,9 +37,9 @@ public class FakeDurableExternalEventHubTests
     public async Task RaiseEvent_NullPayload_WaitReturnsNull()
     {
         var hub = new FakeDurableExternalEventHub();
-        await hub.RaiseEventAsync("instance-3", "NullEvent", null, CancellationToken.None);
+        await hub.RaiseEventAsync("instance-3", "NullEvent", null, TestContext.Current.CancellationToken);
 
-        var result = await hub.WaitForEventAsync("instance-3", "NullEvent", CancellationToken.None);
+        var result = await hub.WaitForEventAsync("instance-3", "NullEvent", TestContext.Current.CancellationToken);
 
         Assert.Null(result);
     }
@@ -48,11 +48,11 @@ public class FakeDurableExternalEventHubTests
     public async Task MultipleBufferedEvents_DequeueInOrder()
     {
         var hub = new FakeDurableExternalEventHub();
-        await hub.RaiseEventAsync("instance-4", "StepComplete", "step1", CancellationToken.None);
-        await hub.RaiseEventAsync("instance-4", "StepComplete", "step2", CancellationToken.None);
+        await hub.RaiseEventAsync("instance-4", "StepComplete", "step1", TestContext.Current.CancellationToken);
+        await hub.RaiseEventAsync("instance-4", "StepComplete", "step2", TestContext.Current.CancellationToken);
 
-        var first = await hub.WaitForEventAsync("instance-4", "StepComplete", CancellationToken.None);
-        var second = await hub.WaitForEventAsync("instance-4", "StepComplete", CancellationToken.None);
+        var first = await hub.WaitForEventAsync("instance-4", "StepComplete", TestContext.Current.CancellationToken);
+        var second = await hub.WaitForEventAsync("instance-4", "StepComplete", TestContext.Current.CancellationToken);
 
         Assert.Equal("step1", first);
         Assert.Equal("step2", second);

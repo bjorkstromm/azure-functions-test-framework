@@ -55,7 +55,7 @@ public class DurableHttpClientExtensionsTests
     public async Task ReadDurableOrchestrationStatusAsync_NullResponse_Throws()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            ((HttpResponseMessage)null!).ReadDurableOrchestrationStatusAsync());
+            ((HttpResponseMessage)null!).ReadDurableOrchestrationStatusAsync(TestContext.Current.CancellationToken));
     }
 
     // -------------------------------------------------------------------------
@@ -67,7 +67,7 @@ public class DurableHttpClientExtensionsTests
     {
         var payload = new DurableHttpManagementPayload { StatusQueryGetUri = "http://example.com/status" };
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            ((HttpClient)null!).WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5)));
+            ((HttpClient)null!).WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -75,7 +75,7 @@ public class DurableHttpClientExtensionsTests
     {
         using var client = new HttpClient();
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            client.WaitForCompletionAsync(null!, TimeSpan.FromSeconds(5)));
+            client.WaitForCompletionAsync(null!, TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -84,7 +84,7 @@ public class DurableHttpClientExtensionsTests
         using var client = new HttpClient();
         var payload = new DurableHttpManagementPayload { StatusQueryGetUri = "" };
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            client.WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5)));
+            client.WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -93,7 +93,7 @@ public class DurableHttpClientExtensionsTests
         using var client = new HttpClient();
         var payload = new DurableHttpManagementPayload { StatusQueryGetUri = "   " };
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            client.WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5)));
+            client.WaitForCompletionAsync(payload, TimeSpan.FromSeconds(5), cancellationToken: TestContext.Current.CancellationToken));
     }
 
     // -------------------------------------------------------------------------
@@ -171,7 +171,8 @@ public class DurableHttpClientExtensionsTests
             client.WaitForCompletionAsync(
                 payload,
                 timeout: TimeSpan.FromMilliseconds(100),
-                pollInterval: TimeSpan.FromMilliseconds(50)));
+                pollInterval: TimeSpan.FromMilliseconds(50),
+                cancellationToken: TestContext.Current.CancellationToken));
     }
 
     // -------------------------------------------------------------------------

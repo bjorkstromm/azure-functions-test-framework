@@ -62,7 +62,7 @@ public class FunctionsTestHostWarmupExtensionsTests
     public void InvokeWarmupAsync_NullContext_UsesDefaultPayload()
     {
         var host = new FakeHost();
-        _ = FunctionsTestHostWarmupExtensions.InvokeWarmupAsync(host, "WarmupFunc", null);
+        _ = FunctionsTestHostWarmupExtensions.InvokeWarmupAsync(host, "WarmupFunc", null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         Assert.Equal("warmupTrigger", host.LastContext!.TriggerType);
@@ -76,7 +76,7 @@ public class FunctionsTestHostWarmupExtensionsTests
     {
         var host = new FakeHost();
         var warmupContext = new WarmupContext();
-        _ = FunctionsTestHostWarmupExtensions.InvokeWarmupAsync(host, "WarmupFunc", warmupContext);
+        _ = FunctionsTestHostWarmupExtensions.InvokeWarmupAsync(host, "WarmupFunc", warmupContext, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         var json = host.LastContext!.InputData["$warmupContextJson"]?.ToString();

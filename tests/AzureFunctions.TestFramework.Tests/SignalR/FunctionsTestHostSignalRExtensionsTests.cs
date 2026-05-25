@@ -23,7 +23,7 @@ public class FunctionsTestHostSignalRExtensionsTests
     {
         var context = new SignalRInvocationContext { ConnectionId = "c1", Hub = "chat" };
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(null!, "SignalRFunc", context));
+            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(null!, "SignalRFunc", context, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -31,7 +31,7 @@ public class FunctionsTestHostSignalRExtensionsTests
     {
         var host = new FakeHost();
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", null!));
+            FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", null!, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -46,7 +46,7 @@ public class FunctionsTestHostSignalRExtensionsTests
             Event = "sendMessage"
         };
 
-        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext);
+        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext, TestContext.Current.CancellationToken);
 
         Assert.Equal("signalRTrigger", host.LastContext!.TriggerType);
     }
@@ -64,7 +64,7 @@ public class FunctionsTestHostSignalRExtensionsTests
             Event = "sendMessage"
         };
 
-        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext);
+        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         Assert.True(host.LastContext!.InputData.ContainsKey("$invocationContextJson"));
@@ -89,7 +89,7 @@ public class FunctionsTestHostSignalRExtensionsTests
             Event = "connected"
         };
 
-        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext);
+        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext, TestContext.Current.CancellationToken);
 
         var json = host.LastContext!.InputData["$invocationContextJson"]!.ToString()!;
         using var doc = JsonDocument.Parse(json);
@@ -109,7 +109,7 @@ public class FunctionsTestHostSignalRExtensionsTests
             Arguments = ["Hello World", "second arg"]
         };
 
-        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext);
+        _ = FunctionsTestHostSignalRExtensions.InvokeSignalRAsync(host, "SignalRFunc", invocationContext, TestContext.Current.CancellationToken);
 
         var json = host.LastContext!.InputData["$invocationContextJson"]!.ToString()!;
         using var doc = JsonDocument.Parse(json);
@@ -157,7 +157,7 @@ public class FunctionsTestHostSignalRExtensionsTests
         var context = new FunctionInvocationContext
         {
             TriggerType = "signalRTrigger",
-            InputData = { ["$invocationContextJson"] = null }
+            InputData = { ["$invocationContextJson"] = null! }
         };
 
         var binding = InvokeCreateBindingData(context, FakeRegistration);

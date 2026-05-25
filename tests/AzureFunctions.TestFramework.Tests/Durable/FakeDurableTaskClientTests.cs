@@ -193,13 +193,12 @@ public class FakeDurableTaskClientTests
         using var resources = CreateResources();
         const string instanceId = "duplicate-id";
 
-#pragma warning disable xUnit1051
         // Use a blocking orchestrator so the instance stays in Running state
         // long enough for the second scheduling attempt to observe it.
         await resources.Client.ScheduleNewOrchestrationInstanceAsync(
             BlockingOrchestratorName,
             options: new StartOrchestrationOptions { InstanceId = instanceId },
-            cancellation: CancellationToken.None);
+            cancellation: TestContext.Current.CancellationToken);
 
         // Scheduling a second orchestration with the same ID while the first is still
         // Running (or Pending) should throw.
@@ -207,8 +206,7 @@ public class FakeDurableTaskClientTests
             resources.Client.ScheduleNewOrchestrationInstanceAsync(
                 BlockingOrchestratorName,
                 options: new StartOrchestrationOptions { InstanceId = instanceId },
-                cancellation: CancellationToken.None));
-#pragma warning restore xUnit1051
+                cancellation: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -234,7 +232,7 @@ public class FakeDurableTaskClientTests
     /// until it is terminated or the event arrives.
     /// </summary>
     [Function(BlockingOrchestratorName)]
-    public static Task BlockingOrchestratorFn([OrchestrationTrigger] TaskOrchestrationContext ctx)
+    internal static Task BlockingOrchestratorFn([OrchestrationTrigger] TaskOrchestrationContext ctx)
         => ctx.WaitForExternalEvent<object>("Unblock");
 
     private static TestResources CreateResources()

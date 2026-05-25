@@ -74,7 +74,7 @@ public class FunctionsTestHostTimerExtensionsTests
     {
         // Verify the JSON produced by null timerInfo is valid and contains isPastDue
         var host = new FakeHost();
-        _ = FunctionsTestHostTimerExtensions.InvokeTimerAsync(host, "TimerFunc", null);
+        _ = FunctionsTestHostTimerExtensions.InvokeTimerAsync(host, "TimerFunc", null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         var json = host.LastContext.InputData["$timerJson"]?.ToString();
@@ -88,7 +88,7 @@ public class FunctionsTestHostTimerExtensionsTests
     {
         var timerInfo = new TimerInfo { IsPastDue = true };
         var host = new FakeHost();
-        _ = FunctionsTestHostTimerExtensions.InvokeTimerAsync(host, "TimerFunc", timerInfo);
+        _ = FunctionsTestHostTimerExtensions.InvokeTimerAsync(host, "TimerFunc", timerInfo, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         var json = host.LastContext.InputData["$timerJson"]?.ToString();

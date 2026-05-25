@@ -134,7 +134,7 @@ public class FunctionsTestHostBlobExtensionsTests
     {
         var host = new FakeHost();
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => FunctionsTestHostBlobExtensions.InvokeBlobAsync(host, "BlobFunc", (BinaryData)null!));
+            () => FunctionsTestHostBlobExtensions.InvokeBlobAsync(host, "BlobFunc", (BinaryData)null!, cancellationToken: TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -143,7 +143,7 @@ public class FunctionsTestHostBlobExtensionsTests
         var host = new FakeHost();
         var content = BinaryData.FromString("test content");
         _ = FunctionsTestHostBlobExtensions.InvokeBlobAsync(
-            host, "BlobFunc", content, blobName: "my-blob.txt", containerName: "my-container");
+            host, "BlobFunc", content, blobName: "my-blob.txt", containerName: "my-container", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
         Assert.True(host.LastContext!.InputData.ContainsKey("$triggerMetadata"));
@@ -156,7 +156,7 @@ public class FunctionsTestHostBlobExtensionsTests
     {
         var host = new FakeHost();
         var content = BinaryData.FromString("test content");
-        _ = FunctionsTestHostBlobExtensions.InvokeBlobAsync(host, "BlobFunc", content);
+        _ = FunctionsTestHostBlobExtensions.InvokeBlobAsync(host, "BlobFunc", content, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.False(host.LastContext!.InputData.ContainsKey("$triggerMetadata"));
     }

@@ -47,13 +47,13 @@ public class FakeTaskEntityContextTests
         object? value = null;
         while (attempts++ < 20)
         {
-            value = await resources.EntityRunner.CallEntityAsync(entityId, "get", null, CancellationToken.None);
+            value = await resources.EntityRunner.CallEntityAsync(entityId, "get", null, TestContext.Current.CancellationToken);
             if (value is int i && i == 4)
             {
                 break;
             }
 
-            await Task.Delay(50);
+            await Task.Delay(50, TestContext.Current.CancellationToken);
         }
 
         Assert.Equal(4, value);

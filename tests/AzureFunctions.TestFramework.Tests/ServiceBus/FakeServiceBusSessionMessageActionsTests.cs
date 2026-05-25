@@ -11,10 +11,10 @@ public class FakeServiceBusSessionMessageActionsTests
         var sut = new FakeServiceBusSessionMessageActions();
         var state = BinaryData.FromString("abc");
 
-        await sut.SetSessionStateAsync(state);
-        var readState = await sut.GetSessionStateAsync();
-        await sut.ReleaseSession();
-        await sut.RenewSessionLockAsync();
+        await sut.SetSessionStateAsync(state, TestContext.Current.CancellationToken);
+        var readState = await sut.GetSessionStateAsync(TestContext.Current.CancellationToken);
+        await sut.ReleaseSession(TestContext.Current.CancellationToken);
+        await sut.RenewSessionLockAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(state, readState);
         Assert.Collection(
@@ -30,7 +30,7 @@ public class FakeServiceBusSessionMessageActionsTests
     {
         var sut = new FakeServiceBusSessionMessageActions();
 
-        var state = await sut.GetSessionStateAsync();
+        var state = await sut.GetSessionStateAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal(BinaryData.Empty, state);
     }

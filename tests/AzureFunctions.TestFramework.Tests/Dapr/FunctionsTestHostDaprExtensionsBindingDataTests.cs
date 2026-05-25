@@ -6,7 +6,7 @@ namespace AzureFunctions.TestFramework.Tests.Dapr;
 
 /// <summary>
 /// Unit tests for <see cref="FunctionsTestHostDaprExtensions"/> internal binding-data factories
-/// and <see cref="FunctionsTestHostDaprExtensions.GetJsonFromContext"/>.
+/// and <c>GetJsonFromContext</c>.
 /// </summary>
 public class FunctionsTestHostDaprExtensionsBindingDataTests
 {

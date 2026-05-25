@@ -219,7 +219,7 @@ public class GrpcHostServiceStateTests
         var bindingData = new TriggerBindingData { InputData = [] };
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.InvokeFunctionAsync("NonExistentFunction", bindingData));
+            () => service.InvokeFunctionAsync("NonExistentFunction", bindingData, TestContext.Current.CancellationToken));
     }
 
     // ── SendMessageAsync – no connection ─────────────────────────────────────
@@ -235,7 +235,7 @@ public class GrpcHostServiceStateTests
         };
 
         await Assert.ThrowsAsync<InvalidOperationException>(
-            () => service.SendMessageAsync(message));
+            () => service.SendMessageAsync(message, TestContext.Current.CancellationToken));
     }
 
     // ── GetCurrentEventStreamState ────────────────────────────────────────────

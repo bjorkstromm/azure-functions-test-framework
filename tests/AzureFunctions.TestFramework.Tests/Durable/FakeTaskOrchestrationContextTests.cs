@@ -33,8 +33,8 @@ public class FakeTaskOrchestrationContextTests
 
         var activity = await sut.CallActivityAsync<int>(new TaskName("A"), 5);
         var sub = await sut.CallSubOrchestratorAsync<string>(new TaskName("B"), input: null);
-        var external = await sut.WaitForExternalEvent<string>("evt");
-        var timer = sut.CreateTimer(DateTime.UtcNow.AddMilliseconds(1), CancellationToken.None);
+        var external = await sut.WaitForExternalEvent<string>("evt", TestContext.Current.CancellationToken);
+        var timer = sut.CreateTimer(DateTime.UtcNow.AddMilliseconds(1), TestContext.Current.CancellationToken);
         sut.ContinueAsNew(new { value = 123 });
         sut.SetCustomStatus("done");
         sut.SendEvent("target-instance", "my-event", new { x = 1 });

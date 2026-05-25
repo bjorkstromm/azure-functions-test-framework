@@ -60,7 +60,7 @@ public class FunctionsTestHostEventGridExtensionsTests
             data: BinaryData.FromString("""{"key":"value"}"""));
 
         var host = new FakeHost();
-        _ = FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", evt);
+        _ = FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", evt, TestContext.Current.CancellationToken);
 
         var json = host.LastContext!.InputData["$eventJson"]!.ToString()!;
         using var doc = JsonDocument.Parse(json);
@@ -81,7 +81,7 @@ public class FunctionsTestHostEventGridExtensionsTests
             data: BinaryData.FromString("null"));
 
         var host = new FakeHost();
-        _ = FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", evt);
+        _ = FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", evt, TestContext.Current.CancellationToken);
 
         Assert.NotNull(host.LastContext);
     }
@@ -91,7 +91,7 @@ public class FunctionsTestHostEventGridExtensionsTests
     {
         var host = new FakeHost();
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", (EventGridEvent)null!));
+            () => FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", (EventGridEvent)null!, TestContext.Current.CancellationToken));
     }
 
     // ── InvokeEventGridAsync with CloudEvent ──────────────────────────────────
@@ -106,7 +106,7 @@ public class FunctionsTestHostEventGridExtensionsTests
             dataContentType: "application/json");
 
         var host = new FakeHost();
-        _ = FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", cloudEvent);
+        _ = FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", cloudEvent, TestContext.Current.CancellationToken);
 
         var json = host.LastContext!.InputData["$eventJson"]!.ToString()!;
         using var doc = JsonDocument.Parse(json);
@@ -126,7 +126,7 @@ public class FunctionsTestHostEventGridExtensionsTests
             dataContentType: null);
 
         var host = new FakeHost();
-        _ = FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", cloudEvent);
+        _ = FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", cloudEvent, TestContext.Current.CancellationToken);
 
         var json = host.LastContext!.InputData["$eventJson"]!.ToString()!;
         using var doc = JsonDocument.Parse(json);
@@ -138,7 +138,7 @@ public class FunctionsTestHostEventGridExtensionsTests
     {
         var host = new FakeHost();
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", (CloudEvent)null!));
+            () => FunctionsTestHostEventGridExtensions.InvokeEventGridAsync(host, "EventGridFunc", (CloudEvent)null!, TestContext.Current.CancellationToken));
     }
 
     // ── TryParseJson ──────────────────────────────────────────────────────────

@@ -1,5 +1,8 @@
 namespace Sample.FunctionApp;
 
+/// <summary>
+/// Defines the contract for this type.
+/// </summary>
 public interface ITodoService
 {
     IReadOnlyList<TodoItem> GetAll();

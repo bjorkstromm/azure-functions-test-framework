@@ -11,7 +11,8 @@ namespace Sample.FunctionApp.Durable;
 /// <summary>
 /// Demonstrates an eternal-orchestrator singleton pattern:
 /// a counter that runs forever, waiting for an external "increment" event each iteration,
-/// then calling <see cref="TaskOrchestrationContext.ContinueAsNew"/> to restart with the
+/// then calling
+/// <see cref="TaskOrchestrationContext.ContinueAsNew(System.Object,System.Boolean)"/> to restart with the
 /// updated count.  The orchestration can be suspended, resumed, or terminated via an HTTP
 /// control trigger, which exercises the full instance lifecycle supported by
 /// <c>FakeDurableTaskClient</c>.
@@ -199,7 +200,8 @@ public class EternalCounterFunctions
 
     /// <summary>
     /// Eternal orchestrator: waits for an "increment" external event, advances the counter
-    /// by one, then calls <see cref="TaskOrchestrationContext.ContinueAsNew"/> to loop forever.
+    /// by one, then calls
+    /// <see cref="TaskOrchestrationContext.ContinueAsNew(System.Object,System.Boolean)"/> to loop forever.
     /// </summary>
     [Function(nameof(RunEternalCounter))]
     public static async Task RunEternalCounter(

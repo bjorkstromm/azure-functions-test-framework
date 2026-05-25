@@ -10,7 +10,7 @@ namespace AzureFunctions.TestFramework.ReflectionTests;
 /// SDK contract tests for <c>InProcessMethodInfoLocator</c>.
 ///
 /// <para>These tests verify that the internal Worker SDK types and members that
-/// <see cref="InProcessMethodInfoLocator"/> depends on via reflection are still present.
+/// <c>InProcessMethodInfoLocator</c> depends on via reflection are still present.
 /// A failure here means the SDK was updated in a breaking way and the framework's
 /// reflection code must be updated accordingly.</para>
 ///

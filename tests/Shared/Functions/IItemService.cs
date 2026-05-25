@@ -1,5 +1,8 @@
 namespace TestProject;
 
+/// <summary>
+/// Defines the contract for this type.
+/// </summary>
 public interface IItemService
 {
     IReadOnlyList<Item> GetAll();

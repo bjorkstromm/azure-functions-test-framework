@@ -27,7 +27,8 @@ public static class DurableErrorFunctions
         => context.CallActivityAsync<string>(nameof(ThrowingActivity), "test");
 
     /// <summary>
-    /// Orchestrator that calls <see cref="TaskOrchestrationContext.CreateTimer"/> (a no-op in
+    /// Orchestrator that calls
+    /// <see cref="TaskOrchestrationContext.CreateTimer(System.DateTime,System.Threading.CancellationToken)"/> (a no-op in
     /// the fake runner) then returns a sentinel value, verifying that <c>CreateTimer</c> does
     /// not block or throw.
     /// </summary>

@@ -124,7 +124,7 @@ public class FunctionsTestHostServiceBusExtensionsTests
     {
         var host = new FakeHost();
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => FunctionsTestHostServiceBusExtensions.InvokeServiceBusAsync(host, "Func", (ServiceBusMessage)null!));
+            () => FunctionsTestHostServiceBusExtensions.InvokeServiceBusAsync(host, "Func", (ServiceBusMessage)null!, TestContext.Current.CancellationToken));
     }
 
     // ── InvokeServiceBusBatchAsync validation ──────────────────────────────────
@@ -134,7 +134,7 @@ public class FunctionsTestHostServiceBusExtensionsTests
     {
         var host = new FakeHost();
         await Assert.ThrowsAsync<ArgumentException>(
-            () => FunctionsTestHostServiceBusExtensions.InvokeServiceBusBatchAsync(host, "Func", []));
+            () => FunctionsTestHostServiceBusExtensions.InvokeServiceBusBatchAsync(host, "Func", [], TestContext.Current.CancellationToken));
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
