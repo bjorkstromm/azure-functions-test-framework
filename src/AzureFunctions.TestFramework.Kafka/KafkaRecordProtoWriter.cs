@@ -19,7 +19,6 @@ namespace AzureFunctions.TestFramework.Kafka;
 ///   bytes  value          = 5;  // optional
 ///   KafkaTimestampProto timestamp = 6;
 ///   repeated KafkaHeaderProto headers = 7;
-///   int32  leader_epoch   = 8;  // optional
 /// }
 ///
 /// message KafkaTimestampProto {
@@ -112,13 +111,6 @@ internal static class KafkaRecordProtoWriter
                 WriteTag(stream, 7, WireTypeLengthDelimited);
                 WriteBytes(stream, hdrBytes);
             }
-        }
-
-        // field 8: leader_epoch (int32, optional)
-        if (record.LeaderEpoch.HasValue && record.LeaderEpoch.Value != 0)
-        {
-            WriteTag(stream, 8, WireTypeVarint);
-            WriteVarint(stream, (ulong)record.LeaderEpoch.Value);
         }
     }
 

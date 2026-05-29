@@ -46,7 +46,6 @@ public class KafkaRecordProtoWriterTests
             Offset = 100,
             Key = Encoding.UTF8.GetBytes("msg-key"),
             Value = Encoding.UTF8.GetBytes("msg-value"),
-            LeaderEpoch = 5,
             Timestamp = new KafkaTimestamp
             {
                 UnixTimestampMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(),
