@@ -10,6 +10,10 @@ namespace AzureFunctions.TestFramework.Queue;
 /// </summary>
 public static class FunctionsTestHostQueueExtensions
 {
+    private const string QueueMessageKey = "$queueMessage";
+    private const string QueueMessageBytesKey = "$queueMessageBytes";
+    private const string QueueMessageJsonKey = "$queueMessageJson";
+
     /// <summary>
     /// The binding source identifier used by the Azure Functions Queue extension
     /// to identify queue message binding data.
@@ -20,6 +24,10 @@ public static class FunctionsTestHostQueueExtensions
     /// The MIME content type used for JSON-encoded queue message content in ModelBindingData.
     /// </summary>
     private const string QueueJsonContentType = "application/json";
+    private static readonly JsonSerializerOptions _defaultJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+    };
 
     /// <summary>
     /// Invokes a queue-triggered function by name with the specified <see cref="QueueMessage"/>.
@@ -41,7 +49,7 @@ public static class FunctionsTestHostQueueExtensions
         var context = new FunctionInvocationContext
         {
             TriggerType = "queueTrigger",
-            InputData = { ["$queueMessage"] = message }
+            InputData = { [QueueMessageKey] = message }
         };
 
         return host.Invoker.InvokeAsync(functionName, context, CreateBindingDataFromQueueMessage, cancellationToken);
@@ -70,17 +78,77 @@ public static class FunctionsTestHostQueueExtensions
         var context = new FunctionInvocationContext
         {
             TriggerType = "queueTrigger",
-            InputData = { ["$queueMessageBytes"] = body }
+            InputData = { [QueueMessageBytesKey] = body }
         };
 
         return host.Invoker.InvokeAsync(functionName, context, CreateBindingDataFromBytes, cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a queue-triggered function by name with the specified raw message body.
+    /// Use this overload when the function parameter is typed as <c>byte[]</c> or <c>BinaryData</c>
+    /// and the payload is not UTF-8 text.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the queue function (case-insensitive).</param>
+    /// <param name="message">The raw message bytes to pass to the function.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeQueueAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        byte[] message,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+
+        var context = new FunctionInvocationContext
+        {
+            TriggerType = "queueTrigger",
+            InputData = { [QueueMessageBytesKey] = message }
+        };
+
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingDataFromBytes, cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a queue-triggered function by name with a JSON-serialized POCO payload.
+    /// Use this overload when the function parameter is a serializable reference type
+    /// deserialized from the queue message JSON body.
+    /// </summary>
+    /// <typeparam name="T">The payload type serialized to JSON.</typeparam>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the queue function (case-insensitive).</param>
+    /// <param name="payload">The object serialized as JSON for the trigger binding.</param>
+    /// <param name="jsonSerializerOptions">Optional JSON serializer options; defaults to camel-case property names.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeQueueAsync<T>(
+        this IFunctionsTestHost host,
+        string functionName,
+        T payload,
+        JsonSerializerOptions? jsonSerializerOptions = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+
+        var options = jsonSerializerOptions ?? _defaultJsonOptions;
+        var json = SerializePayloadToJson(payload, typeof(T), options);
+
+        var context = new FunctionInvocationContext
+        {
+            TriggerType = "queueTrigger",
+            InputData = { [QueueMessageJsonKey] = json }
+        };
+
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingDataFromJson, cancellationToken);
     }
 
     private static TriggerBindingData CreateBindingDataFromQueueMessage(
         FunctionInvocationContext context,
         FunctionRegistration function)
     {
-        var message = context.InputData.TryGetValue("$queueMessage", out var m) && m is QueueMessage msg
+        var message = context.InputData.TryGetValue(QueueMessageKey, out var m) && m is QueueMessage msg
             ? msg
             : throw new InvalidOperationException("QueueMessage not found in invocation context.");
 
@@ -95,7 +163,7 @@ public static class FunctionsTestHostQueueExtensions
         FunctionInvocationContext context,
         FunctionRegistration function)
     {
-        var messageBytes = context.InputData.TryGetValue("$queueMessageBytes", out var b) && b is byte[] bytes
+        var messageBytes = context.InputData.TryGetValue(QueueMessageBytesKey, out var b) && b is byte[] bytes
             ? bytes
             : Array.Empty<byte>();
 
@@ -103,6 +171,33 @@ public static class FunctionsTestHostQueueExtensions
         {
             InputData = [FunctionBindingData.WithBytes(function.ParameterName, messageBytes)]
         };
+    }
+
+    private static TriggerBindingData CreateBindingDataFromJson(
+        FunctionInvocationContext context,
+        FunctionRegistration function)
+    {
+        var json = context.InputData.TryGetValue(QueueMessageJsonKey, out var j)
+            ? j?.ToString() ?? "{}"
+            : "{}";
+
+        return new TriggerBindingData
+        {
+            InputData = [FunctionBindingData.WithJson(function.ParameterName, json)]
+        };
+    }
+
+    private static string SerializePayloadToJson(object payload, Type payloadType, JsonSerializerOptions options)
+    {
+        try
+        {
+            return JsonSerializer.Serialize(payload, payloadType, options);
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException)
+        {
+            throw new InvalidOperationException(
+                $"Failed to serialize queue trigger payload of type '{payloadType.FullName}'.", ex);
+        }
     }
 
     /// <summary>

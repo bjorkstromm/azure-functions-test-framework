@@ -8,7 +8,7 @@ QueueTrigger invocation support for the Azure Functions Test Framework. Provides
 
 ### Functions with `string` parameter
 
-Use the `string` overload when the function parameter is `string`, `byte[]`, or `BinaryData`:
+Use the `string` overload when the function parameter is `string`:
 
 ```csharp
 using AzureFunctions.TestFramework.Core;
@@ -45,14 +45,49 @@ public async Task ProcessQueueMessage_WithQueueMessage_Succeeds()
 }
 ```
 
+### Functions with `byte[]` or `BinaryData` parameter
+
+Use the `byte[]` overload for raw queue payloads:
+
+```csharp
+var bytes = Encoding.UTF8.GetBytes("Hello from queue!");
+var result = await _testHost.InvokeQueueAsync("ProcessQueueMessageBytes", bytes);
+Assert.True(result.Success);
+```
+
+### Functions with POCO parameter
+
+Use the generic overload to send JSON payloads for POCO input bindings:
+
+```csharp
+var payload = new OrderPayload { OrderId = "order-99" };
+var result = await _testHost.InvokeQueueAsync("ProcessQueueMessagePoco", payload);
+Assert.True(result.Success);
+```
+
 ### API
 
 ```csharp
-// For functions with string/byte[]/BinaryData parameters
+// For functions with string parameters
 Task<FunctionInvocationResult> InvokeQueueAsync(
     this IFunctionsTestHost host,
     string functionName,
     string message,
+    CancellationToken cancellationToken = default)
+
+// For functions with byte[]/BinaryData parameters
+Task<FunctionInvocationResult> InvokeQueueAsync(
+    this IFunctionsTestHost host,
+    string functionName,
+    byte[] message,
+    CancellationToken cancellationToken = default)
+
+// For functions with POCO parameters (JSON payload)
+Task<FunctionInvocationResult> InvokeQueueAsync<T>(
+    this IFunctionsTestHost host,
+    string functionName,
+    T payload,
+    JsonSerializerOptions? jsonSerializerOptions = null,
     CancellationToken cancellationToken = default)
 
 // For functions with QueueMessage parameters
@@ -64,7 +99,9 @@ Task<FunctionInvocationResult> InvokeQueueAsync(
 ```
 
 - **`functionName`** — the name of the queue function (case-insensitive).
-- **`message`** (`string`) — the message text to pass to the function.
+- **`message`** (`string`) — the UTF-8 message text to pass to the function.
+- **`message`** (`byte[]`) — raw message bytes to pass to the function.
+- **`payload`** (`T`) — POCO payload serialized as JSON for queue input binding.
 - **`message`** (`QueueMessage`) — the `QueueMessage` to pass to the function. Use `QueuesModelFactory.QueueMessage(...)` from `Azure.Storage.Queues.Models` to create test messages.
 
 ### Output binding capture
