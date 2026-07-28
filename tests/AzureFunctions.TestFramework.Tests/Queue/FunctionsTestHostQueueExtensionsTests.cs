@@ -83,6 +83,29 @@ public class FunctionsTestHostQueueExtensionsTests
         Assert.Equal("{}", binding.InputData[0].Json);
     }
 
+    [Fact]
+    public void SerializePayloadToJson_UsesCamelCaseByDefault()
+    {
+        var payload = new TestQueuePayload { OrderId = "order-123" };
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+        var json = InvokeSerializePayloadToJson(payload, typeof(TestQueuePayload), options);
+
+        Assert.Equal("""{"orderId":"order-123"}""", json);
+    }
+
+    [Fact]
+    public void SerializePayloadToJson_WhenSerializationFails_ThrowsInvalidOperationException()
+    {
+        var payload = new CyclicPayload();
+        payload.Self = payload;
+        var options = new JsonSerializerOptions();
+
+        var ex = Assert.Throws<TargetInvocationException>(() =>
+            InvokeSerializePayloadToJson(payload, typeof(CyclicPayload), options));
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
+    }
+
     // ── SerializeQueueMessage ────────────────────────────────────────────────
 
     [Fact]
@@ -202,5 +225,23 @@ public class FunctionsTestHostQueueExtensionsTests
             .GetMethod("SerializeQueueMessage",
                 BindingFlags.NonPublic | BindingFlags.Static)!;
         return (byte[])method.Invoke(null, [message])!;
+    }
+
+    private static string InvokeSerializePayloadToJson(object payload, Type payloadType, JsonSerializerOptions options)
+    {
+        var method = typeof(FunctionsTestHostQueueExtensions)
+            .GetMethod("SerializePayloadToJson",
+                BindingFlags.NonPublic | BindingFlags.Static)!;
+        return (string)method.Invoke(null, [payload, payloadType, options])!;
+    }
+
+    private sealed class TestQueuePayload
+    {
+        public string OrderId { get; set; } = string.Empty;
+    }
+
+    private sealed class CyclicPayload
+    {
+        public CyclicPayload? Self { get; set; }
     }
 }

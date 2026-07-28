@@ -133,7 +133,7 @@ public static class FunctionsTestHostQueueExtensions
         ArgumentNullException.ThrowIfNull(payload);
 
         var options = jsonSerializerOptions ?? _defaultJsonOptions;
-        var json = JsonSerializer.Serialize(payload, typeof(T), options);
+        var json = SerializePayloadToJson(payload, typeof(T), options);
 
         var context = new FunctionInvocationContext
         {
@@ -185,6 +185,19 @@ public static class FunctionsTestHostQueueExtensions
         {
             InputData = [FunctionBindingData.WithJson(function.ParameterName, json)]
         };
+    }
+
+    private static string SerializePayloadToJson(object payload, Type payloadType, JsonSerializerOptions options)
+    {
+        try
+        {
+            return JsonSerializer.Serialize(payload, payloadType, options);
+        }
+        catch (Exception ex) when (ex is JsonException or NotSupportedException)
+        {
+            throw new InvalidOperationException(
+                $"Failed to serialize queue trigger payload of type '{payloadType.FullName}'.", ex);
+        }
     }
 
     /// <summary>
