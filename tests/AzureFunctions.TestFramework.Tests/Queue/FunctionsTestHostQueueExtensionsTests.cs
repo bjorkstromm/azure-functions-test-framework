@@ -52,6 +52,37 @@ public class FunctionsTestHostQueueExtensionsTests
         Assert.Equal(Array.Empty<byte>(), binding.InputData[0].Bytes);
     }
 
+    // ── CreateBindingDataFromJson ──────────────────────────────────────────────
+
+    [Fact]
+    public void CreateBindingDataFromJson_WithJson_UsesJson()
+    {
+        const string json = """{"orderId":"order-42"}""";
+        var context = new FunctionInvocationContext
+        {
+            TriggerType = "queueTrigger",
+            InputData = { ["$queueMessageJson"] = json }
+        };
+
+        var binding = InvokeCreateBindingDataFromJson(context, FakeRegistration);
+
+        Assert.Single(binding.InputData);
+        var param = binding.InputData[0];
+        Assert.Equal("myQueueItem", param.Name);
+        Assert.Equal(json, param.Json);
+    }
+
+    [Fact]
+    public void CreateBindingDataFromJson_MissingJson_UsesEmptyObject()
+    {
+        var context = new FunctionInvocationContext { TriggerType = "queueTrigger" };
+
+        var binding = InvokeCreateBindingDataFromJson(context, FakeRegistration);
+
+        Assert.Single(binding.InputData);
+        Assert.Equal("{}", binding.InputData[0].Json);
+    }
+
     // ── SerializeQueueMessage ────────────────────────────────────────────────
 
     [Fact]
@@ -152,6 +183,15 @@ public class FunctionsTestHostQueueExtensionsTests
     {
         var method = typeof(FunctionsTestHostQueueExtensions)
             .GetMethod("CreateBindingDataFromQueueMessage",
+                BindingFlags.NonPublic | BindingFlags.Static)!;
+        return (TriggerBindingData)method.Invoke(null, [ctx, reg])!;
+    }
+
+    private static TriggerBindingData InvokeCreateBindingDataFromJson(
+        FunctionInvocationContext ctx, FunctionRegistration reg)
+    {
+        var method = typeof(FunctionsTestHostQueueExtensions)
+            .GetMethod("CreateBindingDataFromJson",
                 BindingFlags.NonPublic | BindingFlags.Static)!;
         return (TriggerBindingData)method.Invoke(null, [ctx, reg])!;
     }
