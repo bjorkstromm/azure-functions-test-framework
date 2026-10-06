@@ -31,7 +31,9 @@ public static class FunctionsTestHostHttpExtensions
 
         if (workerHttpHandler != null)
         {
-            return new HttpClient(new AspNetCoreForwardingHandler(workerHttpHandler), disposeHandler: true)
+            return new HttpClient(
+                new AspNetCoreForwardingHandler(workerHttpHandler, httpHost.GrpcHostService, httpHost.RoutePrefix),
+                disposeHandler: true)
             {
                 BaseAddress = new Uri("http://localhost/"),
                 Timeout = httpHost.InvocationTimeout

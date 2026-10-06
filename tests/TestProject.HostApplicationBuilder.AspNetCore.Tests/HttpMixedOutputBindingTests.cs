@@ -1,11 +1,11 @@
 namespace TestProject;
 
-public class HttpMixedOutputBindingTests(ITestOutputHelper output) : HttpMixedOutputBindingTestsBase(output)
+public class HttpMixedOutputBindingTests(ITestOutputHelper output) : AspNetCoreHttpMixedOutputBindingTestsBase(output)
 {
     protected override Task<IFunctionsTestHost> CreateTestHostAsync() =>
         new FunctionsTestHostBuilder()
             .WithFunctionsAssembly(typeof(HttpMixedOutputBindingFunction).Assembly)
             .WithLoggerFactory(CreateLoggerFactory())
-            .WithHostApplicationBuilderFactory(TestHostFactory.CreateApplicationBuilder)
+            .WithHostApplicationBuilderFactory(TestHostFactory.CreateWebApplicationBuilder)
             .BuildAndStartAsync(TestCancellation);
 }

@@ -32,6 +32,9 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
 
     private readonly List<ISyntheticBindingProvider> _syntheticBindingProviders;
     private readonly Dictionary<string, TaskCompletionSource<StreamingMessage>> _pendingRequests = new();
+    private readonly Dictionary<string, InvocationResponseCapture> _invocationResponseCaptures = new();
+    private readonly HashSet<string> _functionsWithNonHttpOutputs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _httpOutputBindingNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly object _connectionLock = new();
     private IServerStreamWriter<StreamingMessage>? _responseStream;
@@ -465,10 +468,56 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             InvocationRequest = invocationRequest
         };
 
+        lock (_lock)
+        {
+            if (_invocationResponseCaptures.TryGetValue(invocationId, out var capture))
+            {
+                capture.MarkDispatched();
+            }
+        }
+
         await SendMessageOneWayAsync(message);
         _logger.LogDebug("Sent InvocationRequest for {InvocationId} -> function {FunctionId}",
             invocationId, functionId);
         return true;
+    }
+
+    /// <summary>
+    /// Registers a response capture before forwarding an ASP.NET Core HTTP request.
+    /// Returns <see langword="null"/> when the route has no non-HTTP output bindings.
+    /// </summary>
+    /// <param name="invocationId">The request's <c>x-ms-invocation-id</c> header.</param>
+    /// <param name="httpMethod">The HTTP method.</param>
+    /// <param name="requestPath">The request path.</param>
+    /// <param name="routePrefix">The configured HTTP route prefix.</param>
+    /// <returns>A disposable capture, or <see langword="null"/> when capture is unnecessary.</returns>
+    public InvocationResponseCapture? BeginCaptureInvocationResponse(
+        string invocationId, string httpMethod, string requestPath, string routePrefix = "api")
+    {
+        ArgumentException.ThrowIfNullOrEmpty(invocationId);
+        var functionId = FindFunctionId(httpMethod, requestPath, routePrefix);
+        if (functionId == null || !_functionsWithNonHttpOutputs.Contains(functionId))
+        {
+            return null;
+        }
+
+        lock (_lock)
+        {
+            if (_invocationResponseCaptures.ContainsKey(invocationId))
+            {
+                throw new InvalidOperationException($"Invocation '{invocationId}' is already being captured.");
+            }
+
+            var capture = new InvocationResponseCapture(_httpOutputBindingNames.GetValueOrDefault(functionId), () =>
+            {
+                lock (_lock)
+                {
+                    _invocationResponseCaptures.Remove(invocationId);
+                }
+            });
+            _invocationResponseCaptures.Add(invocationId, capture);
+            return capture;
+        }
     }
 
     /// <summary>
@@ -674,6 +723,14 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         {
             LogInvocationFailure(response);
         }
+        lock (_lock)
+        {
+            if (response != null &&
+                _invocationResponseCaptures.TryGetValue(response.InvocationId, out var capture))
+            {
+                capture.Complete(response);
+            }
+        }
         CompleteRequest(message);
         return Task.CompletedTask;
     }
@@ -816,6 +873,19 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             if (!root.TryGetProperty("type", out var typeProp)) return;
 
             var bindingType = typeProp.GetString() ?? string.Empty;
+
+            if (bindingType.Equals("http", StringComparison.OrdinalIgnoreCase) &&
+                root.TryGetProperty("name", out var outputName))
+            {
+                _httpOutputBindingNames[functionMetadata.FunctionId] = outputName.GetString() ?? string.Empty;
+            }
+
+            if (!bindingType.Equals("http", StringComparison.OrdinalIgnoreCase) &&
+                root.TryGetProperty("direction", out var direction) &&
+                string.Equals(direction.GetString(), "out", StringComparison.OrdinalIgnoreCase))
+            {
+                _functionsWithNonHttpOutputs.Add(functionMetadata.FunctionId);
+            }
 
             if (bindingType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase))
             {

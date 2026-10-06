@@ -1,3 +1,6 @@
+using AzureFunctions.TestFramework.Core.Grpc;
+using Microsoft.Azure.WebJobs.Script.Grpc.Messages;
+
 namespace AzureFunctions.TestFramework.Http;
 
 /// <summary>
@@ -6,10 +9,8 @@ namespace AzureFunctions.TestFramework.Http;
 /// additional output bindings on the same multi-output result type.
 /// </summary>
 /// <remarks>
-/// Only populated in direct gRPC mode (<c>ConfigureFunctionsWorkerDefaults()</c>). In ASP.NET Core
-/// integration mode (<c>ConfigureFunctionsWebApplication()</c>) the invocation is dispatched through
-/// the worker's in-memory <c>TestServer</c> pipeline rather than a gRPC <c>InvocationResponse</c>,
-/// so additional output bindings are not captured here; use a DI-injected fake/mock client instead.
+/// Supported in both direct gRPC and ASP.NET Core integration modes. ASP.NET Core requests with
+/// additional output bindings are buffered until the worker's invocation response is available.
 /// </remarks>
 public static class FunctionsHttpOutputData
 {
@@ -22,8 +23,8 @@ public static class FunctionsHttpOutputData
 
     /// <summary>
     /// Reads the output binding data (if any) captured for the request that produced this response.
-    /// Returns an empty dictionary when none was captured (e.g. ASP.NET Core integration mode, or
-    /// the invoked function has no additional output bindings beyond its HTTP response).
+    /// Returns an empty dictionary when the invoked function has no additional output bindings
+    /// beyond its HTTP response.
     /// </summary>
     public static IReadOnlyDictionary<string, object?> GetOutputData(this HttpResponseMessage response)
     {
@@ -35,5 +36,16 @@ public static class FunctionsHttpOutputData
         }
 
         return new Dictionary<string, object?>();
+    }
+
+    internal static void Capture(
+        HttpResponseMessage response, HttpRequestMessage request, InvocationResponse? invocationResponse,
+        string? httpOutputBindingName = null)
+    {
+        response.RequestMessage = request;
+        httpOutputBindingName ??= invocationResponse?.OutputData
+            .FirstOrDefault(p => p.Data?.Http != null)?.Name;
+        var outputData = GrpcHostService.ExtractOutputData(invocationResponse, httpOutputBindingName);
+        request.Options.Set(Key, outputData);
     }
 }

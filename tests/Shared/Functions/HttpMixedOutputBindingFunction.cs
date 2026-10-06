@@ -10,8 +10,21 @@ namespace TestProject;
 /// <c>[HttpResult]</c> response. See
 /// https://github.com/bjorkstromm/azure-functions-test-framework/issues/142.
 /// </summary>
-public class HttpMixedOutputBindingFunction(IProcessedItemsService processedItems)
+public class HttpMixedOutputBindingFunction
 {
+#if USE_ASPNET_CORE
+    [Function("CreateItemWithAspNetCoreOutputs")]
+    public CreateItemWithAspNetCoreOutputsResult CreateItemWithAspNetCoreOutputs(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "aspnetcore/items-with-outputs")]
+        Microsoft.AspNetCore.Http.HttpRequest req) =>
+        new()
+        {
+            HttpResponse = new Microsoft.AspNetCore.Mvc.CreatedResult("/api/items", "created"),
+            QueueMessage = "queued:created",
+            BlobContent = "blob:created"
+        };
+#endif
+
     [Function("CreateItemWithOutputs")]
     public async Task<CreateItemWithOutputsResult> CreateItemWithOutputs(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "items-with-outputs")] HttpRequestData req)
@@ -19,16 +32,13 @@ public class HttpMixedOutputBindingFunction(IProcessedItemsService processedItem
         var response = req.CreateResponse(HttpStatusCode.Created);
         await response.WriteStringAsync("created");
 
-        var queueMessage = "queued:created";
-        var blobContent = "blob:created";
-
-        // Workaround for ASP.NET Core integration mode (ConfigureFunctionsWebApplication()), where
-        // GetOutputData() cannot capture [QueueOutput]/[BlobOutput] because that mode has no
-        // corresponding gRPC InvocationResponse round trip for HTTP-triggered invocations. Recording
-        // through an injected service works identically in both modes, so tests can assert against it
-        // regardless of which mode the host was started in.
-        processedItems.Add($"QueueMessage:{queueMessage}");
-        processedItems.Add($"BlobContent:{blobContent}");
+        var value = await req.ReadAsStringAsync();
+        if (string.IsNullOrEmpty(value))
+        {
+            value = "created";
+        }
+        var queueMessage = $"queued:{value}";
+        var blobContent = $"blob:{value}";
 
         return new CreateItemWithOutputsResult
         {
@@ -38,6 +48,20 @@ public class HttpMixedOutputBindingFunction(IProcessedItemsService processedItem
         };
     }
 }
+
+#if USE_ASPNET_CORE
+public sealed class CreateItemWithAspNetCoreOutputsResult
+{
+    [HttpResult]
+    public Microsoft.AspNetCore.Mvc.IActionResult HttpResponse { get; set; } = default!;
+
+    [QueueOutput("item-created-queue")]
+    public string QueueMessage { get; set; } = string.Empty;
+
+    [BlobOutput("item-created/latest.txt")]
+    public string BlobContent { get; set; } = string.Empty;
+}
+#endif
 
 public sealed class CreateItemWithOutputsResult
 {

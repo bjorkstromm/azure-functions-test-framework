@@ -69,11 +69,15 @@ var outputData = response.GetOutputData();
 var queueMessage = outputData["QueueMessage"]?.ToString();
 ```
 
-> **Note:** `GetOutputData()` is only populated in **direct gRPC mode** (`ConfigureFunctionsWorkerDefaults()`),
-> where output bindings are captured from the gRPC `InvocationResponse`. In **ASP.NET Core integration mode**
-> (`ConfigureFunctionsWebApplication()`), the invocation runs through the worker's in-memory `TestServer`
-> pipeline without a corresponding gRPC round trip, so additional output bindings are not captured this way —
-> inject a fake/mock client via `ConfigureServices` and assert against it instead.
+`GetOutputData()` works in both **direct gRPC mode** (`ConfigureFunctionsWorkerDefaults()`) and
+**ASP.NET Core integration mode** (`ConfigureFunctionsWebApplication()`), with either host builder API.
+The HTTP output binding itself is excluded from the returned dictionary.
+
+In ASP.NET Core integration mode, requests whose functions declare additional output bindings are
+buffered until the worker's gRPC `InvocationResponse` arrives, even with `ResponseHeadersRead`.
+This ensures the outputs are available as soon as the HTTP call returns. Waiting respects the
+invocation timeout and request cancellation. Functions without additional outputs retain their
+normal streaming behavior. No changes to function code or injected fake clients are required.
 
 ## References
 

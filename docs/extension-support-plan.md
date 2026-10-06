@@ -17,10 +17,11 @@ Support every built-in extension from [Azure Functions Isolated Worker](https://
 | `[HttpResult]` (output) | ✅ | ✅ HTTP response returned via HttpClient | ✅ |
 
 > **Mixed bindings:** A function may combine `[HttpTrigger]`/`[HttpResult]` with additional output
-> bindings (e.g. `[QueueOutput]`, `[BlobOutput]`) on the same multi-output result type. In **direct gRPC
-> mode**, those extra outputs are captured from the gRPC `InvocationResponse` and readable via
-> `HttpResponseMessage.GetOutputData()` (see `AzureFunctions.TestFramework.Http`'s README). This is not
-> yet supported in ASP.NET Core integration mode, since that path has no corresponding gRPC round trip.
+> bindings (e.g. `[QueueOutput]`, `[BlobOutput]`) on the same multi-output result type. In both **direct gRPC
+> mode** and **ASP.NET Core integration mode**, those extra outputs are captured from the worker's gRPC
+> `InvocationResponse` and readable via `HttpResponseMessage.GetOutputData()` (see
+> `AzureFunctions.TestFramework.Http`'s README). ASP.NET Core requests declaring extra output bindings
+> are buffered until invocation completion; other HTTP requests retain their streaming behavior.
 > See [issue #142](https://github.com/bjorkstromm/azure-functions-test-framework/issues/142).
 
 > **Note:** `[FromBody]` only works in **ASP.NET Core integration mode**. In direct gRPC mode, the Worker SDK's `DefaultFromBodyConversionFeature` requires `NullableHeaders` in the proto definition, which is not yet included in the framework's proto. Use `req.ReadFromJsonAsync<T>()` as an alternative in direct gRPC mode.
