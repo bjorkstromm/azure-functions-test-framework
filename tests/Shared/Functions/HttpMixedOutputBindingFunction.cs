@@ -10,20 +10,31 @@ namespace TestProject;
 /// <c>[HttpResult]</c> response. See
 /// https://github.com/bjorkstromm/azure-functions-test-framework/issues/142.
 /// </summary>
-public class HttpMixedOutputBindingFunction
+public class HttpMixedOutputBindingFunction(IProcessedItemsService processedItems)
 {
     [Function("CreateItemWithOutputs")]
-    public CreateItemWithOutputsResult CreateItemWithOutputs(
+    public async Task<CreateItemWithOutputsResult> CreateItemWithOutputs(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = "items-with-outputs")] HttpRequestData req)
     {
         var response = req.CreateResponse(HttpStatusCode.Created);
-        response.WriteString("created");
+        await response.WriteStringAsync("created");
+
+        var queueMessage = "queued:created";
+        var blobContent = "blob:created";
+
+        // Workaround for ASP.NET Core integration mode (ConfigureFunctionsWebApplication()), where
+        // GetOutputData() cannot capture [QueueOutput]/[BlobOutput] because that mode has no
+        // corresponding gRPC InvocationResponse round trip for HTTP-triggered invocations. Recording
+        // through an injected service works identically in both modes, so tests can assert against it
+        // regardless of which mode the host was started in.
+        processedItems.Add($"QueueMessage:{queueMessage}");
+        processedItems.Add($"BlobContent:{blobContent}");
 
         return new CreateItemWithOutputsResult
         {
             HttpResponse = response,
-            QueueMessage = "queued:created",
-            BlobContent = "blob:created"
+            QueueMessage = queueMessage,
+            BlobContent = blobContent
         };
     }
 }
