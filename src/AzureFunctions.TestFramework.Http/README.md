@@ -48,6 +48,33 @@ public class MyFunctionTests : IAsyncLifetime
 
 The returned `HttpClient` has `BaseAddress` set to `http://localhost/{routePrefix}/` (custom route prefixes from `host.json` are auto-detected).
 
+## Mixed bindings (HTTP + output bindings)
+
+If a function mixes an HTTP trigger with additional output bindings (e.g. `[QueueOutput]`,
+`[BlobOutput]`) on the same multi-output result type, those non-HTTP outputs can be read via
+`HttpResponseMessage.GetOutputData()`:
+
+```csharp
+public sealed class CreateItemResult
+{
+    [HttpResult]
+    public HttpResponseData HttpResponse { get; set; } = default!;
+
+    [QueueOutput("item-created-queue")]
+    public string QueueMessage { get; set; } = string.Empty;
+}
+
+var response = await client.PostAsync("/api/items", content, cancellationToken);
+var outputData = response.GetOutputData();
+var queueMessage = outputData["QueueMessage"]?.ToString();
+```
+
+> **Note:** `GetOutputData()` is only populated in **direct gRPC mode** (`ConfigureFunctionsWorkerDefaults()`),
+> where output bindings are captured from the gRPC `InvocationResponse`. In **ASP.NET Core integration mode**
+> (`ConfigureFunctionsWebApplication()`), the invocation runs through the worker's in-memory `TestServer`
+> pipeline without a corresponding gRPC round trip, so additional output bindings are not captured this way —
+> inject a fake/mock client via `ConfigureServices` and assert against it instead.
+
 ## References
 
 - [Full documentation](https://github.com/bjorkstromm/azure-functions-test-framework)

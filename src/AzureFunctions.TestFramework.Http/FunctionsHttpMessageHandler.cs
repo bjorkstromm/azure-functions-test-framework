@@ -140,7 +140,24 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
 
             // 6. Convert gRPC response to HttpResponseMessage
             var testResponse = _responseMapper.MapToHttpResponse(grpcResponse);
-            return CreateHttpResponseMessage(testResponse);
+            var httpResponseMessage = CreateHttpResponseMessage(testResponse);
+            httpResponseMessage.RequestMessage = request;
+
+            // 7. Capture any additional output bindings (e.g. [QueueOutput], [BlobOutput]) declared
+            //    alongside the HTTP response on a multi-output result type, so they can be read via
+            //    httpResponseMessage.GetOutputData() even though they are not part of the HTTP response.
+            //    The HTTP output binding itself is identified by its RpcHttp payload (its binding/property
+            //    name does not necessarily match the HTTP trigger's input parameter name), matching the
+            //    same lookup HttpResponseMapper uses to locate the HTTP response among output bindings.
+            var httpOutputBindingName = grpcResponse.InvocationResponse?.OutputData
+                .FirstOrDefault(p => p.Data?.Http != null)?.Name;
+            var outputData = GrpcHostService.ExtractOutputData(grpcResponse.InvocationResponse, excludeBindingName: httpOutputBindingName);
+            if (outputData.Count > 0)
+            {
+                request.Options.Set(FunctionsHttpOutputData.Key, outputData);
+            }
+
+            return httpResponseMessage;
         }
         catch (Exception ex)
         {

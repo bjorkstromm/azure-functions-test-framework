@@ -545,24 +545,50 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         var success = invocationResponse?.Result?.Status == StatusResult.Types.Status.Success;
         var logs = invocationResponse?.Result?.Logs.Select(log => log.Message).ToList() ?? [];
 
-        Dictionary<string, object?> outputData = new(StringComparer.OrdinalIgnoreCase);
-        if (invocationResponse != null)
-        {
-            foreach (var output in invocationResponse.OutputData)
-            {
-                outputData[output.Name] = TypedDataConverter.Convert(output.Data);
-            }
-        }
-
         return new FunctionInvocationResult
         {
             InvocationId = invocationId,
             Success = success,
             Error = success ? null : invocationResponse?.Result?.Exception?.Message,
             ReturnValue = invocationResponse is null ? null : TypedDataConverter.Convert(invocationResponse.ReturnValue),
-            OutputData = outputData,
+            OutputData = ExtractOutputData(invocationResponse),
             Logs = logs
         };
+    }
+
+    /// <summary>
+    /// Extracts the named <c>ParameterBinding</c> output values from an <c>InvocationResponse</c>
+    /// into a plain dictionary. Used both for non-HTTP trigger invocations and (via the HTTP
+    /// extension package) to surface any additional output bindings (e.g. <c>[QueueOutput]</c>,
+    /// <c>[BlobOutput]</c>) declared alongside an HTTP trigger's response binding.
+    /// </summary>
+    /// <param name="invocationResponse">The gRPC invocation response, or <see langword="null"/>.</param>
+    /// <param name="excludeBindingName">
+    /// An optional binding name to omit from the result (e.g. the HTTP response binding itself,
+    /// which is already surfaced as the HTTP response).
+    /// </param>
+    public static Dictionary<string, object?> ExtractOutputData(
+        InvocationResponse? invocationResponse,
+        string? excludeBindingName = null)
+    {
+        var outputData = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (invocationResponse == null)
+        {
+            return outputData;
+        }
+
+        foreach (var output in invocationResponse.OutputData)
+        {
+            if (excludeBindingName != null &&
+                string.Equals(output.Name, excludeBindingName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            outputData[output.Name] = TypedDataConverter.Convert(output.Data);
+        }
+
+        return outputData;
     }
 
     /// <summary>
