@@ -4,7 +4,7 @@ namespace AzureFunctions.TestFramework.Core.Grpc;
 
 /// <summary>
 /// Tracks the gRPC completion of an HTTP invocation forwarded through ASP.NET Core.
-/// Dispose the capture to release its registration, including on cancellation or failure.
+/// Disposing a dispatched capture keeps its registration until the worker response arrives.
 /// </summary>
 public sealed class InvocationResponseCapture : IDisposable
 {

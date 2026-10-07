@@ -468,6 +468,7 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             InvocationRequest = invocationRequest
         };
 
+        await SendMessageOneWayAsync(message);
         lock (_lock)
         {
             if (_invocationResponseCaptures.TryGetValue(invocationId, out var capture))
@@ -475,8 +476,6 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 capture.MarkDispatched();
             }
         }
-
-        await SendMessageOneWayAsync(message);
         _logger.LogDebug("Sent InvocationRequest for {InvocationId} -> function {FunctionId}",
             invocationId, functionId);
         return true;
@@ -508,15 +507,30 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
                 throw new InvalidOperationException($"Invocation '{invocationId}' is already being captured.");
             }
 
-            var capture = new InvocationResponseCapture(_httpOutputBindingNames.GetValueOrDefault(functionId), () =>
+            InvocationResponseCapture? capture = null;
+            capture = new InvocationResponseCapture(_httpOutputBindingNames.GetValueOrDefault(functionId), () =>
             {
-                lock (_lock)
-                {
-                    _invocationResponseCaptures.Remove(invocationId);
-                }
+                ReleaseInvocationResponseCapture(invocationId, capture!);
             });
             _invocationResponseCaptures.Add(invocationId, capture);
             return capture;
+        }
+    }
+
+    private void ReleaseInvocationResponseCapture(string invocationId, InvocationResponseCapture capture)
+    {
+        lock (_lock)
+        {
+            if (capture.WasDispatched && !capture.Response.IsCompleted)
+            {
+                return;
+            }
+
+            if (_invocationResponseCaptures.TryGetValue(invocationId, out var registeredCapture) &&
+                ReferenceEquals(registeredCapture, capture))
+            {
+                _invocationResponseCaptures.Remove(invocationId);
+            }
         }
     }
 
@@ -728,6 +742,8 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             if (response != null &&
                 _invocationResponseCaptures.TryGetValue(response.InvocationId, out var capture))
             {
+                capture.MarkDispatched();
+                _invocationResponseCaptures.Remove(response.InvocationId);
                 capture.Complete(response);
             }
         }

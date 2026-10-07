@@ -9,14 +9,14 @@ namespace AzureFunctions.TestFramework.Tests.Core;
 
 public class InvocationResponseCaptureTests
 {
-    internal static GrpcHostService CreateService(bool extraOutputs = true)
+    internal static GrpcHostService CreateService(bool extraOutputs = true, string route = "items")
     {
         var service = new GrpcHostService(
             NullLogger<GrpcHostService>.Instance, typeof(InvocationResponseCaptureTests).Assembly);
         var metadata = new RpcFunctionMetadata { Name = "MixedOutputs", FunctionId = "mixed" };
         var bindings = new List<string>
         {
-            """{"type":"httpTrigger","direction":"in","name":"req","route":"items","methods":["post"]}""",
+            $$"""{"type":"httpTrigger","direction":"in","name":"req","route":"{{route}}","methods":["post"]}""",
             """{"type":"http","direction":"out","name":"HttpResponse"}"""
         };
         if (extraOutputs)
@@ -89,6 +89,64 @@ public class InvocationResponseCaptureTests
     }
 
     [Fact]
+    public async Task Capture_DisposedDispatchedIdRemainsReservedUntilResponse()
+    {
+        var service = CreateService();
+        var capture = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
+        Assert.NotNull(capture);
+        await service.SendInvocationRequestAsync("id", "POST", "/api/items");
+        capture.Dispose();
+
+        Assert.Throws<InvalidOperationException>(() =>
+            service.BeginCaptureInvocationResponse("id", "POST", "/api/items"));
+
+        var originalResponse = SuccessResponse("id");
+        await service.HandleInvocationResponse(new StreamingMessage { InvocationResponse = originalResponse });
+
+        using var retry = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
+        Assert.NotNull(retry);
+        Assert.False(retry.Response.IsCompleted);
+        await service.SendInvocationRequestAsync("id", "POST", "/api/items");
+
+        var retryResponse = SuccessResponse("id");
+        await service.HandleInvocationResponse(new StreamingMessage { InvocationResponse = retryResponse });
+        Assert.Same(retryResponse, await retry.Response);
+    }
+
+    [Fact]
+    public async Task Capture_ResponseConsumptionPreventsDisposedCaptureRemovingRetry()
+    {
+        var service = CreateService();
+        var first = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
+        Assert.NotNull(first);
+        await service.SendInvocationRequestAsync("id", "POST", "/api/items");
+        await service.HandleInvocationResponse(new StreamingMessage { InvocationResponse = SuccessResponse("id") });
+
+        using var retry = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
+        Assert.NotNull(retry);
+        first.Dispose();
+        Assert.Throws<InvalidOperationException>(() =>
+            service.BeginCaptureInvocationResponse("id", "POST", "/api/items"));
+    }
+
+    [Fact]
+    public async Task Capture_WriteFailureDoesNotMarkDispatched()
+    {
+        var service = CreateService();
+        var capture = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
+        Assert.NotNull(capture);
+        typeof(GrpcHostService).GetField("_responseStream", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(service, new RecordingWriter(_ => Task.FromException(new InvalidOperationException("write failed"))));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            service.SendInvocationRequestAsync("id", "POST", "/api/items"));
+        Assert.False(capture.WasDispatched);
+        capture.Dispose();
+        using var retry = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
+        Assert.NotNull(retry);
+    }
+
+    [Fact]
     public async Task Capture_SeparateInvocationsDoNotCrossTalk()
     {
         var service = CreateService();
@@ -112,9 +170,9 @@ public class InvocationResponseCaptureTests
         }
     };
 
-    private sealed class RecordingWriter : IServerStreamWriter<StreamingMessage>
+    private sealed class RecordingWriter(Func<StreamingMessage, Task>? write = null) : IServerStreamWriter<StreamingMessage>
     {
         public WriteOptions? WriteOptions { get; set; }
-        public Task WriteAsync(StreamingMessage message) => Task.CompletedTask;
+        public Task WriteAsync(StreamingMessage message) => write?.Invoke(message) ?? Task.CompletedTask;
     }
 }

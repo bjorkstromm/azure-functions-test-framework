@@ -38,6 +38,29 @@ public class AspNetCoreForwardingHandlerTests
     }
 
     [Fact]
+    public async Task SendAsync_DecodesEscapedPathBeforeMatchingRoute()
+    {
+        var service = InvocationResponseCaptureTests.CreateService(route: "café");
+        var content = new CallbackContent(() => service.HandleInvocationResponse(new StreamingMessage
+        {
+            InvocationResponse = InvocationResponseCaptureTests.SuccessResponse("id")
+        }));
+        using var inner = new CallbackHandler(async (_, _) =>
+        {
+            Assert.True(await service.SendInvocationRequestAsync("id", "POST", "/api/café"));
+            return new HttpResponseMessage(HttpStatusCode.Created) { Content = content };
+        });
+        using var handler = new AspNetCoreForwardingHandler(inner, service, "api");
+        using var client = new HttpClient(handler);
+        using var request = CreateRequest("/api/caf%C3%A9");
+
+        using var response = await client.SendAsync(
+            request, HttpCompletionOption.ResponseHeadersRead, TestContext.Current.CancellationToken);
+
+        Assert.Equal("queued", Assert.Single(response.GetOutputData()).Value);
+    }
+
+    [Fact]
     public async Task SendAsync_NoExtraOutputsDoesNotBufferBody()
     {
         var service = InvocationResponseCaptureTests.CreateService(extraOutputs: false);
@@ -94,6 +117,12 @@ public class AspNetCoreForwardingHandlerTests
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation.Token));
         Assert.True(content.Disposed);
+        Assert.Throws<InvalidOperationException>(() =>
+            service.BeginCaptureInvocationResponse("id", "POST", "/api/items"));
+        await service.HandleInvocationResponse(new StreamingMessage
+        {
+            InvocationResponse = InvocationResponseCaptureTests.SuccessResponse("id")
+        });
         AssertCaptureReleased(service, "id");
     }
 

@@ -1,4 +1,5 @@
 using AzureFunctions.TestFramework.Core.Grpc;
+using Microsoft.AspNetCore.Http;
 
 namespace AzureFunctions.TestFramework.Http;
 
@@ -40,7 +41,8 @@ internal sealed class AspNetCoreForwardingHandler : HttpMessageHandler
 
         var invocationId = string.Join(",", request.Headers.GetValues(InvocationIdHeader));
         using var capture = _grpcHostService.BeginCaptureInvocationResponse(
-            invocationId, request.Method.Method, request.RequestUri!.AbsolutePath, _routePrefix);
+            invocationId, request.Method.Method,
+            PathString.FromUriComponent(request.RequestUri!.AbsolutePath).Value ?? string.Empty, _routePrefix);
         if (capture == null)
         {
             return await _inner.SendAsync(request, cancellationToken);
