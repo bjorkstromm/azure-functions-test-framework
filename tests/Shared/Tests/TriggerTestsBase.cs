@@ -3,6 +3,7 @@ using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Queue;
 using AzureFunctions.TestFramework.ServiceBus;
 using Microsoft.Extensions.DependencyInjection;
+using System.Text;
 using Xunit;
 
 namespace TestProject;
@@ -47,6 +48,33 @@ public abstract class TriggerTestsBase : TestHostTestBase
         var processed = _processedItems!.TakeAll();
         Assert.Single(processed);
         Assert.Equal(messageText, processed[0]);
+    }
+
+    [Fact]
+    public async Task InvokeQueueAsync_WithByteArrayParam_Succeeds()
+    {
+        var messageText = "Hello byte[] queue!";
+        var bytes = Encoding.UTF8.GetBytes(messageText);
+
+        var result = await TestHost.InvokeQueueAsync("ProcessQueueMessageBytes", bytes, TestCancellation);
+
+        Assert.True(result.Success, $"byte[] queue invocation failed: {result.Error}");
+        var processed = _processedItems!.TakeAll();
+        Assert.Single(processed);
+        Assert.Equal(messageText, processed[0]);
+    }
+
+    [Fact]
+    public async Task InvokeQueueAsync_WithPocoParam_Succeeds()
+    {
+        var payload = new QueueOrderPayload { OrderId = "order-123" };
+
+        var result = await TestHost.InvokeQueueAsync("ProcessQueueMessagePoco", payload, cancellationToken: TestCancellation);
+
+        Assert.True(result.Success, $"POCO queue invocation failed: {result.Error}");
+        var processed = _processedItems!.TakeAll();
+        Assert.Single(processed);
+        Assert.Equal(payload.OrderId, processed[0]);
     }
 
     [Fact]

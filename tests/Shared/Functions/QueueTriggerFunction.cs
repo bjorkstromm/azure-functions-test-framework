@@ -3,6 +3,7 @@ using Azure.Data.Tables;
 using Azure.Storage.Queues.Models;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using System.Text;
 
 namespace TestProject;
 
@@ -29,6 +30,20 @@ public class QueueTriggerFunction
     {
         _logger.LogInformation("Processing typed queue message: {MessageId}", message.MessageId);
         _processedItems.Add(message.Body.ToString());
+    }
+
+    [Function("ProcessQueueMessageBytes")]
+    public void RunBytes([QueueTrigger("test-bytes-queue")] byte[] message)
+    {
+        _logger.LogInformation("Processing byte[] queue message of length: {Length}", message.Length);
+        _processedItems.Add(Encoding.UTF8.GetString(message));
+    }
+
+    [Function("ProcessQueueMessagePoco")]
+    public void RunPoco([QueueTrigger("test-poco-queue")] QueueOrderPayload payload)
+    {
+        _logger.LogInformation("Processing POCO queue message: {OrderId}", payload.OrderId);
+        _processedItems.Add(payload.OrderId);
     }
 
     [Function("ReturnQueueMessageValue")]
@@ -93,4 +108,9 @@ public sealed class CapturedTableEntity : ITableEntity
     public DateTimeOffset? Timestamp { get; set; }
     public ETag ETag { get; set; }
     public string Payload { get; set; } = string.Empty;
+}
+
+public sealed class QueueOrderPayload
+{
+    public string OrderId { get; set; } = string.Empty;
 }

@@ -18,38 +18,69 @@ public class FunctionsTestHostQueueExtensionsTests
     private static readonly FunctionRegistration FakeRegistration =
         new("fn-id-1", "QueueFunc", "queueTrigger", "myQueueItem");
 
-    // ── CreateBindingDataFromBytes ─────────────────────────────────────────────
+    // ── Queue payload binding ──────────────────────────────────────────────────
 
     [Fact]
-    public void CreateBindingDataFromBytes_WithBytes_UsesBytes()
+    public async Task InvokeQueueAsync_WithBytes_UsesBytes()
     {
-        var message = "hello queue";
-        var bytes = Encoding.UTF8.GetBytes(message);
+        var bytes = Encoding.UTF8.GetBytes("hello queue");
+        var host = new FakeHost();
 
-        var context = new FunctionInvocationContext
-        {
-            TriggerType = "queueTrigger",
-            InputData = { ["$queueMessageBytes"] = bytes }
-        };
+        await host.InvokeQueueAsync("QueueFunc", bytes, TestContext.Current.CancellationToken);
 
-        var binding = InvokeCreateBindingDataFromBytes(context, FakeRegistration);
-
-        Assert.Single(binding.InputData);
-        var param = binding.InputData[0];
+        var param = Assert.Single(host.FakeInvoker.BindingData!.InputData);
         Assert.Equal("myQueueItem", param.Name);
-        Assert.NotNull(param.Bytes);
         Assert.Equal(bytes, param.Bytes);
     }
 
     [Fact]
-    public void CreateBindingDataFromBytes_MissingBytes_UsesEmpty()
+    public async Task InvokeQueueAsync_WithString_UsesUtf8Bytes()
     {
-        var context = new FunctionInvocationContext { TriggerType = "queueTrigger" };
+        var host = new FakeHost();
 
-        var binding = InvokeCreateBindingDataFromBytes(context, FakeRegistration);
+        await host.InvokeQueueAsync("QueueFunc", "hello queue", TestContext.Current.CancellationToken);
 
-        Assert.Single(binding.InputData);
-        Assert.Equal(Array.Empty<byte>(), binding.InputData[0].Bytes);
+        var param = Assert.Single(host.FakeInvoker.BindingData!.InputData);
+        Assert.Equal(Encoding.UTF8.GetBytes("hello queue"), param.Bytes);
+    }
+
+    [Fact]
+    public async Task InvokeQueueAsync_WithPoco_UsesCamelCaseJson()
+    {
+        var host = new FakeHost();
+
+        await host.InvokeQueueAsync(
+            "QueueFunc",
+            new TestQueuePayload { OrderId = "order-42" },
+            jsonSerializerOptions: null,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        var param = Assert.Single(host.FakeInvoker.BindingData!.InputData);
+        Assert.Equal("myQueueItem", param.Name);
+        Assert.Equal("""{"orderId":"order-42"}""", param.Json);
+    }
+
+    [Fact]
+    public void SerializePayloadToJson_UsesCamelCaseByDefault()
+    {
+        var payload = new TestQueuePayload { OrderId = "order-123" };
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+
+        var json = InvokeSerializePayloadToJson(payload, typeof(TestQueuePayload), options);
+
+        Assert.Equal("""{"orderId":"order-123"}""", json);
+    }
+
+    [Fact]
+    public void SerializePayloadToJson_WhenSerializationFails_ThrowsInvalidOperationException()
+    {
+        var payload = new CyclicPayload();
+        payload.Self = payload;
+        var options = new JsonSerializerOptions();
+
+        var ex = Assert.Throws<TargetInvocationException>(() =>
+            InvokeSerializePayloadToJson(payload, typeof(CyclicPayload), options));
+        Assert.IsType<InvalidOperationException>(ex.InnerException);
     }
 
     // ── SerializeQueueMessage ────────────────────────────────────────────────
@@ -100,58 +131,40 @@ public class FunctionsTestHostQueueExtensionsTests
         Assert.False(doc.RootElement.TryGetProperty("ExpiresOn", out _));
     }
 
-    // ── CreateBindingDataFromQueueMessage ──────────────────────────────────────
-
     [Fact]
-    public void CreateBindingDataFromQueueMessage_ValidMessage_UsesModelBindingData()
+    public async Task InvokeQueueAsync_WithQueueMessage_UsesModelBindingData()
     {
         var queueMessage = QueuesModelFactory.QueueMessage(
             messageId: "msg-3",
             popReceipt: "pop-3",
             messageText: "data",
             dequeueCount: 1);
+        var host = new FakeHost();
 
-        var context = new FunctionInvocationContext
-        {
-            TriggerType = "queueTrigger",
-            InputData = { ["$queueMessage"] = queueMessage }
-        };
+        await host.InvokeQueueAsync("QueueFunc", queueMessage, TestContext.Current.CancellationToken);
 
-        var binding = InvokeCreateBindingDataFromQueueMessage(context, FakeRegistration);
-
-        Assert.Single(binding.InputData);
-        var param = binding.InputData[0];
+        var param = Assert.Single(host.FakeInvoker.BindingData!.InputData);
         Assert.Equal("myQueueItem", param.Name);
         Assert.NotNull(param.ModelBindingData);
         Assert.Equal("AzureStorageQueues", param.ModelBindingData!.Source);
     }
 
     [Fact]
-    public void CreateBindingDataFromQueueMessage_MissingMessage_Throws()
+    public void CreateBindingData_MissingPayload_Throws()
     {
         var context = new FunctionInvocationContext { TriggerType = "queueTrigger" };
 
         var ex = Assert.Throws<System.Reflection.TargetInvocationException>(() =>
-            InvokeCreateBindingDataFromQueueMessage(context, FakeRegistration));
+            InvokeCreateBindingData(context, FakeRegistration));
         Assert.IsType<InvalidOperationException>(ex.InnerException);
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private static TriggerBindingData InvokeCreateBindingDataFromBytes(
-        FunctionInvocationContext ctx, FunctionRegistration reg)
+    private static TriggerBindingData InvokeCreateBindingData(FunctionInvocationContext ctx, FunctionRegistration reg)
     {
         var method = typeof(FunctionsTestHostQueueExtensions)
-            .GetMethod("CreateBindingDataFromBytes",
-                BindingFlags.NonPublic | BindingFlags.Static)!;
-        return (TriggerBindingData)method.Invoke(null, [ctx, reg])!;
-    }
-
-    private static TriggerBindingData InvokeCreateBindingDataFromQueueMessage(
-        FunctionInvocationContext ctx, FunctionRegistration reg)
-    {
-        var method = typeof(FunctionsTestHostQueueExtensions)
-            .GetMethod("CreateBindingDataFromQueueMessage",
+            .GetMethod("CreateBindingData",
                 BindingFlags.NonPublic | BindingFlags.Static)!;
         return (TriggerBindingData)method.Invoke(null, [ctx, reg])!;
     }
@@ -162,5 +175,53 @@ public class FunctionsTestHostQueueExtensionsTests
             .GetMethod("SerializeQueueMessage",
                 BindingFlags.NonPublic | BindingFlags.Static)!;
         return (byte[])method.Invoke(null, [message])!;
+    }
+
+    private static string InvokeSerializePayloadToJson(object payload, Type payloadType, JsonSerializerOptions options)
+    {
+        var method = typeof(FunctionsTestHostQueueExtensions)
+            .GetMethod("SerializePayloadToJson",
+                BindingFlags.NonPublic | BindingFlags.Static)!;
+        return (string)method.Invoke(null, [payload, payloadType, options])!;
+    }
+
+    private sealed class TestQueuePayload
+    {
+        public string OrderId { get; set; } = string.Empty;
+    }
+
+    private sealed class CyclicPayload
+    {
+        public CyclicPayload? Self { get; set; }
+    }
+
+    private sealed class FakeHost : IFunctionsTestHost
+    {
+        public FakeInvoker FakeInvoker { get; } = new();
+        public IServiceProvider Services => throw new NotSupportedException();
+        public IFunctionInvoker Invoker => FakeInvoker;
+
+        public Task StartAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task StopAsync(CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public ValueTask DisposeAsync() => ValueTask.CompletedTask;
+        public void Dispose() { }
+    }
+
+    private sealed class FakeInvoker : IFunctionInvoker
+    {
+        public TriggerBindingData? BindingData { get; private set; }
+
+        public Task<FunctionInvocationResult> InvokeAsync(
+            string functionName,
+            FunctionInvocationContext context,
+            Func<FunctionInvocationContext, FunctionRegistration, TriggerBindingData> triggerBindingFactory,
+            CancellationToken cancellationToken = default)
+        {
+            BindingData = triggerBindingFactory(context, FakeRegistration);
+            return Task.FromResult(new FunctionInvocationResult());
+        }
+
+        public IReadOnlyDictionary<string, Microsoft.Azure.Functions.Worker.Core.FunctionMetadata.IFunctionMetadata>
+            GetFunctions() => throw new NotSupportedException();
     }
 }
