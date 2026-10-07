@@ -52,6 +52,40 @@ public abstract class HttpMixedOutputBindingTestsBase(ITestOutputHelper output) 
         Assert.Equal($"blob:{value}", outputData["BlobContent"]?.ToString());
     }
 
+    // ── carl-berg's examples from issue #142 ─────────────────────────────────
+    // https://github.com/bjorkstromm/azure-functions-test-framework/issues/142#issuecomment-6035594598
+
+    [Fact]
+    public async Task MyQueueFunction_QueueOutputOnReturnValue_IsCapturedUnderReturnKey()
+    {
+        using var response = await Client.PostAsync("/api/some-route", content: null, TestCancellation);
+
+        Assert.True(response.IsSuccessStatusCode);
+        var outputData = response.GetOutputData();
+        Assert.Equal("Processed data", Assert.Single(outputData).Value?.ToString());
+        Assert.True(outputData.ContainsKey("$return"));
+    }
+
+    [Fact]
+    public async Task MyBlobAndQueueFunction_UploadsBlobAndCapturesQueueReturnValue()
+    {
+        using var response = await Client.PostAsync("/api/some-other-route", content: null, TestCancellation);
+
+        Assert.True(response.IsSuccessStatusCode);
+        var outputData = response.GetOutputData();
+        Assert.Equal("Reference to uploaded blob", Assert.Single(outputData).Value?.ToString());
+
+        var upload = Assert.Single(BlobUploads.Uploads);
+        Assert.Equal("some-unique-name.json", upload.BlobName);
+        Assert.Equal("Processed data", upload.Content);
+    }
+
+    /// <summary>
+    /// The fake blob-upload transport shared with the concrete test class, so
+    /// <see cref="MyBlobAndQueueFunction_UploadsBlobAndCapturesQueueReturnValue"/> can assert on
+    /// what the function under test actually uploaded.
+    /// </summary>
+    protected abstract FakeBlobUploadTransport BlobUploads { get; }
 }
 
 public abstract class AspNetCoreHttpMixedOutputBindingTestsBase(ITestOutputHelper output)

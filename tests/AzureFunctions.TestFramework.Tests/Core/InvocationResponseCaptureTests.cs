@@ -7,6 +7,10 @@ using Xunit;
 
 namespace AzureFunctions.TestFramework.Tests.Core;
 
+/// <summary>
+/// Covers <see cref="InvocationResponseCapture"/>'s explicit lifecycle:
+/// Pending → Dispatched → Completed, or → Abandoned when disposed before a response arrives.
+/// </summary>
 public class InvocationResponseCaptureTests
 {
     internal static GrpcHostService CreateService(bool extraOutputs = true, string route = "items")
@@ -34,77 +38,69 @@ public class InvocationResponseCaptureTests
     }
 
     [Fact]
-    public void BeginCapture_NoExtraOutputsOrUnmatchedRoute_ReturnsNull()
-    {
-        var service = CreateService(extraOutputs: false);
-        Assert.Null(service.BeginCaptureInvocationResponse("id", "POST", "/api/items"));
-        Assert.Null(CreateService().BeginCaptureInvocationResponse("id", "POST", "/api/unknown"));
-        Assert.Null(CreateService().BeginCaptureInvocationResponse("id", "GET", "/api/items"));
-    }
-
-    [Theory]
-    [InlineData("api")]
-    [InlineData("v1")]
-    [InlineData("")]
-    public async Task Capture_CompletesByInvocationIdWithHttpBindingName(string prefix)
+    public void BeginCapture_DuplicateIdThrows()
     {
         var service = CreateService();
-        var path = string.IsNullOrEmpty(prefix) ? "/items" : $"/{prefix}/items";
-        using var capture = service.BeginCaptureInvocationResponse("id", "POST", path, prefix);
-        Assert.NotNull(capture);
-        Assert.Equal("HttpResponse", capture.HttpOutputBindingName);
-        Assert.False(capture.WasDispatched);
-        Assert.True(await service.SendInvocationRequestAsync("id", "POST", path, prefix));
-        Assert.True(capture.WasDispatched);
+        using var capture = service.BeginCaptureInvocationResponse("id");
+        Assert.Equal(InvocationResponseCaptureState.Pending, capture.State);
+        Assert.Throws<InvalidOperationException>(() => service.BeginCaptureInvocationResponse("id"));
+    }
+
+    [Fact]
+    public async Task Capture_Dispatched_SetsOutputInfoThenCompletesWithResponse()
+    {
+        var service = CreateService();
+        using var capture = service.BeginCaptureInvocationResponse("id");
+        Assert.Null(capture.OutputInfo);
+
+        Assert.True(await service.SendInvocationRequestAsync("id", "POST", "/api/items"));
+        Assert.Equal(InvocationResponseCaptureState.Dispatched, capture.State);
+        Assert.Equal("HttpResponse", capture.OutputInfo!.HttpOutputBindingName);
+        Assert.True(capture.OutputInfo.HasNonHttpOutputs);
+        Assert.False(capture.OutputInfo.HasNonHttpReturnValue);
+
         var response = SuccessResponse("id");
         await service.HandleInvocationResponse(new StreamingMessage { InvocationResponse = response });
+        Assert.Equal(InvocationResponseCaptureState.Completed, capture.State);
         Assert.Same(response, await capture.Response);
     }
 
     [Fact]
-    public void Capture_DuplicateIdsFailAndDisposeReleasesRegistration()
+    public async Task Capture_PendingDispose_FreesIdImmediatelyAndIgnoresLateResponse()
     {
         var service = CreateService();
-        var capture = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
-        Assert.NotNull(capture);
-        Assert.Throws<InvalidOperationException>(() =>
-            service.BeginCaptureInvocationResponse("id", "POST", "/api/items"));
+        var capture = service.BeginCaptureInvocationResponse("id");
         capture.Dispose();
-        using var next = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
-        Assert.NotNull(next);
-        capture.Dispose();
-        Assert.Throws<InvalidOperationException>(() =>
-            service.BeginCaptureInvocationResponse("id", "POST", "/api/items"));
-    }
 
-    [Fact]
-    public async Task Capture_DisposeIgnoresLateResponse()
-    {
-        var service = CreateService();
-        var capture = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
-        Assert.NotNull(capture);
-        capture.Dispose();
+        // Never dispatched: a late/stray response for the disposed ID matches nothing and is dropped.
         await service.HandleInvocationResponse(new StreamingMessage { InvocationResponse = SuccessResponse("id") });
         Assert.False(capture.Response.IsCompleted);
+
+        // The ID is free again right away — a genuine new request can reuse it and complete normally.
+        using var next = service.BeginCaptureInvocationResponse("id");
+        Assert.False(next.Response.IsCompleted);
+        var response = SuccessResponse("id");
+        await service.HandleInvocationResponse(new StreamingMessage { InvocationResponse = response });
+        Assert.Same(response, await next.Response);
     }
 
     [Fact]
-    public async Task Capture_DisposedDispatchedIdRemainsReservedUntilResponse()
+    public async Task Capture_DispatchedDispose_ReservesIdUntilResponseConsumedThenAllowsRetry()
     {
         var service = CreateService();
-        var capture = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
-        Assert.NotNull(capture);
+        var capture = service.BeginCaptureInvocationResponse("id");
         await service.SendInvocationRequestAsync("id", "POST", "/api/items");
         capture.Dispose();
+        Assert.Equal(InvocationResponseCaptureState.Abandoned, capture.State);
 
-        Assert.Throws<InvalidOperationException>(() =>
-            service.BeginCaptureInvocationResponse("id", "POST", "/api/items"));
+        // Still reserved: a retry with the same ID must not silently shadow the original.
+        Assert.Throws<InvalidOperationException>(() => service.BeginCaptureInvocationResponse("id"));
 
         var originalResponse = SuccessResponse("id");
         await service.HandleInvocationResponse(new StreamingMessage { InvocationResponse = originalResponse });
 
-        using var retry = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
-        Assert.NotNull(retry);
+        // Once the original response is consumed, the ID is free for a genuine retry.
+        using var retry = service.BeginCaptureInvocationResponse("id");
         Assert.False(retry.Response.IsCompleted);
         await service.SendInvocationRequestAsync("id", "POST", "/api/items");
 
@@ -114,35 +110,19 @@ public class InvocationResponseCaptureTests
     }
 
     [Fact]
-    public async Task Capture_ResponseConsumptionPreventsDisposedCaptureRemovingRetry()
+    public async Task Capture_WriteFailureLeavesPending_DisposeAllowsImmediateRetry()
     {
         var service = CreateService();
-        var first = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
-        Assert.NotNull(first);
-        await service.SendInvocationRequestAsync("id", "POST", "/api/items");
-        await service.HandleInvocationResponse(new StreamingMessage { InvocationResponse = SuccessResponse("id") });
-
-        using var retry = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
-        Assert.NotNull(retry);
-        first.Dispose();
-        Assert.Throws<InvalidOperationException>(() =>
-            service.BeginCaptureInvocationResponse("id", "POST", "/api/items"));
-    }
-
-    [Fact]
-    public async Task Capture_WriteFailureDoesNotMarkDispatched()
-    {
-        var service = CreateService();
-        var capture = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
-        Assert.NotNull(capture);
+        var capture = service.BeginCaptureInvocationResponse("id");
         typeof(GrpcHostService).GetField("_responseStream", BindingFlags.Instance | BindingFlags.NonPublic)!
             .SetValue(service, new RecordingWriter(_ => Task.FromException(new InvalidOperationException("write failed"))));
 
         await Assert.ThrowsAsync<InvalidOperationException>(() =>
             service.SendInvocationRequestAsync("id", "POST", "/api/items"));
-        Assert.False(capture.WasDispatched);
+        Assert.Equal(InvocationResponseCaptureState.Pending, capture.State);
+
         capture.Dispose();
-        using var retry = service.BeginCaptureInvocationResponse("id", "POST", "/api/items");
+        using var retry = service.BeginCaptureInvocationResponse("id");
         Assert.NotNull(retry);
     }
 
@@ -150,10 +130,9 @@ public class InvocationResponseCaptureTests
     public async Task Capture_SeparateInvocationsDoNotCrossTalk()
     {
         var service = CreateService();
-        using var first = service.BeginCaptureInvocationResponse("first", "POST", "/api/items");
-        using var second = service.BeginCaptureInvocationResponse("second", "POST", "/api/items");
-        Assert.NotNull(first);
-        Assert.NotNull(second);
+        using var first = service.BeginCaptureInvocationResponse("first");
+        using var second = service.BeginCaptureInvocationResponse("second");
+
         await service.HandleInvocationResponse(new StreamingMessage { InvocationResponse = SuccessResponse("second") });
         Assert.False(first.Response.IsCompleted);
         Assert.Equal("second", (await second.Response).InvocationId);

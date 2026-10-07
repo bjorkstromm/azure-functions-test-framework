@@ -40,12 +40,10 @@ public static class FunctionsHttpOutputData
 
     internal static void Capture(
         HttpResponseMessage response, HttpRequestMessage request, InvocationResponse? invocationResponse,
-        string? httpOutputBindingName = null)
+        HttpFunctionOutputInfo outputInfo)
     {
         response.RequestMessage = request;
-        httpOutputBindingName ??= invocationResponse?.OutputData
-            .FirstOrDefault(p => p.Data?.Http != null)?.Name;
-        var outputData = GrpcHostService.ExtractOutputData(invocationResponse, httpOutputBindingName);
+        var outputData = GrpcHostService.ExtractHttpOutputData(invocationResponse, outputInfo);
         request.Options.Set(Key, outputData);
     }
 }

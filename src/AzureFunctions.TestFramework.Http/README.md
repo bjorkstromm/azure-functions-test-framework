@@ -73,11 +73,31 @@ var queueMessage = outputData["QueueMessage"]?.ToString();
 **ASP.NET Core integration mode** (`ConfigureFunctionsWebApplication()`), with either host builder API.
 The HTTP output binding itself is excluded from the returned dictionary.
 
-In ASP.NET Core integration mode, requests whose functions declare additional output bindings are
-buffered until the worker's gRPC `InvocationResponse` arrives, even with `ResponseHeadersRead`.
-This ensures the outputs are available as soon as the HTTP call returns. Waiting respects the
-invocation timeout and request cancellation. Functions without additional outputs retain their
-normal streaming behavior. No changes to function code or injected fake clients are required.
+### `$return` as a non-HTTP output
+
+If `[QueueOutput]`/`[BlobOutput]`/etc. is declared directly on an HTTP-triggered method (rather than
+on a property of a multi-output result type), the worker binds the method's return value itself to
+`$return`:
+
+```csharp
+[Function("MyQueueFunction")]
+[QueueOutput("my-queue")]
+public async Task<string> Run([HttpTrigger(...)] HttpRequestData req)
+{
+    return "Processed data";
+}
+```
+
+In this case `GetOutputData()` returns a single entry keyed `"$return"` with the returned value.
+
+### Buffering
+
+In ASP.NET Core integration mode, requests whose functions declare additional output bindings (including
+a non-HTTP `$return`) are buffered until the worker's gRPC `InvocationResponse` arrives, even with
+`ResponseHeadersRead`. This buffering is driven by the function's metadata and applies to every call to
+that route, whether or not the caller reads `GetOutputData()`. Waiting respects the invocation timeout
+and request cancellation. Functions without additional outputs retain their normal streaming behavior.
+No changes to function code or injected fake clients are required.
 
 ## References
 

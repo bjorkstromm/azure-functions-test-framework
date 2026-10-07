@@ -26,7 +26,7 @@ public class AspNetCoreForwardingHandlerTests
             await service.SendInvocationRequestAsync("id", "POST", "/v1/items", "v1");
             return new HttpResponseMessage(HttpStatusCode.Created) { Content = content };
         });
-        using var handler = new AspNetCoreForwardingHandler(inner, service, "v1");
+        using var handler = new AspNetCoreForwardingHandler(inner, service);
         using var client = new HttpClient(handler);
         using var request = CreateRequest("/v1/items");
         using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, TestContext.Current.CancellationToken);
@@ -38,36 +38,16 @@ public class AspNetCoreForwardingHandlerTests
     }
 
     [Fact]
-    public async Task SendAsync_DecodesEscapedPathBeforeMatchingRoute()
-    {
-        var service = InvocationResponseCaptureTests.CreateService(route: "café");
-        var content = new CallbackContent(() => service.HandleInvocationResponse(new StreamingMessage
-        {
-            InvocationResponse = InvocationResponseCaptureTests.SuccessResponse("id")
-        }));
-        using var inner = new CallbackHandler(async (_, _) =>
-        {
-            Assert.True(await service.SendInvocationRequestAsync("id", "POST", "/api/café"));
-            return new HttpResponseMessage(HttpStatusCode.Created) { Content = content };
-        });
-        using var handler = new AspNetCoreForwardingHandler(inner, service, "api");
-        using var client = new HttpClient(handler);
-        using var request = CreateRequest("/api/caf%C3%A9");
-
-        using var response = await client.SendAsync(
-            request, HttpCompletionOption.ResponseHeadersRead, TestContext.Current.CancellationToken);
-
-        Assert.Equal("queued", Assert.Single(response.GetOutputData()).Value);
-    }
-
-    [Fact]
     public async Task SendAsync_NoExtraOutputsDoesNotBufferBody()
     {
         var service = InvocationResponseCaptureTests.CreateService(extraOutputs: false);
         var content = new CallbackContent(() => Task.CompletedTask);
-        using var inner = new CallbackHandler((_, _) =>
-            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = content }));
-        using var handler = new AspNetCoreForwardingHandler(inner, service, "api");
+        using var inner = new CallbackHandler(async (_, _) =>
+        {
+            await service.SendInvocationRequestAsync("id", "POST", "/api/items");
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
+        });
+        using var handler = new AspNetCoreForwardingHandler(inner, service);
         using var client = new HttpClient(handler);
         using var request = CreateRequest();
         using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, TestContext.Current.CancellationToken);
@@ -81,7 +61,7 @@ public class AspNetCoreForwardingHandlerTests
         var service = InvocationResponseCaptureTests.CreateService();
         using var inner = new CallbackHandler((_, _) =>
             Task.FromResult(new HttpResponseMessage(HttpStatusCode.Unauthorized)));
-        using var handler = new AspNetCoreForwardingHandler(inner, service, "api");
+        using var handler = new AspNetCoreForwardingHandler(inner, service);
         using var client = new HttpClient(handler);
         using var request = CreateRequest();
         using var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
@@ -111,14 +91,13 @@ public class AspNetCoreForwardingHandlerTests
             await service.SendInvocationRequestAsync("id", "POST", "/api/items");
             return new HttpResponseMessage(HttpStatusCode.OK) { Content = content };
         });
-        using var handler = new AspNetCoreForwardingHandler(inner, service, "api");
+        using var handler = new AspNetCoreForwardingHandler(inner, service);
         using var client = new HttpClient(handler);
         using var request = CreateRequest();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
             client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellation.Token));
         Assert.True(content.Disposed);
-        Assert.Throws<InvalidOperationException>(() =>
-            service.BeginCaptureInvocationResponse("id", "POST", "/api/items"));
+        Assert.Throws<InvalidOperationException>(() => service.BeginCaptureInvocationResponse("id"));
         await service.HandleInvocationResponse(new StreamingMessage
         {
             InvocationResponse = InvocationResponseCaptureTests.SuccessResponse("id")
@@ -131,11 +110,26 @@ public class AspNetCoreForwardingHandlerTests
     {
         var service = InvocationResponseCaptureTests.CreateService();
         using var inner = new CallbackHandler((_, _) => throw new HttpRequestException("forwarding failed"));
-        using var handler = new AspNetCoreForwardingHandler(inner, service, "api");
+        using var handler = new AspNetCoreForwardingHandler(inner, service);
         using var client = new HttpClient(handler);
         using var request = CreateRequest();
         await Assert.ThrowsAsync<HttpRequestException>(() => client.SendAsync(request, TestContext.Current.CancellationToken));
         AssertCaptureReleased(service, "id");
+    }
+
+    [Fact]
+    public async Task SendAsync_MultipleInvocationIdHeaderValues_ThrowsInsteadOfMangledKey()
+    {
+        var service = InvocationResponseCaptureTests.CreateService();
+        using var inner = new CallbackHandler((_, _) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)));
+        using var handler = new AspNetCoreForwardingHandler(inner, service);
+        using var client = new HttpClient(handler);
+        using var request = CreateRequest();
+        request.Headers.Add("x-ms-invocation-id", "another-id");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+            client.SendAsync(request, TestContext.Current.CancellationToken));
     }
 
     private static HttpRequestMessage CreateRequest(string path = "/api/items")
@@ -147,7 +141,7 @@ public class AspNetCoreForwardingHandlerTests
 
     private static void AssertCaptureReleased(AzureFunctions.TestFramework.Core.Grpc.GrpcHostService service, string id)
     {
-        using var capture = service.BeginCaptureInvocationResponse(id, "POST", "/api/items");
+        using var capture = service.BeginCaptureInvocationResponse(id);
         Assert.NotNull(capture);
     }
 
