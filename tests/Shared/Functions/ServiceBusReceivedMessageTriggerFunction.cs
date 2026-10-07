@@ -24,4 +24,9 @@ public class ServiceBusReceivedMessageTriggerFunction
         _logger.LogInformation("Processing ServiceBusReceivedMessage: {Body}, MessageId={MessageId}", body, message.MessageId);
         _processedItems.Add(body);
     }
+
+    [Function("ProcessServiceBusReceivedMessageMetadata")]
+    public void RunMetadata(
+        [ServiceBusTrigger("test-metadata")] ServiceBusReceivedMessage message)
+        => _processedItems.Add($"{message.MessageId}|{message.CorrelationId}|{message.Subject}|{message.ContentType}|{message.SessionId}|{message.ApplicationProperties["source"]}");
 }

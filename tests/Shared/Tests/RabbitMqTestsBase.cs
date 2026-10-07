@@ -1,4 +1,5 @@
 using System.Text;
+using System.Text.Json;
 using AzureFunctions.TestFramework.RabbitMQ;
 
 namespace TestProject;
@@ -15,6 +16,52 @@ public abstract class RabbitMqTestsBase(ITestOutputHelper output) : TestHostTest
     }
 
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems);
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task InvokeRabbitMQAsync_RawPayload_PreservesBytes(bool binaryData, bool empty)
+    {
+        byte[] bytes = empty ? [] : [0, 255, 128, 195, 40, 0, 42];
+        var result = binaryData
+            ? await TestHost.InvokeRabbitMQAsync("ProcessRabbitMqBinary", new BinaryData(bytes), cancellationToken: TestCancellation)
+            : await TestHost.InvokeRabbitMQAsync("ProcessRabbitMqBinary", bytes, cancellationToken: TestCancellation);
+
+        Assert.True(result.Success, $"RabbitMQ binary invocation failed: {result.Error}");
+        Assert.Equal($"{Convert.ToBase64String(bytes)}|rk=|mid=", Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeRabbitMQAsync_RawPayload_PreservesMetadata(bool binaryData)
+    {
+        byte[] bytes = [0, 255, 128, 195, 40];
+        var props = new RabbitMqTriggerMessageProperties { RoutingKey = "binary.route", MessageId = "binary-id" };
+        var result = binaryData
+            ? await TestHost.InvokeRabbitMQAsync("ProcessRabbitMqBinary", new BinaryData(bytes), props, cancellationToken: TestCancellation)
+            : await TestHost.InvokeRabbitMQAsync("ProcessRabbitMqBinary", bytes, props, cancellationToken: TestCancellation);
+
+        Assert.True(result.Success, $"RabbitMQ binary metadata invocation failed: {result.Error}");
+        Assert.Equal($"{Convert.ToBase64String(bytes)}|rk=binary.route|mid=binary-id", Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeRabbitMQAsync_Poco_UsesSelectedJsonOptionsAndMetadata(bool customOptions)
+    {
+        var props = new RabbitMqTriggerMessageProperties { RoutingKey = "json.route", MessageId = "json-id" };
+        var options = customOptions ? new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower } : null;
+        var result = await TestHost.InvokeRabbitMQAsync("ProcessRabbitMqWithMetadata", new { OrderId = "order-42" },
+            props, options, TestCancellation);
+
+        Assert.True(result.Success, $"RabbitMQ JSON invocation failed: {result.Error}");
+        var json = customOptions ? """{"order_id":"order-42"}""" : """{"orderId":"order-42"}""";
+        Assert.Equal($"{json}|rk=json.route|mid=json-id", Assert.Single(_processedItems!.TakeAll()));
+    }
 
     [Fact]
     public async Task InvokeRabbitMQAsync_WithStringBody_Succeeds()

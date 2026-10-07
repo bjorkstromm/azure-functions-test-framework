@@ -129,6 +129,36 @@ public void Run(
 }
 ```
 
+## Raw payloads and JSON serialization
+
+`InvokeDaprBindingAsync`, `InvokeDaprServiceInvocationAsync`, and `InvokeDaprTopicAsync` each
+accept `string`, `byte[]`, `BinaryData`, or a generic JSON payload. Strings are UTF-8 encoded
+without JSON quoting. The byte-array and `BinaryData` overloads preserve the exact bytes,
+including invalid UTF-8 and empty bodies, without JSON serialization:
+
+```csharp
+byte[] bytes = [0, 255, 128, 195, 40];
+var binding = await host.InvokeDaprBindingAsync("ProcessDaprBindingBinary", bytes);
+var invocation = await host.InvokeDaprServiceInvocationAsync("ProcessDaprInvocationBinary", new BinaryData(bytes));
+var topic = await host.InvokeDaprTopicAsync("ProcessDaprTopicBinary", new BinaryData(bytes));
+```
+
+Every raw overload also accepts a `CancellationToken` after the payload. Use a function with
+a `byte[]` trigger parameter to assert binary fidelity.
+
+Generic overloads use camelCase property names by default and accept `jsonSerializerOptions`
+before the optional cancellation token:
+
+```csharp
+var result = await host.InvokeDaprTopicAsync(
+    "ProcessTopicMessage",
+    new { OrderId = "ord-42" },
+    jsonSerializerOptions: new System.Text.Json.JsonSerializerOptions
+    {
+        PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower
+    });
+```
+
 ## Output bindings
 
 Output bindings are captured automatically via `FunctionInvocationResult` when the worker SDK correctly marks them as output bindings.

@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Azure.Messaging.ServiceBus;
 using Azure.Storage.Queues.Models;
 using AzureFunctions.TestFramework.Queue;
@@ -61,6 +62,140 @@ public abstract class TriggerTestsBase : TestHostTestBase
         var processed = _processedItems!.TakeAll();
         Assert.Single(processed);
         Assert.Equal(body, processed[0]);
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusAsync_WithString_PreservesText()
+    {
+        const string body = "Hello \"Service Bus\"! café 🚀";
+        var result = await TestHost.InvokeServiceBusAsync("ProcessServiceBusMessage", body, TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(body, Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusAsync_WithBytes_PreservesNonUtf8Body()
+    {
+        byte[] body = [0, 0xff, 0xfe, 0x80, 0xc3, 0x28];
+        var result = await TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", body, TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(Convert.ToBase64String(body), Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusAsync_WithBinaryData_PreservesNonUtf8Body()
+    {
+        byte[] body = [0, 0xff, 0xfe, 0x80, 0xc3, 0x28];
+        var result = await TestHost.InvokeServiceBusAsync(
+            "ProcessServiceBusBytes", BinaryData.FromBytes(body), TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(Convert.ToBase64String(body), Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusAsync_WithPoco_BindsPayload()
+    {
+        var result = await TestHost.InvokeServiceBusAsync(
+            "ProcessServiceBusPayload", new ServiceBusPayload { OrderName = "order", Quantity = 3 },
+            cancellationToken: TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("order:3", Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusAsync_WithPoco_DefaultsToCamelCase()
+    {
+        var result = await TestHost.InvokeServiceBusAsync(
+            "ProcessServiceBusMessage", new ServiceBusPayload { OrderName = "order", Quantity = 3 },
+            cancellationToken: TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        using var json = JsonDocument.Parse(Assert.Single(_processedItems!.TakeAll()));
+        Assert.Equal("order", json.RootElement.GetProperty("orderName").GetString());
+        Assert.Equal(3, json.RootElement.GetProperty("quantity").GetInt32());
+        Assert.False(json.RootElement.TryGetProperty("OrderName", out _));
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusAsync_WithPoco_UsesCustomOptions()
+    {
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+        var result = await TestHost.InvokeServiceBusAsync(
+            "ProcessServiceBusMessage", new ServiceBusPayload { OrderName = "order", Quantity = 3 },
+            options, TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        using var json = JsonDocument.Parse(Assert.Single(_processedItems!.TakeAll()));
+        Assert.Equal("order", json.RootElement.GetProperty("order_name").GetString());
+        Assert.Equal(3, json.RootElement.GetProperty("quantity").GetInt32());
+        Assert.Same(JsonNamingPolicy.SnakeCaseLower, options.PropertyNamingPolicy);
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusAsync_WithSdkMessage_PreservesRawBytes()
+    {
+        byte[] body = [0, 0xff, 0xfe, 0x80];
+        var message = new ServiceBusMessage(BinaryData.FromBytes(body)) { MessageId = "sdk-message" };
+        var result = await TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", message);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(Convert.ToBase64String(body), Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusAsync_WithReceivedMessage_PreservesMetadata()
+    {
+        var message = ServiceBusModelFactory.ServiceBusReceivedMessage(
+            body: BinaryData.FromString("body"), messageId: "message-id", correlationId: "correlation-id",
+            subject: "subject", contentType: "application/json", sessionId: "session-id",
+            properties: new Dictionary<string, object> { ["source"] = "test" });
+        var result = await TestHost.InvokeServiceBusAsync("ProcessServiceBusReceivedMessageMetadata", message);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("message-id|correlation-id|subject|application/json|session-id|test",
+            Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusBatchAsync_WithSingleMessage_RemainsBatch()
+    {
+        var message = ServiceBusModelFactory.ServiceBusReceivedMessage(body: BinaryData.FromString("only message"));
+        var result = await TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", [message], TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal("only message", Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusAsync_WithNullPayload_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusMessage", (string)null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", (byte[])null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", (BinaryData)null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeServiceBusAsync<ServiceBusPayload>("ProcessServiceBusPayload", null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusMessage", (ServiceBusMessage)null!));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusReceivedMessage", (ServiceBusReceivedMessage)null!));
+    }
+
+    [Fact]
+    public async Task InvokeServiceBusBatchAsync_WithInvalidBatch_Throws()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", null!));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", []));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", [null!]));
     }
 
     [Fact]

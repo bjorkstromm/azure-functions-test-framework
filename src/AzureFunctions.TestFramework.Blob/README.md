@@ -9,6 +9,14 @@ BlobTrigger and BlobInput support for the Azure Functions Test Framework. Provid
 
 ## BlobTrigger invocation
 
+`InvokeBlobAsync` accepts `BinaryData`, raw `byte[]`, or `Stream` content. Binary
+content is preserved without text conversion. Streams are read from their current
+position and left open.
+
+For text, use `InvokeBlobContentAsync("ProcessBlob", "hello", blobName: "file.txt")`.
+The distinct name avoids changing the existing
+`InvokeBlobAsync(functionName, containerName, blobName)` SDK-client overload.
+
 ```csharp
 using AzureFunctions.TestFramework.Blob;
 using AzureFunctions.TestFramework.Core;
