@@ -140,7 +140,12 @@ public class FunctionsHttpMessageHandler : HttpMessageHandler
 
             // 6. Convert gRPC response to HttpResponseMessage
             var testResponse = _responseMapper.MapToHttpResponse(grpcResponse);
-            return CreateHttpResponseMessage(testResponse);
+            var httpResponseMessage = CreateHttpResponseMessage(testResponse);
+            FunctionsHttpOutputData.Capture(
+                httpResponseMessage, request, grpcResponse.InvocationResponse,
+                _grpcHostService.GetHttpFunctionOutputInfo(functionId));
+
+            return httpResponseMessage;
         }
         catch (Exception ex)
         {

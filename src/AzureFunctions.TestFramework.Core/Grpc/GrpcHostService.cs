@@ -32,6 +32,10 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
 
     private readonly List<ISyntheticBindingProvider> _syntheticBindingProviders;
     private readonly Dictionary<string, TaskCompletionSource<StreamingMessage>> _pendingRequests = new();
+    private readonly Dictionary<string, InvocationResponseCapture> _invocationResponseCaptures = new();
+    private readonly HashSet<string> _functionsWithNonHttpOutputs = new(StringComparer.OrdinalIgnoreCase);
+    private readonly HashSet<string> _functionsWithNonHttpReturnValue = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, string> _httpOutputBindingNames = new(StringComparer.OrdinalIgnoreCase);
     private readonly object _lock = new();
     private readonly object _connectionLock = new();
     private IServerStreamWriter<StreamingMessage>? _responseStream;
@@ -458,6 +462,13 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             Data = new TypedData { Http = new RpcHttp() }
         });
 
+        // Inject synthetic input bindings (e.g. [BlobInput] SDK client payload) registered by
+        // ISyntheticBindingProvider implementations, matching the direct gRPC HTTP dispatch path.
+        foreach (var syntheticParam in GetSyntheticInputParameters(functionId))
+        {
+            invocationRequest.InputData.Add(ToParameterBinding(syntheticParam));
+        }
+
         var message = new StreamingMessage
         {
             // Use invocationId as RequestId so the InvocationResponse can be matched.
@@ -466,9 +477,83 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         };
 
         await SendMessageOneWayAsync(message);
+        lock (_lock)
+        {
+            if (_invocationResponseCaptures.TryGetValue(invocationId, out var capture) &&
+                capture.State == InvocationResponseCaptureState.Pending)
+            {
+                capture.OutputInfo = GetHttpFunctionOutputInfo(functionId);
+                capture.State = InvocationResponseCaptureState.Dispatched;
+            }
+        }
         _logger.LogDebug("Sent InvocationRequest for {InvocationId} -> function {FunctionId}",
             invocationId, functionId);
         return true;
+    }
+
+    /// <summary>
+    /// Registers a response capture before forwarding an ASP.NET Core HTTP request.
+    /// Captures are registered for every forwarded request; the capture's <see cref="InvocationResponseCapture.OutputInfo"/>
+    /// is populated once the request is dispatched to the worker by <see cref="SendInvocationRequestAsync"/>, which
+    /// is the single source of truth for route-to-function resolution.
+    /// </summary>
+    /// <param name="invocationId">The request's <c>x-ms-invocation-id</c> header.</param>
+    /// <returns>A disposable capture.</returns>
+    /// <exception cref="InvalidOperationException">
+    /// Thrown when <paramref name="invocationId"/> is already registered (in-flight, or reserved
+    /// pending a late response for a previously abandoned capture).
+    /// </exception>
+    public InvocationResponseCapture BeginCaptureInvocationResponse(string invocationId)
+    {
+        ArgumentException.ThrowIfNullOrEmpty(invocationId);
+
+        lock (_lock)
+        {
+            if (_invocationResponseCaptures.ContainsKey(invocationId))
+            {
+                throw new InvalidOperationException($"Invocation '{invocationId}' is already being captured.");
+            }
+
+            var capture = new InvocationResponseCapture(this, invocationId);
+            _invocationResponseCaptures.Add(invocationId, capture);
+            return capture;
+        }
+    }
+
+    /// <summary>
+    /// Returns the output binding metadata for an HTTP-triggered function, used to decide whether
+    /// an ASP.NET Core response needs to be buffered until the worker's invocation response arrives.
+    /// </summary>
+    public HttpFunctionOutputInfo GetHttpFunctionOutputInfo(string functionId) => new(
+        _httpOutputBindingNames.GetValueOrDefault(functionId),
+        _functionsWithNonHttpOutputs.Contains(functionId),
+        _functionsWithNonHttpReturnValue.Contains(functionId));
+
+    /// <summary>
+    /// Releases a capture. A capture that has not yet been dispatched is removed immediately,
+    /// freeing its invocation ID for reuse. A capture that was dispatched to the worker but
+    /// disposed before its response arrived (<see cref="InvocationResponseCaptureState.Abandoned"/>)
+    /// keeps its invocation ID reserved until <see cref="HandleInvocationResponse"/> consumes the
+    /// late response, so a retry can never be completed by a response meant for the original call.
+    /// </summary>
+    internal void ReleaseInvocationResponseCapture(InvocationResponseCapture capture)
+    {
+        lock (_lock)
+        {
+            switch (capture.State)
+            {
+                case InvocationResponseCaptureState.Pending:
+                    _invocationResponseCaptures.Remove(capture.InvocationId);
+                    break;
+                case InvocationResponseCaptureState.Dispatched:
+                    capture.State = InvocationResponseCaptureState.Abandoned;
+                    break;
+                case InvocationResponseCaptureState.Completed:
+                case InvocationResponseCaptureState.Abandoned:
+                    // Already removed (Completed) or already reserved (Abandoned); nothing to do.
+                    break;
+            }
+        }
     }
 
     /// <summary>
@@ -545,24 +630,73 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         var success = invocationResponse?.Result?.Status == StatusResult.Types.Status.Success;
         var logs = invocationResponse?.Result?.Logs.Select(log => log.Message).ToList() ?? [];
 
-        Dictionary<string, object?> outputData = new(StringComparer.OrdinalIgnoreCase);
-        if (invocationResponse != null)
-        {
-            foreach (var output in invocationResponse.OutputData)
-            {
-                outputData[output.Name] = TypedDataConverter.Convert(output.Data);
-            }
-        }
-
         return new FunctionInvocationResult
         {
             InvocationId = invocationId,
             Success = success,
             Error = success ? null : invocationResponse?.Result?.Exception?.Message,
             ReturnValue = invocationResponse is null ? null : TypedDataConverter.Convert(invocationResponse.ReturnValue),
-            OutputData = outputData,
+            OutputData = ExtractOutputData(invocationResponse),
             Logs = logs
         };
+    }
+
+    /// <summary>
+    /// Extracts the named <c>ParameterBinding</c> output values from an <c>InvocationResponse</c>
+    /// into a plain dictionary. Used both for non-HTTP trigger invocations and (via the HTTP
+    /// extension package) to surface any additional output bindings (e.g. <c>[QueueOutput]</c>,
+    /// <c>[BlobOutput]</c>) declared alongside an HTTP trigger's response binding.
+    /// </summary>
+    /// <param name="invocationResponse">The gRPC invocation response, or <see langword="null"/>.</param>
+    /// <param name="excludeBindingName">
+    /// An optional binding name to omit from the result (e.g. the HTTP response binding itself,
+    /// which is already surfaced as the HTTP response).
+    /// </param>
+    public static Dictionary<string, object?> ExtractOutputData(
+        InvocationResponse? invocationResponse,
+        string? excludeBindingName = null)
+    {
+        var outputData = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+        if (invocationResponse == null)
+        {
+            return outputData;
+        }
+
+        foreach (var output in invocationResponse.OutputData)
+        {
+            if (excludeBindingName != null &&
+                string.Equals(output.Name, excludeBindingName, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
+            outputData[output.Name] = TypedDataConverter.Convert(output.Data);
+        }
+
+        return outputData;
+    }
+
+    /// <summary>
+    /// The key under which a function's non-HTTP <c>$return</c> output (e.g. <c>[QueueOutput]</c>
+    /// on the method itself) is surfaced alongside its named output bindings.
+    /// </summary>
+    public const string ReturnValueOutputKey = "$return";
+
+    /// <summary>
+    /// Extracts non-HTTP output binding data from an <c>InvocationResponse</c> for an HTTP-triggered
+    /// function, excluding its HTTP response binding and including its <c>$return</c> value (under
+    /// <see cref="ReturnValueOutputKey"/>) when that binding is itself non-HTTP.
+    /// </summary>
+    public static Dictionary<string, object?> ExtractHttpOutputData(
+        InvocationResponse? invocationResponse, HttpFunctionOutputInfo? outputInfo)
+    {
+        var outputData = ExtractOutputData(invocationResponse, outputInfo?.HttpOutputBindingName);
+        if (outputInfo?.HasNonHttpReturnValue == true && invocationResponse != null)
+        {
+            outputData[ReturnValueOutputKey] = TypedDataConverter.Convert(invocationResponse.ReturnValue);
+        }
+
+        return outputData;
     }
 
     /// <summary>
@@ -647,6 +781,16 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
         if (response?.Result?.Status != StatusResult.Types.Status.Success)
         {
             LogInvocationFailure(response);
+        }
+        lock (_lock)
+        {
+            if (response != null &&
+                _invocationResponseCaptures.TryGetValue(response.InvocationId, out var capture))
+            {
+                _invocationResponseCaptures.Remove(response.InvocationId);
+                capture.State = InvocationResponseCaptureState.Completed;
+                capture.Complete(response);
+            }
         }
         CompleteRequest(message);
         return Task.CompletedTask;
@@ -790,6 +934,29 @@ public class GrpcHostService : FunctionRpc.FunctionRpcBase
             if (!root.TryGetProperty("type", out var typeProp)) return;
 
             var bindingType = typeProp.GetString() ?? string.Empty;
+
+            if (bindingType.Equals("http", StringComparison.OrdinalIgnoreCase) &&
+                root.TryGetProperty("name", out var outputName))
+            {
+                _httpOutputBindingNames[functionMetadata.FunctionId] = outputName.GetString() ?? string.Empty;
+            }
+
+            if (!bindingType.Equals("http", StringComparison.OrdinalIgnoreCase) &&
+                root.TryGetProperty("direction", out var direction) &&
+                string.Equals(direction.GetString(), "out", StringComparison.OrdinalIgnoreCase))
+            {
+                _functionsWithNonHttpOutputs.Add(functionMetadata.FunctionId);
+
+                // A non-HTTP binding named "$return" means the method's return value itself is
+                // the non-HTTP output (e.g. [QueueOutput] on the method with no [HttpResult]
+                // property). The worker sends this value as InvocationResponse.ReturnValue rather
+                // than as a named OutputData entry.
+                if (root.TryGetProperty("name", out var returnBindingName) &&
+                    string.Equals(returnBindingName.GetString(), "$return", StringComparison.Ordinal))
+                {
+                    _functionsWithNonHttpReturnValue.Add(functionMetadata.FunctionId);
+                }
+            }
 
             if (bindingType.Equals("httpTrigger", StringComparison.OrdinalIgnoreCase))
             {
