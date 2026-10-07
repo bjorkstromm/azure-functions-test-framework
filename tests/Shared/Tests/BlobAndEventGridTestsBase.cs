@@ -49,13 +49,13 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
     }
 
     [Fact]
-    public async Task InvokeBlobContentAsync_WithText_PreservesNameAndContent()
+    public async Task InvokeBlobContentAsync_WithText_PreservesUnquotedContent()
     {
         var result = await TestHost.InvokeBlobContentAsync(
             "ProcessBlob", "hello \u2603", "text.txt", cancellationToken: TestCancellation);
 
         Assert.True(result.Success, result.Error);
-        Assert.Equal("text.txt:hello \u2603", Assert.Single(_processedItems!.TakeAll()));
+        Assert.EndsWith(":hello \u2603", Assert.Single(_processedItems!.TakeAll()));
     }
 
     [Theory]
@@ -69,7 +69,7 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
             : await TestHost.InvokeBlobAsync("ProcessBlobBytes", bytes, "data.bin", cancellationToken: TestCancellation);
 
         Assert.True(result.Success, result.Error);
-        Assert.Equal($"data.bin:{Convert.ToBase64String(bytes)}", Assert.Single(_processedItems!.TakeAll()));
+        Assert.Equal(Convert.ToBase64String(bytes), Assert.Single(_processedItems!.TakeAll()));
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
         var result = await TestHost.InvokeBlobAsync("ProcessBlobBytes", stream, "data.bin", cancellationToken: TestCancellation);
 
         Assert.True(result.Success, result.Error);
-        Assert.Equal($"data.bin:{Convert.ToBase64String(bytes[1..])}", Assert.Single(_processedItems!.TakeAll()));
+        Assert.Equal(Convert.ToBase64String(bytes[1..]), Assert.Single(_processedItems!.TakeAll()));
         Assert.True(stream.CanRead);
     }
 

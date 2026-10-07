@@ -140,7 +140,7 @@ public abstract class TriggerTestsBase : TestHostTestBase
     {
         byte[] body = [0, 0xff, 0xfe, 0x80];
         var message = new ServiceBusMessage(BinaryData.FromBytes(body)) { MessageId = "sdk-message" };
-        var result = await TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", message);
+        var result = await TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", message, TestCancellation);
 
         Assert.True(result.Success, result.Error);
         Assert.Equal(Convert.ToBase64String(body), Assert.Single(_processedItems!.TakeAll()));
@@ -153,7 +153,7 @@ public abstract class TriggerTestsBase : TestHostTestBase
             body: BinaryData.FromString("body"), messageId: "message-id", correlationId: "correlation-id",
             subject: "subject", contentType: "application/json", sessionId: "session-id",
             properties: new Dictionary<string, object> { ["source"] = "test" });
-        var result = await TestHost.InvokeServiceBusAsync("ProcessServiceBusReceivedMessageMetadata", message);
+        var result = await TestHost.InvokeServiceBusAsync("ProcessServiceBusReceivedMessageMetadata", message, TestCancellation);
 
         Assert.True(result.Success, result.Error);
         Assert.Equal("message-id|correlation-id|subject|application/json|session-id|test",
@@ -174,28 +174,28 @@ public abstract class TriggerTestsBase : TestHostTestBase
     public async Task InvokeServiceBusAsync_WithNullPayload_Throws()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            TestHost.InvokeServiceBusAsync("ProcessServiceBusMessage", (string)null!));
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusMessage", (string)null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", (byte[])null!));
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", (byte[])null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", (BinaryData)null!));
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusBytes", (BinaryData)null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            TestHost.InvokeServiceBusAsync<ServiceBusPayload>("ProcessServiceBusPayload", null!));
+            TestHost.InvokeServiceBusAsync<ServiceBusPayload>("ProcessServiceBusPayload", null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            TestHost.InvokeServiceBusAsync("ProcessServiceBusMessage", (ServiceBusMessage)null!));
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusMessage", (ServiceBusMessage)null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            TestHost.InvokeServiceBusAsync("ProcessServiceBusReceivedMessage", (ServiceBusReceivedMessage)null!));
+            TestHost.InvokeServiceBusAsync("ProcessServiceBusReceivedMessage", (ServiceBusReceivedMessage)null!, TestCancellation));
     }
 
     [Fact]
     public async Task InvokeServiceBusBatchAsync_WithInvalidBatch_Throws()
     {
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", null!));
+            TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", []));
+            TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", [], TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() =>
-            TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", [null!]));
+            TestHost.InvokeServiceBusBatchAsync("ProcessServiceBusMessageBatch", [null!], TestCancellation));
     }
 
     [Fact]

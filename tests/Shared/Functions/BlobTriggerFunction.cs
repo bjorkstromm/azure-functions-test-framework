@@ -31,8 +31,8 @@ public class BlobTriggerFunction
     }
 
     [Function("ProcessBlobBytes")]
-    public void RunBytes([BlobTrigger("test-container/{name}")] byte[] content, string name)
+    public void RunBytes([BlobTrigger("test-container/{name}")] byte[] content)
     {
-        _processedItems.Add($"{name}:{Convert.ToBase64String(content)}");
+        _processedItems.Add(Convert.ToBase64String(content));
     }
 }

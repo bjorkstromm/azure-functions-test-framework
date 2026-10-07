@@ -89,10 +89,32 @@ public abstract class EventHubsTestsBase : TestHostTestBase
     public async Task InvokeEventHubAsync_ConcreteAndExplicitGenericOverloads()
     {
         var raw = await TestHost.InvokeEventHubAsync("ProcessEventHubText", "plain", TestCancellation);
-        var json = await TestHost.InvokeEventHubAsync<string>("ProcessEventHubText", "plain", TestCancellation);
+        var json = await TestHost.InvokeEventHubAsync<string>("ProcessEventHubText", "plain", cancellationToken: TestCancellation);
         Assert.True(raw.Success, raw.Error);
         Assert.True(json.Success, json.Error);
         Assert.Equal(["plain", "\"plain\""], _processedItems!.TakeAll());
+    }
+
+    [Fact]
+    public async Task InvokeEventHubAsync_WithoutCancellationToken_SelectsConcreteOverloads()
+    {
+#pragma warning disable xUnit1051 // Intentionally exercise calls that omit optional cancellation tokens.
+        var sdk = await TestHost.InvokeEventHubAsync("ProcessEventHubMessage", new EventData("sdk"));
+        var text = await TestHost.InvokeEventHubAsync("ProcessEventHubText", "text");
+        var bytes = await TestHost.InvokeEventHubAsync("ProcessEventHubBytes", new byte[] { 255 });
+        var binary = await TestHost.InvokeEventHubAsync("ProcessEventHubBytes", new BinaryData(new byte[] { 128 }));
+        var sdkBatch = await TestHost.InvokeEventHubBatchAsync("ProcessEventHubBatch", new[] { new EventData("batch") });
+        var textBatch = await TestHost.InvokeEventHubBatchAsync("ProcessEventHubTextBatch", new[] { "text-batch" });
+        var bytesBatch = await TestHost.InvokeEventHubBatchAsync("ProcessEventHubBytesBatch", new[] { new byte[] { 255 } });
+        var binaryBatch = await TestHost.InvokeEventHubBatchAsync("ProcessEventHubBytesBatch", new[] { new BinaryData(new byte[] { 128 }) });
+        var poco = await TestHost.InvokeEventHubAsync("ProcessEventHubPayload", new EventHubPayload { DisplayName = "poco" });
+        var pocoBatch = await TestHost.InvokeEventHubBatchAsync("ProcessEventHubPayloadBatch",
+            new[] { new EventHubPayload { DisplayName = "poco-batch" } });
+#pragma warning restore xUnit1051
+        foreach (var result in new[] { sdk, text, bytes, binary, sdkBatch, textBatch, bytesBatch, binaryBatch, poco, pocoBatch })
+            Assert.True(result.Success, result.Error);
+        Assert.Equal(["sdk", "text", "/w==", "gA==", "batch", "text-batch", "/w==", "gA==", "poco", "poco-batch"],
+            _processedItems!.TakeAll());
     }
 
     [Fact]
@@ -132,7 +154,7 @@ public abstract class EventHubsTestsBase : TestHostTestBase
         Assert.Equal(bytes.Select(Convert.ToBase64String), _processedItems.TakeAll());
 
         var poco = await TestHost.InvokeEventHubBatchAsync("ProcessEventHubPayloadBatch",
-            text.Select(message => new EventHubPayload { DisplayName = message }).ToArray(), TestCancellation);
+            text.Select(message => new EventHubPayload { DisplayName = message }).ToArray(), cancellationToken: TestCancellation);
         Assert.True(poco.Success, poco.Error);
         Assert.Equal(text, _processedItems.TakeAll());
     }
@@ -141,10 +163,10 @@ public abstract class EventHubsTestsBase : TestHostTestBase
     public async Task InvokeEventHubAsync_Poco_UsesCamelCaseByDefault()
     {
         var message = new EventHubPayload { DisplayName = "name" };
-        var result = await TestHost.InvokeEventHubAsync("ProcessEventHubText", message, TestCancellation);
+        var result = await TestHost.InvokeEventHubAsync("ProcessEventHubText", message, cancellationToken: TestCancellation);
         Assert.True(result.Success, result.Error);
         Assert.Equal(["{\"displayName\":\"name\"}"], _processedItems!.TakeAll());
-        var typed = await TestHost.InvokeEventHubAsync("ProcessEventHubPayload", message, TestCancellation);
+        var typed = await TestHost.InvokeEventHubAsync("ProcessEventHubPayload", message, cancellationToken: TestCancellation);
         Assert.True(typed.Success, typed.Error);
         Assert.Equal(["name"], _processedItems.TakeAll());
     }
@@ -170,7 +192,7 @@ public abstract class EventHubsTestsBase : TestHostTestBase
         await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubAsync("unused", (byte[])null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubAsync("unused", (BinaryData)null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubAsync("unused", (EventData)null!, TestCancellation));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubAsync<EventHubPayload>("unused", null!, TestCancellation));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubAsync<EventHubPayload>("unused", null!, cancellationToken: TestCancellation));
     }
 
     [Fact]
@@ -190,16 +212,27 @@ public abstract class EventHubsTestsBase : TestHostTestBase
         await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubBatchAsync("unused", (byte[][])null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubBatchAsync("unused", (BinaryData[])null!, TestCancellation));
         await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubBatchAsync("unused", (EventData[])null!, TestCancellation));
-        await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubBatchAsync<EventHubPayload>("unused", null!, TestCancellation));
+        await Assert.ThrowsAsync<ArgumentNullException>(() => TestHost.InvokeEventHubBatchAsync<EventHubPayload>("unused", null!, cancellationToken: TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", Array.Empty<string>(), TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", Array.Empty<byte[]>(), TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", Array.Empty<BinaryData>(), TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", Array.Empty<EventData>(), TestCancellation));
-        await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", Array.Empty<EventHubPayload>(), TestCancellation));
+        await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", Array.Empty<EventHubPayload>(), cancellationToken: TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", new string[] { null! }, TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", new byte[][] { null! }, TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", new BinaryData[] { null! }, TestCancellation));
         await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", new EventData[] { null! }, TestCancellation));
-        await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", new EventHubPayload[] { null! }, TestCancellation));
+        await Assert.ThrowsAsync<ArgumentException>(() => TestHost.InvokeEventHubBatchAsync("unused", new EventHubPayload[] { null! }, cancellationToken: TestCancellation));
+    }
+
+    [Fact]
+    public async Task InvokeEventHubAsync_RejectsMissingHostAndFunctionName()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            FunctionsTestHostEventHubsExtensions.InvokeEventHubAsync(null!, "valid", "body", TestCancellation));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeEventHubAsync(null!, "body", TestCancellation));
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            TestHost.InvokeEventHubBatchAsync(" ", new[] { "body" }, TestCancellation));
     }
 }

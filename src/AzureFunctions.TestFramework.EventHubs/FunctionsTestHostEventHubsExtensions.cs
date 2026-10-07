@@ -64,7 +64,6 @@ public static class FunctionsTestHostEventHubsExtensions
     /// <param name="message">The payload to serialize.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The invocation result.</returns>
-    /// <remarks>Explicit generic calls serialize even strings or byte arrays as JSON.</remarks>
     public static Task<FunctionInvocationResult> InvokeEventHubAsync<T>(
         this IFunctionsTestHost host, string functionName, T message,
         CancellationToken cancellationToken = default)
@@ -75,18 +74,30 @@ public static class FunctionsTestHostEventHubsExtensions
     /// <param name="host">The test host.</param>
     /// <param name="functionName">The function name.</param>
     /// <param name="message">The payload to serialize.</param>
-    /// <param name="serializerOptions">JSON options; null uses camelCase property names.</param>
+    /// <param name="jsonSerializerOptions">JSON options; null uses camelCase property names.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The invocation result.</returns>
     public static Task<FunctionInvocationResult> InvokeEventHubAsync<T>(
         this IFunctionsTestHost host, string functionName, T message,
-        JsonSerializerOptions? serializerOptions, CancellationToken cancellationToken = default)
+        JsonSerializerOptions? jsonSerializerOptions, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(message);
         return InvokeRawAsync(host, functionName,
-            name => FunctionBindingData.WithJson(name, JsonSerializer.Serialize(message, serializerOptions ?? DefaultSerializerOptions)),
+            name => FunctionBindingData.WithJson(name, JsonSerializer.Serialize(message, jsonSerializerOptions ?? DefaultSerializerOptions)),
             cancellationToken);
     }
+
+    /// <summary>Invokes a batch trigger with JSON-serialized payloads.</summary>
+    /// <typeparam name="T">The payload type.</typeparam>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The function name.</param>
+    /// <param name="messages">A non-empty batch with no null elements.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeEventHubBatchAsync<T>(
+        this IFunctionsTestHost host, string functionName, IReadOnlyList<T> messages,
+        CancellationToken cancellationToken = default)
+        => host.InvokeEventHubBatchAsync(functionName, messages, DefaultSerializerOptions, cancellationToken);
 
     /// <summary>Invokes a batch trigger with raw text bodies, including a one-event batch.</summary>
     /// <param name="host">The test host.</param>
@@ -137,29 +148,16 @@ public static class FunctionsTestHostEventHubsExtensions
     /// <param name="host">The test host.</param>
     /// <param name="functionName">The function name.</param>
     /// <param name="messages">A non-empty batch with no null elements.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The invocation result.</returns>
-    /// <remarks>Explicit generic calls serialize even strings or byte arrays as JSON.</remarks>
-    public static Task<FunctionInvocationResult> InvokeEventHubBatchAsync<T>(
-        this IFunctionsTestHost host, string functionName, IReadOnlyList<T> messages,
-        CancellationToken cancellationToken = default)
-        => host.InvokeEventHubBatchAsync(functionName, messages, DefaultSerializerOptions, cancellationToken);
-
-    /// <summary>Invokes a batch trigger with payloads serialized using the specified JSON options.</summary>
-    /// <typeparam name="T">The payload type.</typeparam>
-    /// <param name="host">The test host.</param>
-    /// <param name="functionName">The function name.</param>
-    /// <param name="messages">A non-empty batch with no null elements.</param>
-    /// <param name="serializerOptions">JSON options; null uses camelCase property names.</param>
+    /// <param name="jsonSerializerOptions">JSON options; null uses camelCase property names.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The invocation result.</returns>
     public static Task<FunctionInvocationResult> InvokeEventHubBatchAsync<T>(
         this IFunctionsTestHost host, string functionName, IReadOnlyList<T> messages,
-        JsonSerializerOptions? serializerOptions, CancellationToken cancellationToken = default)
+        JsonSerializerOptions? jsonSerializerOptions, CancellationToken cancellationToken = default)
     {
         ValidateBatch(messages);
         return InvokeRawAsync(host, functionName,
-            name => FunctionBindingData.WithJson(name, JsonSerializer.Serialize(messages, serializerOptions ?? DefaultSerializerOptions)),
+            name => FunctionBindingData.WithJson(name, JsonSerializer.Serialize(messages, jsonSerializerOptions ?? DefaultSerializerOptions)),
             cancellationToken);
     }
 
@@ -176,6 +174,8 @@ public static class FunctionsTestHostEventHubsExtensions
         IFunctionsTestHost host, string functionName, Func<string, FunctionBindingData> createBinding,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrWhiteSpace(functionName);
         var context = new FunctionInvocationContext { TriggerType = "eventHubTrigger" };
         return host.Invoker.InvokeAsync(functionName, context,
             (_, function) => new TriggerBindingData { InputData = [createBinding(function.ParameterName)] },
