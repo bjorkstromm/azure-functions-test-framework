@@ -40,7 +40,17 @@ Assert.True(result.Success);
 
 ### Functions with `byte[]` or `BinaryData` parameter
 
-Use the `byte[]` overload and pass the raw body bytes. The same optional `RabbitMqTriggerMessageProperties` overload exists after the `byte[]` argument.
+Use the `byte[]` or `BinaryData` overload and pass the raw body bytes. Arbitrary binary content,
+including invalid UTF-8 and empty bodies, is preserved without JSON serialization.
+Both support optional `RabbitMqTriggerMessageProperties` after the body argument:
+
+```csharp
+var result = await _testHost.InvokeRabbitMQAsync(
+    "ProcessRabbitMqBinary",
+    new BinaryData(new byte[] { 0, 255, 128 }),
+    new RabbitMqTriggerMessageProperties { RoutingKey = "binary.route", MessageId = "binary-id" });
+Assert.True(result.Success);
+```
 
 ### Functions with a JSON POCO parameter
 
@@ -54,6 +64,8 @@ Assert.True(result.Success);
 ```
 
 Optional metadata can be passed between `payload` and `JsonSerializerOptions`.
+Generic overloads default to camelCase property names; pass `jsonSerializerOptions` to customize
+serialization. Dedicated string, byte-array, and `BinaryData` overloads do not JSON-serialize the body.
 
 ### API
 
@@ -98,6 +110,26 @@ Task<FunctionInvocationResult> InvokeRabbitMQAsync<T>(
     RabbitMqTriggerMessageProperties? messageProperties,
     JsonSerializerOptions? jsonSerializerOptions = null,
     CancellationToken cancellationToken = default)
+```
+
+The same raw-body API is available for `BinaryData` (with or without metadata and cancellation):
+
+```csharp
+Task<FunctionInvocationResult> InvokeRabbitMQAsync(
+    this IFunctionsTestHost host, string functionName, BinaryData body)
+
+Task<FunctionInvocationResult> InvokeRabbitMQAsync(
+    this IFunctionsTestHost host, string functionName, BinaryData body,
+    CancellationToken cancellationToken)
+
+Task<FunctionInvocationResult> InvokeRabbitMQAsync(
+    this IFunctionsTestHost host, string functionName, BinaryData body,
+    RabbitMqTriggerMessageProperties? messageProperties)
+
+Task<FunctionInvocationResult> InvokeRabbitMQAsync(
+    this IFunctionsTestHost host, string functionName, BinaryData body,
+    RabbitMqTriggerMessageProperties? messageProperties,
+    CancellationToken cancellationToken)
 ```
 
 - **`functionName`** — the name of the RabbitMQ function (case-insensitive).

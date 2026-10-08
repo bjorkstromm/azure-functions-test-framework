@@ -79,6 +79,91 @@ public class FunctionsTestHostKafkaExtensionsTests
         Assert.Equal(Convert.ToBase64String(payloads[1]), doc.RootElement[1].GetString());
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeKafkaAsync_BinaryData_UsesRawBytesWithoutGenericCapture(bool empty)
+    {
+        var host = new FakeHost(FakeRegistration);
+        byte[] bytes = empty ? [] : [0, 255, 128, 195, 40, 0];
+
+        await host.InvokeKafkaAsync("KafkaFunc", new BinaryData(bytes), cancellationToken: CancellationToken.None);
+
+        Assert.Equal(bytes, host.LastBindingData!.InputData[0].Bytes);
+        Assert.Null(host.LastBindingData.InputData[0].Json);
+    }
+
+    [Fact]
+    public async Task InvokeKafkaBatchAsync_BinaryData_UsesBase64JsonWithoutGenericCapture()
+    {
+        var host = new FakeHost(FakeRegistration);
+        byte[] bytes = [0, 255, 128, 195, 40, 0];
+        var bodies = new[] { new BinaryData(bytes), new BinaryData(Array.Empty<byte>()) };
+
+        await host.InvokeKafkaBatchAsync("KafkaFunc", bodies, cancellationToken: CancellationToken.None);
+
+        using var doc = JsonDocument.Parse(host.LastBindingData!.InputData[0].Json!);
+        Assert.Equal(2, doc.RootElement.GetArrayLength());
+        Assert.Equal(bytes, Convert.FromBase64String(doc.RootElement[0].GetString()!));
+        Assert.Equal("", doc.RootElement[1].GetString());
+    }
+
+#pragma warning disable xUnit1051 // Intentionally exercise overload resolution without a cancellation token.
+    [Fact]
+    public async Task InvokeKafkaAsync_BinaryData_WithoutToken_UsesRawBytes()
+    {
+        var host = new FakeHost(FakeRegistration);
+        byte[] bytes = [0, 255, 128, 195, 40, 0];
+        await host.InvokeKafkaAsync("KafkaFunc", new BinaryData(bytes));
+        Assert.Equal(bytes, host.LastBindingData!.InputData[0].Bytes);
+    }
+
+    [Fact]
+    public async Task InvokeKafkaBatchAsync_BinaryData_WithoutToken_UsesBase64Json()
+    {
+        var host = new FakeHost(FakeRegistration);
+        byte[] bytes = [0, 255, 128, 195, 40, 0];
+        await host.InvokeKafkaBatchAsync("KafkaFunc", new[] { new BinaryData(bytes) });
+        using var doc = JsonDocument.Parse(host.LastBindingData!.InputData[0].Json!);
+        Assert.Equal(bytes, Convert.FromBase64String(doc.RootElement[0].GetString()!));
+    }
+
+    [Fact]
+    public async Task InvokeKafkaBatchAsync_BinaryData_EmptyBatch_Throws()
+    {
+        var host = new FakeHost(FakeRegistration);
+        await Assert.ThrowsAsync<ArgumentException>(() =>
+            host.InvokeKafkaBatchAsync("KafkaFunc", Array.Empty<BinaryData>()));
+    }
+
+    [Fact]
+    public async Task InvokeKafkaAsync_BinaryData_NullBody_Throws()
+    {
+        var host = new FakeHost(FakeRegistration);
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            host.InvokeKafkaAsync("KafkaFunc", (BinaryData)null!));
+    }
+
+    [Fact]
+    public async Task InvokeKafkaBatchAsync_BinaryData_NullBody_Throws()
+    {
+        var host = new FakeHost(FakeRegistration);
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            host.InvokeKafkaBatchAsync("KafkaFunc", new BinaryData[] { null! }));
+    }
+#pragma warning restore xUnit1051
+
+    [Fact]
+    public async Task InvokeKafkaBatchAsync_Generic_UsesProvidedSerializerOptions()
+    {
+        var host = new FakeHost(FakeRegistration);
+        var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };
+
+        await host.InvokeKafkaBatchAsync("KafkaFunc", new[] { new SamplePayload { OrderId = "A1" } }, options, TestContext.Current.CancellationToken);
+
+        Assert.Equal("""[{"order_id":"A1"}]""", host.LastBindingData!.InputData[0].Json);
+    }
+
     [Fact]
     public async Task InvokeKafkaBatchAsync_Bytes_EmptyBatch_Throws()
     {

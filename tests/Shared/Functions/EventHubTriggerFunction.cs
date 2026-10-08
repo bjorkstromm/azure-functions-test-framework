@@ -1,6 +1,7 @@
 using Azure.Messaging.EventHubs;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
+using System.Text.Json;
 
 namespace TestProject;
 
@@ -49,6 +50,58 @@ public class EventHubTriggerFunction
         _processedItems.Add(body);
     }
 
+    [Function("ProcessEventHubText")]
+    public void RunText(
+        [EventHubTrigger("test-hub", Connection = "EventHubConnection", IsBatched = false)] string message)
+        => _processedItems.Add(message);
+
+    [Function("ProcessEventHubTextBatch")]
+    public void RunTextBatch(
+        [EventHubTrigger("test-hub", Connection = "EventHubConnection")] string[] messages)
+    {
+        foreach (var message in messages)
+            _processedItems.Add(message);
+    }
+
+    [Function("ProcessEventHubJsonBatch")]
+    public void RunJsonBatch(
+        [EventHubTrigger("test-hub", Connection = "EventHubConnection")] JsonElement[] messages)
+    {
+        foreach (var message in messages)
+            _processedItems.Add(message.GetRawText());
+    }
+
+    [Function("ProcessEventHubBytes")]
+    public void RunBytes(
+        [EventHubTrigger("test-hub", Connection = "EventHubConnection", IsBatched = false)] byte[] message)
+        => _processedItems.Add(Convert.ToBase64String(message));
+
+    [Function("ProcessEventHubBytesBatch")]
+    public void RunBytesBatch(
+        [EventHubTrigger("test-hub", Connection = "EventHubConnection")] byte[][] messages)
+    {
+        foreach (var message in messages)
+            _processedItems.Add(Convert.ToBase64String(message));
+    }
+
+    [Function("ProcessEventHubPayload")]
+    public void RunPayload(
+        [EventHubTrigger("test-hub", Connection = "EventHubConnection", IsBatched = false)] EventHubPayload message)
+        => _processedItems.Add(message.DisplayName);
+
+    [Function("ProcessEventHubPayloadBatch")]
+    public void RunPayloadBatch(
+        [EventHubTrigger("test-hub", Connection = "EventHubConnection")] EventHubPayload[] messages)
+    {
+        foreach (var message in messages)
+            _processedItems.Add(message.DisplayName);
+    }
+
+    [Function("ProcessEventHubEnvelope")]
+    public void RunEnvelope(
+        [EventHubTrigger("test-hub", Connection = "EventHubConnection", IsBatched = false)] EventData message)
+        => _processedItems.Add($"{message.MessageId}|{message.CorrelationId}|{message.Properties["custom"]}|{message.EventBody}");
+
     /// <summary>
     /// Event Hubs single-event trigger function with an Event Hubs output binding.
     /// Returns the event body prefixed with "forwarded:" as the output.
@@ -63,5 +116,10 @@ public class EventHubTriggerFunction
         _logger.LogInformation("Forwarding Event Hubs event: {Body}", body);
         _processedItems.Add(body);
         return $"forwarded:{body}";
+    }
+
+    public sealed class EventHubPayload
+    {
+        public string DisplayName { get; set; } = "";
     }
 }

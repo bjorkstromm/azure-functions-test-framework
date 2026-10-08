@@ -168,6 +168,78 @@ public static class FunctionsTestHostKafkaExtensions
         return host.Invoker.InvokeAsync(functionName, context, CreateBindingDataFromJson, cancellationToken);
     }
 
+    /// <summary>
+    /// Invokes a Kafka-triggered function with raw <see cref="BinaryData"/> content, without JSON serialization.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Kafka function (case-insensitive).</param>
+    /// <param name="body">The raw message body.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeKafkaAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData body)
+        => InvokeKafkaAsync(host, functionName, body, CancellationToken.None);
+
+    /// <summary>
+    /// Invokes a Kafka-triggered function with raw <see cref="BinaryData"/> content, without JSON serialization.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Kafka function (case-insensitive).</param>
+    /// <param name="body">The raw message body.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeKafkaAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData body,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(body);
+        return InvokeKafkaAsync(host, functionName, body.ToArray(), cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a Kafka batch-triggered function with raw <see cref="BinaryData"/> bodies.
+    /// Each body is delivered using the same base64 JSON array representation as the byte-array batch overload.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Kafka batch function (case-insensitive).</param>
+    /// <param name="bodies">The raw bodies; must be non-empty and contain no null bodies.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeKafkaBatchAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        IReadOnlyList<BinaryData> bodies)
+        => InvokeKafkaBatchAsync(host, functionName, bodies, CancellationToken.None);
+
+    /// <summary>
+    /// Invokes a Kafka batch-triggered function with raw <see cref="BinaryData"/> bodies.
+    /// Each body is delivered using the same base64 JSON array representation as the byte-array batch overload.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Kafka batch function (case-insensitive).</param>
+    /// <param name="bodies">The raw bodies; must be non-empty and contain no null bodies.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeKafkaBatchAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        IReadOnlyList<BinaryData> bodies,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(bodies);
+        return InvokeKafkaBatchAsync(host, functionName, bodies.Select(body =>
+        {
+            ArgumentNullException.ThrowIfNull(body);
+            return body.ToArray();
+        }).ToArray(), cancellationToken);
+    }
+
     // -------------------------------------------------------------------------
     // KafkaRecord overloads (single and batch)
     // -------------------------------------------------------------------------

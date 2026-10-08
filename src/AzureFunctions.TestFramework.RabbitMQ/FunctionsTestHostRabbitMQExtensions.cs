@@ -124,6 +124,67 @@ public static class FunctionsTestHostRabbitMQExtensions
     }
 
     /// <summary>
+    /// Invokes a RabbitMQ-triggered function with raw <see cref="BinaryData"/> content, without JSON serialization.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the RabbitMQ function (case-insensitive).</param>
+    /// <param name="body">The raw message body.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeRabbitMQAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData body,
+        CancellationToken cancellationToken)
+        => InvokeRabbitMQAsync(host, functionName, body, messageProperties: null, cancellationToken);
+
+    /// <summary>Invokes a RabbitMQ-triggered function with raw <see cref="BinaryData"/> content.</summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the RabbitMQ function (case-insensitive).</param>
+    /// <param name="body">The raw message body.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeRabbitMQAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData body)
+        => InvokeRabbitMQAsync(host, functionName, body, CancellationToken.None);
+
+    /// <summary>Invokes a RabbitMQ-triggered function with raw <see cref="BinaryData"/> content and optional metadata.</summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the RabbitMQ function (case-insensitive).</param>
+    /// <param name="body">The raw message body.</param>
+    /// <param name="messageProperties">Optional RabbitMQ delivery / application metadata.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeRabbitMQAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData body,
+        RabbitMqTriggerMessageProperties? messageProperties)
+        => InvokeRabbitMQAsync(host, functionName, body, messageProperties, CancellationToken.None);
+
+    /// <summary>
+    /// Invokes a RabbitMQ-triggered function with raw <see cref="BinaryData"/> content and optional trigger metadata.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the RabbitMQ function (case-insensitive).</param>
+    /// <param name="body">The raw message body.</param>
+    /// <param name="messageProperties">Optional RabbitMQ delivery / application metadata.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeRabbitMQAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData body,
+        RabbitMqTriggerMessageProperties? messageProperties,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(body);
+        return InvokeRabbitMQAsync(host, functionName, body.ToArray(), messageProperties, cancellationToken);
+    }
+
+    /// <summary>
     /// Invokes a RabbitMQ-triggered function by name with a JSON-serialized POCO payload.
     /// Use this overload when the function parameter is a serializable reference type deserialized from JSON
     /// (isolated worker model).

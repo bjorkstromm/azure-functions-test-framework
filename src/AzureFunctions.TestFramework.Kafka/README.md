@@ -24,13 +24,19 @@ The string is passed directly as the binding value; the function receives the te
 
 ### Functions with `byte[]` or `BinaryData` parameter
 
-Use the `byte[]` overload to pass raw message body bytes:
+Use the `byte[]` or `BinaryData` overload to pass raw message body bytes without JSON serialization or UTF-8 decoding:
 
 ```csharp
 var body = System.Text.Encoding.UTF8.GetBytes("binary payload");
 var result = await _testHost.InvokeKafkaAsync("ProcessKafkaBinary", body);
 Assert.True(result.Success);
+
+var binaryResult = await _testHost.InvokeKafkaAsync("ProcessKafkaBinary", new BinaryData(body));
+Assert.True(binaryResult.Success);
 ```
+
+`InvokeKafkaBatchAsync` also accepts `IReadOnlyList<BinaryData>`. Like the `byte[]` batch overload,
+it delivers each body as a base64 string in a JSON array, preserving arbitrary bytes and empty bodies.
 
 ### Functions with a `KafkaRecord` parameter
 
@@ -67,6 +73,10 @@ var result = await _testHost.InvokeKafkaAsync(
     new KafkaOrderPayload { OrderId = "order-42" });
 Assert.True(result.Success);
 ```
+
+Generic overloads default to camelCase property names. Pass `jsonSerializerOptions` to customize
+serialization (for example `new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower }`).
+Strings, byte arrays, and `BinaryData` passed to their dedicated overloads are not JSON-serialized.
 
 ### Batch trigger functions (`IsBatched = true`)
 
@@ -118,6 +128,20 @@ Task<FunctionInvocationResult> InvokeKafkaBatchAsync(
     string functionName,
     IReadOnlyList<byte[]> bodies,
     CancellationToken cancellationToken = default)
+
+// Single BinaryData message (also available without cancellationToken)
+Task<FunctionInvocationResult> InvokeKafkaAsync(
+    this IFunctionsTestHost host,
+    string functionName,
+    BinaryData body,
+    CancellationToken cancellationToken)
+
+// Batched BinaryData messages (also available without cancellationToken)
+Task<FunctionInvocationResult> InvokeKafkaBatchAsync(
+    this IFunctionsTestHost host,
+    string functionName,
+    IReadOnlyList<BinaryData> bodies,
+    CancellationToken cancellationToken)
 
 // Single KafkaRecord (proto3-encoded ModelBindingData)
 Task<FunctionInvocationResult> InvokeKafkaAsync(

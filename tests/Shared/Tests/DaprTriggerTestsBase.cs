@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AzureFunctions.TestFramework.Dapr;
 
 namespace TestProject;
@@ -14,6 +15,60 @@ public abstract class DaprTriggerTestsBase(ITestOutputHelper output) : TestHostT
     }
 
     protected abstract Task<IFunctionsTestHost> CreateTestHostWithProcessedItemsAsync(InMemoryProcessedItemsService processedItems);
+
+    [Theory]
+    [InlineData("binding", false, false)]
+    [InlineData("binding", true, false)]
+    [InlineData("binding", false, true)]
+    [InlineData("binding", true, true)]
+    [InlineData("invocation", false, false)]
+    [InlineData("invocation", true, false)]
+    [InlineData("invocation", false, true)]
+    [InlineData("invocation", true, true)]
+    [InlineData("topic", false, false)]
+    [InlineData("topic", true, false)]
+    [InlineData("topic", false, true)]
+    [InlineData("topic", true, true)]
+    public async Task InvokeDaprAsync_RawPayload_PreservesBytes(string trigger, bool binaryData, bool empty)
+    {
+        byte[] bytes = empty ? [] : [0, 255, 128, 195, 40, 0, 42];
+        var body = new BinaryData(bytes);
+        var result = (trigger, binaryData) switch
+        {
+            ("binding", false) => await TestHost.InvokeDaprBindingAsync("ProcessDaprBindingBinary", bytes, cancellationToken: TestCancellation),
+            ("binding", true) => await TestHost.InvokeDaprBindingAsync("ProcessDaprBindingBinary", body, cancellationToken: TestCancellation),
+            ("invocation", false) => await TestHost.InvokeDaprServiceInvocationAsync("ProcessDaprInvocationBinary", bytes, cancellationToken: TestCancellation),
+            ("invocation", true) => await TestHost.InvokeDaprServiceInvocationAsync("ProcessDaprInvocationBinary", body, cancellationToken: TestCancellation),
+            ("topic", false) => await TestHost.InvokeDaprTopicAsync("ProcessDaprTopicBinary", bytes, cancellationToken: TestCancellation),
+            _ => await TestHost.InvokeDaprTopicAsync("ProcessDaprTopicBinary", body, cancellationToken: TestCancellation)
+        };
+
+        Assert.True(result.Success, $"Dapr binary invocation failed: {result.Error}");
+        Assert.Equal(Convert.ToBase64String(bytes), Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Theory]
+    [InlineData("binding", false)]
+    [InlineData("binding", true)]
+    [InlineData("invocation", false)]
+    [InlineData("invocation", true)]
+    [InlineData("topic", false)]
+    [InlineData("topic", true)]
+    public async Task InvokeDaprAsync_Poco_UsesSelectedJsonOptions(string trigger, bool customOptions)
+    {
+        var payload = new { EventId = "evt-42" };
+        var options = customOptions ? new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower } : null;
+        var result = trigger switch
+        {
+            "binding" => await TestHost.InvokeDaprBindingAsync("ProcessDaprBinding", payload, options, TestCancellation),
+            "invocation" => await TestHost.InvokeDaprServiceInvocationAsync("ProcessDaprInvocation", payload, options, TestCancellation),
+            _ => await TestHost.InvokeDaprTopicAsync("ProcessDaprTopic", payload, options, TestCancellation)
+        };
+
+        Assert.True(result.Success, $"Dapr JSON invocation failed: {result.Error}");
+        Assert.Equal(customOptions ? """{"event_id":"evt-42"}""" : """{"eventId":"evt-42"}""",
+            Assert.Single(_processedItems!.TakeAll()));
+    }
 
     // -------------------------------------------------------------------------
     // DaprBindingTrigger — string overload

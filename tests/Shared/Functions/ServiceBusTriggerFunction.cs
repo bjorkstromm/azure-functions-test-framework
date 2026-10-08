@@ -20,4 +20,18 @@ public class ServiceBusTriggerFunction
         _logger.LogInformation("Processing Service Bus message: {Body}", message);
         _processedItems.Add(message);
     }
+
+    [Function("ProcessServiceBusBytes")]
+    public void RunBytes([ServiceBusTrigger("test-bytes")] byte[] message)
+        => _processedItems.Add(Convert.ToBase64String(message));
+
+    [Function("ProcessServiceBusPayload")]
+    public void RunPayload([ServiceBusTrigger("test-payload")] ServiceBusPayload message)
+        => _processedItems.Add($"{message.OrderName}:{message.Quantity}");
+}
+
+public sealed class ServiceBusPayload
+{
+    public string OrderName { get; set; } = "";
+    public int Quantity { get; set; }
 }

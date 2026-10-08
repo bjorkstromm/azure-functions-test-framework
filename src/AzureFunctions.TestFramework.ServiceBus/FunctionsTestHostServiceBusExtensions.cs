@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using AzureFunctions.TestFramework.Core;
 using Azure.Messaging.ServiceBus;
@@ -26,9 +27,116 @@ public static class FunctionsTestHostServiceBusExtensions
     };
 
     /// <summary>
+    /// Invokes a Service Bus–triggered function with UTF-8 message text.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The function name (case-insensitive).</param>
+    /// <param name="message">The message text, passed without JSON quoting.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeServiceBusAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        string message,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        return InvokeServiceBusAsync(host, functionName, Encoding.UTF8.GetBytes(message), cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a Service Bus–triggered function with raw message bytes, without text encoding.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The function name (case-insensitive).</param>
+    /// <param name="message">The raw message body.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeServiceBusAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        byte[] message,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(message);
+
+        var context = new FunctionInvocationContext
+        {
+            TriggerType = "serviceBusTrigger",
+            InputData = { ["$messageBodyBytes"] = message }
+        };
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingDataFromBytes, cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a Service Bus–triggered function with a <see cref="BinaryData"/> body, preserving its bytes.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The function name (case-insensitive).</param>
+    /// <param name="message">The message body.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeServiceBusAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData message,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(message);
+        return InvokeServiceBusAsync(host, functionName, message.ToArray(), cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a Service Bus–triggered function with a JSON payload using camel-case property names.
+    /// </summary>
+    /// <typeparam name="T">The payload type.</typeparam>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The function name (case-insensitive).</param>
+    /// <param name="payload">The payload to serialize as JSON.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeServiceBusAsync<T>(
+        this IFunctionsTestHost host,
+        string functionName,
+        T payload,
+        CancellationToken cancellationToken = default)
+        => InvokeServiceBusAsync(host, functionName, payload, jsonSerializerOptions: null, cancellationToken);
+
+    /// <summary>
+    /// Invokes a Service Bus–triggered function with a JSON-serialized payload.
+    /// </summary>
+    /// <typeparam name="T">The payload type.</typeparam>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The function name (case-insensitive).</param>
+    /// <param name="payload">The payload to serialize as JSON.</param>
+    /// <param name="jsonSerializerOptions">Optional serializer options; defaults to camel-case property names.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeServiceBusAsync<T>(
+        this IFunctionsTestHost host,
+        string functionName,
+        T payload,
+        JsonSerializerOptions? jsonSerializerOptions,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(payload);
+
+        var context = new FunctionInvocationContext
+        {
+            TriggerType = "serviceBusTrigger",
+            InputData = { ["$messageBodyJson"] = JsonSerializer.Serialize(payload, jsonSerializerOptions ?? _jsonOptions) }
+        };
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingDataFromJson, cancellationToken);
+    }
+
+    /// <summary>
     /// Invokes a Service Bus–triggered function by name using a <see cref="ServiceBusMessage"/>.
     /// The message body is passed as raw bytes; use this overload when the function parameter
-    /// is typed as <c>string</c>, <c>byte[]</c>, or <c>BinaryData</c>.
+    /// is typed as <c>string</c> or <c>byte[]</c>.
     /// </summary>
     /// <param name="host">The test host.</param>
     /// <param name="functionName">The name of the Service Bus function (case-insensitive).</param>
@@ -130,18 +238,29 @@ public static class FunctionsTestHostServiceBusExtensions
         ArgumentNullException.ThrowIfNull(messages);
         if (messages.Count == 0)
             throw new ArgumentException("Batch must contain at least one message.", nameof(messages));
+        if (messages.Any(message => message is null))
+            throw new ArgumentException("Batch must not contain null messages.", nameof(messages));
 
         var context = new FunctionInvocationContext
         {
             TriggerType = "serviceBusTrigger",
             InputData =
             {
-                ["$receivedMessages"] = messages.ToArray()
+                ["$receivedMessages"] = messages.ToArray(),
+                ["$isBatch"] = true
             }
         };
 
         return host.Invoker.InvokeAsync(functionName, context, CreateBindingDataFromReceivedMessages, cancellationToken);
     }
+
+    private static TriggerBindingData CreateBindingDataFromJson(
+        FunctionInvocationContext context,
+        FunctionRegistration function)
+        => new()
+        {
+            InputData = [FunctionBindingData.WithJson(function.ParameterName, (string)context.InputData["$messageBodyJson"]!)]
+        };
 
     private static TriggerBindingData CreateBindingDataFromBytes(
         FunctionInvocationContext context,
@@ -174,7 +293,7 @@ public static class FunctionsTestHostServiceBusExtensions
             ? msgs
             : Array.Empty<ServiceBusReceivedMessage>();
 
-        if (messages.Length == 1)
+        if (!context.InputData.ContainsKey("$isBatch"))
         {
             // Single message: use ModelBindingData
             var modelData = ToModelBindingDataValue(messages[0]);

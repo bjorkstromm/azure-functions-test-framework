@@ -6,6 +6,25 @@ ServiceBusTrigger invocation support for the Azure Functions Test Framework. Pro
 
 ## Usage
 
+Pass a body directly as a string, raw `byte[]`, or `BinaryData`, or pass a POCO to serialize as JSON:
+
+```csharp
+await host.InvokeServiceBusAsync("ProcessMessage", "Hello!");
+await host.InvokeServiceBusAsync("ProcessBytes", new byte[] { 0, 255, 128 });
+await host.InvokeServiceBusAsync("ProcessBytes", BinaryData.FromBytes(new byte[] { 0, 255 }));
+await host.InvokeServiceBusAsync("ProcessOrder", new { OrderId = "123", Quantity = 2 });
+await host.InvokeServiceBusAsync("ProcessOrder", order,
+    jsonSerializerOptions: new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower },
+    cancellationToken: cancellationToken);
+```
+
+Strings are UTF-8 encoded without JSON quoting; byte arrays and `BinaryData` preserve raw bytes.
+POCO payloads default to camel-case JSON property names. Custom options require `using System.Text.Json;`.
+Use the existing `ServiceBusMessage` overload for body plus trigger metadata, or
+`ServiceBusReceivedMessage` for SDK-typed function parameters and AMQP message metadata.
+`InvokeServiceBusBatchAsync` always delivers an SDK message collection, including singleton batches;
+null, empty, and null-containing batches are rejected.
+
 ```csharp
 using Azure.Messaging.ServiceBus;
 using AzureFunctions.TestFramework.Core;
@@ -23,7 +42,7 @@ public class ServiceBusFunctionTests : IAsyncLifetime
             .BuildAndStartAsync();
     }
 
-    // ── Single message (string / byte[] / BinaryData function parameter) ──────────────
+    // ── Single message (string / byte[] function parameter) ───────────────────────────
 
     [Fact]
     public async Task ProcessMessage_WithStringBody_Succeeds()

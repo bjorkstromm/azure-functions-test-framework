@@ -29,4 +29,10 @@ public class BlobTriggerFunction
             name, client.BlobContainerName, client.Name);
         _processedItems.Add($"{client.BlobContainerName}/{client.Name}");
     }
+
+    [Function("ProcessBlobBytes")]
+    public void RunBytes([BlobTrigger("test-container/{name}")] byte[] content)
+    {
+        _processedItems.Add(Convert.ToBase64String(content));
+    }
 }

@@ -8,6 +8,75 @@ namespace AzureFunctions.TestFramework.Blob;
 /// </summary>
 public static class FunctionsTestHostBlobExtensions
 {
+    /// <summary>Invokes a blob-triggered function with unmodified raw content bytes.</summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The function name (case-insensitive).</param>
+    /// <param name="content">The raw blob content.</param>
+    /// <param name="blobName">Optional blob name.</param>
+    /// <param name="containerName">Optional container name.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeBlobAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        byte[] content,
+        string? blobName = null,
+        string? containerName = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        return host.InvokeBlobAsync(functionName, new BinaryData(content), blobName, containerName, cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a blob-triggered function with UTF-8 text content.
+    /// The distinct method name preserves the container/blob-name overload of <c>InvokeBlobAsync</c>.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The function name (case-insensitive).</param>
+    /// <param name="content">The text content, not a container name.</param>
+    /// <param name="blobName">Optional blob name.</param>
+    /// <param name="containerName">Optional container name.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeBlobContentAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        string content,
+        string? blobName = null,
+        string? containerName = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        return host.InvokeBlobAsync(functionName, BinaryData.FromString(content), blobName, containerName, cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a blob-triggered function with the remaining stream content.
+    /// The stream is read from its current position and is left open.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The function name (case-insensitive).</param>
+    /// <param name="content">The readable content stream.</param>
+    /// <param name="blobName">Optional blob name.</param>
+    /// <param name="containerName">Optional container name.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static async Task<FunctionInvocationResult> InvokeBlobAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        Stream content,
+        string? blobName = null,
+        string? containerName = null,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(content);
+        cancellationToken.ThrowIfCancellationRequested();
+        var data = await BinaryData.FromStreamAsync(content, cancellationToken).ConfigureAwait(false);
+        return await host.InvokeBlobAsync(functionName, data, blobName, containerName, cancellationToken).ConfigureAwait(false);
+    }
 
     /// <summary>
     /// Invokes a blob-triggered function by name with the specified blob content.
@@ -37,6 +106,8 @@ public static class FunctionsTestHostBlobExtensions
         string? containerName = null,
         CancellationToken cancellationToken = default)
     {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
         ArgumentNullException.ThrowIfNull(content);
 
         string? triggerMetadataJson = null;

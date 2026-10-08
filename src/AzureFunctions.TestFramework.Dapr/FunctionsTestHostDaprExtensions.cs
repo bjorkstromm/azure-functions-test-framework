@@ -49,6 +49,67 @@ public static class FunctionsTestHostDaprExtensions
     }
 
     /// <summary>
+    /// Invokes a Dapr input binding–triggered function with raw bytes, without text decoding or JSON serialization.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr binding trigger function (case-insensitive).</param>
+    /// <param name="data">The raw binding event data.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprBindingAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        byte[] data,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(data);
+        var context = new FunctionInvocationContext
+        {
+            TriggerType = "daprBindingTrigger",
+            InputData = { ["$daprBindingBytes"] = data }
+        };
+        return host.Invoker.InvokeAsync(functionName, context, CreateBindingDataFromBytes, cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a Dapr input binding–triggered function with raw <see cref="BinaryData"/> content.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr binding trigger function (case-insensitive).</param>
+    /// <param name="data">The raw binding event data.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprBindingAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData data,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(data);
+        return InvokeDaprBindingAsync(host, functionName, data.ToArray(), cancellationToken);
+    }
+
+    /// <summary>Invokes a Dapr binding trigger with raw bytes, without JSON serialization.</summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr binding trigger function (case-insensitive).</param>
+    /// <param name="data">The raw binding event data.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprBindingAsync(this IFunctionsTestHost host, string functionName, byte[] data)
+        => InvokeDaprBindingAsync(host, functionName, data, CancellationToken.None);
+
+    /// <summary>Invokes a Dapr binding trigger with raw <see cref="BinaryData"/> content.</summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr binding trigger function (case-insensitive).</param>
+    /// <param name="data">The raw binding event data.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprBindingAsync(this IFunctionsTestHost host, string functionName, BinaryData data)
+        => InvokeDaprBindingAsync(host, functionName, data, CancellationToken.None);
+
+    /// <summary>
     /// Invokes a Dapr input binding–triggered function by name with the specified JSON-serialized payload.
     /// Use this overload when the function parameter is a serializable reference type deserialized from JSON.
     /// </summary>
@@ -131,6 +192,67 @@ public static class FunctionsTestHostDaprExtensions
     }
 
     /// <summary>
+    /// Invokes a Dapr service invocation–triggered function with raw bytes, without text decoding or JSON serialization.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr service invocation function (case-insensitive).</param>
+    /// <param name="body">The raw invocation body.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprServiceInvocationAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        byte[] body,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(body);
+        var context = new FunctionInvocationContext
+        {
+            TriggerType = "daprServiceInvocationTrigger",
+            InputData = { ["$daprInvocationBytes"] = body }
+        };
+        return host.Invoker.InvokeAsync(functionName, context, CreateInvocationBindingDataFromBytes, cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a Dapr service invocation–triggered function with raw <see cref="BinaryData"/> content.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr service invocation function (case-insensitive).</param>
+    /// <param name="body">The raw invocation body.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprServiceInvocationAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData body,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(body);
+        return InvokeDaprServiceInvocationAsync(host, functionName, body.ToArray(), cancellationToken);
+    }
+
+    /// <summary>Invokes a Dapr service invocation trigger with raw bytes, without JSON serialization.</summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr service invocation function (case-insensitive).</param>
+    /// <param name="body">The raw invocation body.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprServiceInvocationAsync(this IFunctionsTestHost host, string functionName, byte[] body)
+        => InvokeDaprServiceInvocationAsync(host, functionName, body, CancellationToken.None);
+
+    /// <summary>Invokes a Dapr service invocation trigger with raw <see cref="BinaryData"/> content.</summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr service invocation function (case-insensitive).</param>
+    /// <param name="body">The raw invocation body.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprServiceInvocationAsync(this IFunctionsTestHost host, string functionName, BinaryData body)
+        => InvokeDaprServiceInvocationAsync(host, functionName, body, CancellationToken.None);
+
+    /// <summary>
     /// Invokes a Dapr service invocation–triggered function by name with the specified JSON-serialized body.
     /// Use this overload when the function parameter is a serializable reference type deserialized from JSON.
     /// </summary>
@@ -197,6 +319,67 @@ public static class FunctionsTestHostDaprExtensions
 
         return host.Invoker.InvokeAsync(functionName, context, CreateTopicBindingDataFromBytes, cancellationToken);
     }
+
+    /// <summary>
+    /// Invokes a Dapr pub/sub topic–triggered function with raw bytes, without text decoding or JSON serialization.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr topic trigger function (case-insensitive).</param>
+    /// <param name="message">The raw topic message.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprTopicAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        byte[] message,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(message);
+        var context = new FunctionInvocationContext
+        {
+            TriggerType = "daprTopicTrigger",
+            InputData = { ["$daprTopicBytes"] = message }
+        };
+        return host.Invoker.InvokeAsync(functionName, context, CreateTopicBindingDataFromBytes, cancellationToken);
+    }
+
+    /// <summary>
+    /// Invokes a Dapr pub/sub topic–triggered function with raw <see cref="BinaryData"/> content.
+    /// </summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr topic trigger function (case-insensitive).</param>
+    /// <param name="message">The raw topic message.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprTopicAsync(
+        this IFunctionsTestHost host,
+        string functionName,
+        BinaryData message,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(host);
+        ArgumentException.ThrowIfNullOrEmpty(functionName);
+        ArgumentNullException.ThrowIfNull(message);
+        return InvokeDaprTopicAsync(host, functionName, message.ToArray(), cancellationToken);
+    }
+
+    /// <summary>Invokes a Dapr topic trigger with raw bytes, without JSON serialization.</summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr topic trigger function (case-insensitive).</param>
+    /// <param name="message">The raw topic message.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprTopicAsync(this IFunctionsTestHost host, string functionName, byte[] message)
+        => InvokeDaprTopicAsync(host, functionName, message, CancellationToken.None);
+
+    /// <summary>Invokes a Dapr topic trigger with raw <see cref="BinaryData"/> content.</summary>
+    /// <param name="host">The test host.</param>
+    /// <param name="functionName">The name of the Dapr topic trigger function (case-insensitive).</param>
+    /// <param name="message">The raw topic message.</param>
+    /// <returns>The invocation result.</returns>
+    public static Task<FunctionInvocationResult> InvokeDaprTopicAsync(this IFunctionsTestHost host, string functionName, BinaryData message)
+        => InvokeDaprTopicAsync(host, functionName, message, CancellationToken.None);
 
     /// <summary>
     /// Invokes a Dapr pub/sub topic–triggered function by name with the specified JSON-serialized message.

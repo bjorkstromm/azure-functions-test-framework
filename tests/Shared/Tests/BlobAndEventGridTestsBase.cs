@@ -49,12 +49,74 @@ public abstract class BlobAndEventGridTestsBase : TestHostTestBase
     }
 
     [Fact]
+    public async Task InvokeBlobContentAsync_WithText_PreservesUnquotedContent()
+    {
+        var result = await TestHost.InvokeBlobContentAsync(
+            "ProcessBlob", "hello \u2603", "text.txt", cancellationToken: TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        Assert.EndsWith(":hello \u2603", Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task InvokeBlobAsync_WithRawContent_PreservesBinaryBytes(bool useBinaryData)
+    {
+        byte[] bytes = [0, 255, 128, 195, 40];
+        var result = useBinaryData
+            ? await TestHost.InvokeBlobAsync("ProcessBlobBytes", new BinaryData(bytes), "data.bin", cancellationToken: TestCancellation)
+            : await TestHost.InvokeBlobAsync("ProcessBlobBytes", bytes, "data.bin", cancellationToken: TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(Convert.ToBase64String(bytes), Assert.Single(_processedItems!.TakeAll()));
+    }
+
+    [Fact]
+    public async Task InvokeBlobAsync_WithStream_ReadsRemainingBytesAndLeavesStreamOpen()
+    {
+        byte[] bytes = [42, 0, 255, 128];
+        using var stream = new MemoryStream(bytes);
+        stream.Position = 1;
+        var result = await TestHost.InvokeBlobAsync("ProcessBlobBytes", stream, "data.bin", cancellationToken: TestCancellation);
+
+        Assert.True(result.Success, result.Error);
+        Assert.Equal(Convert.ToBase64String(bytes[1..]), Assert.Single(_processedItems!.TakeAll()));
+        Assert.True(stream.CanRead);
+    }
+
+    [Fact]
+    public async Task InvokeBlobAsync_WithCancelledStream_DoesNotInvokeOrDisposeStream()
+    {
+        using var stream = new MemoryStream([0, 255]);
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            TestHost.InvokeBlobAsync("ProcessBlobBytes", stream, cancellationToken: cancellation.Token));
+
+        Assert.Empty(_processedItems!.TakeAll());
+        Assert.True(stream.CanRead);
+    }
+
+    [Fact]
+    public async Task InvokeBlobAsync_RejectsNullContent()
+    {
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeBlobAsync("ProcessBlobBytes", (byte[])null!, cancellationToken: TestCancellation));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeBlobAsync("ProcessBlobBytes", (BinaryData)null!, cancellationToken: TestCancellation));
+        await Assert.ThrowsAsync<ArgumentNullException>(() =>
+            TestHost.InvokeBlobContentAsync("ProcessBlob", null!, cancellationToken: TestCancellation));
+    }
+
+    [Fact]
     public async Task InvokeBlobAsync_WithBlobClientParam_Succeeds()
     {
         var result = await TestHost.InvokeBlobAsync(
             "ProcessBlobClient",
-            containerName: "test-container",
-            blobName: "myblob.txt",
+            "test-container",
+            "myblob.txt",
             cancellationToken: TestCancellation);
 
         Assert.True(result.Success, $"BlobClient trigger invocation failed: {result.Error}");
