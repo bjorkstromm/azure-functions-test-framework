@@ -33,7 +33,7 @@
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Extensions.Warmup" Version="4.0.2" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Grpc" Version="2.52.0" />
     <PackageVersion Include="Microsoft.Azure.Functions.Worker.Sdk" Version="2.1.0" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.10.1" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
     <PackageVersion Include="MinVer" Version="8.0.0" />
     <PackageVersion Include="NUnit" Version="5.0.0" />
     <PackageVersion Include="NUnit3TestAdapter" Version="6.3.0" />
